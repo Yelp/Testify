@@ -1,93 +1,91 @@
 """Methods to be used inside of assert statements"""
 __testify = 1
-from util import http
-import math
 
 def assert_raises(expected_exception_class, callable_obj, *args, **kwargs):
-	"""Returns true only if the callable raises expected_exception_class"""
-	try:
-		callable_obj(*args, **kwargs)
-	except expected_exception_class:
-		# we got the expected exception
-		return True
-	assert_not_reached("No exception was raised (expected %s)" % expected_exception_class)
+    """Returns true only if the callable raises expected_exception_class"""
+    try:
+        callable_obj(*args, **kwargs)
+    except expected_exception_class:
+        # we got the expected exception
+        return True
+    assert_not_reached("No exception was raised (expected %s)" % expected_exception_class)
 
 def assert_equal(lval, rval, message=None):
-	if message:
-		assert lval == rval, message
-	else:
-		assert lval == rval, "assertion failed: %r == %r" % (lval, rval)
+    if message:
+        assert lval == rval, message
+    else:
+        assert lval == rval, "assertion failed: %r == %r" % (lval, rval)
 
 assert_equals = assert_equal
 
 def assert_almost_equal(lval, rval, digits, message=None):
-	real_message = message or "%r !~= %r" % (lval, rval)
-	assert round(lval, digits) == round(rval, digits), real_message
+    real_message = message or "%r !~= %r" % (lval, rval)
+    assert round(lval, digits) == round(rval, digits), real_message
 
 def assert_within_tolerance(lval, rval, tolerance, message=None):
-	real_message = message or "%r !~= %r" % (lval, rval)
-	assert abs(float(lval) - float(rval)) / float(lval) < tolerance, real_message
+    real_message = message or "%r !~= %r" % (lval, rval)
+    assert abs(float(lval) - float(rval)) / float(lval) < tolerance, real_message
 
 def assert_not_equal(lval, rval, message=None):
-	if message:
-		assert lval != rval, message
-	else:
-		assert lval != rval, 'assertion failed: %s != %s' % (lval, rval)
+    if message:
+        assert lval != rval, message
+    else:
+        assert lval != rval, 'assertion failed: %s != %s' % (lval, rval)
 
 def assert_lt(lval, rval, message=None):
-	if message:
-		assert lval < rval, message
-	else:
-		assert lval < rval, 'assertion failed: %s < %s' % (lval, rval)
+    if message:
+        assert lval < rval, message
+    else:
+        assert lval < rval, 'assertion failed: %s < %s' % (lval, rval)
 
 def assert_lte(lval, rval, message=None):
-	if message:
-		assert lval <= rval, message
-	else:
-		assert lval <= rval, 'assertion failed: %s lte %s' % (lval, rval)
+    if message:
+        assert lval <= rval, message
+    else:
+        assert lval <= rval, 'assertion failed: %s lte %s' % (lval, rval)
 
 def assert_gt(lval, rval, message=None):
-	if message:
-		assert lval > rval, message
-	else:
-		assert lval > rval, 'assertion failed: %s > %s' % (lval, rval)
+    if message:
+        assert lval > rval, message
+    else:
+        assert lval > rval, 'assertion failed: %s > %s' % (lval, rval)
 
 def assert_gte(lval, rval, message=None):
-	if message:
-		assert lval >= rval, message
-	else:
-		assert lval >= rval, 'assertion failed: %s >= %s' % (lval, rval)
+    if message:
+        assert lval >= rval, message
+    else:
+        assert lval >= rval, 'assertion failed: %s >= %s' % (lval, rval)
 
 def assert_in_range(val, start, end, message=None):
-	real_message = message or "! %s < %r < %r" % (start, val, end)
-	assert start < val < end, real_message
+    real_message = message or "! %s < %r < %r" % (start, val, end)
+    assert start < val < end, real_message
 
 def assert_in(item, sequence):
-	assert item in sequence, "assertion failed: expected %r in %r" % (item, sequence)
+    assert item in sequence, "assertion failed: expected %r in %r" % (item, sequence)
 
 def assert_not_in(item, sequence):
-	assert item not in sequence, "assertion failed: expected %r not in %r" % (item, sequence)
+    assert item not in sequence, "assertion failed: expected %r not in %r" % (item, sequence)
 
 def assert_starts_with(val, prefix):
-	msg = "%(val)r does not start with %(prefix)r" % locals()
-	assert val.startswith(prefix), msg
+    msg = "%(val)r does not start with %(prefix)r" % locals()
+    assert val.startswith(prefix), msg
 
 def assert_not_reached(message=None):
-	if message:
-		assert False, message
-	else:
-		assert False, 'egads! this line ought not to have been reached'
+    if message:
+        assert False, message
+    else:
+        assert False, 'egads! this line ought not to have been reached'
 
 def assert_rows_equal(rows1, rows2):
-	"""Check that two sequences contain the same lists of dictionaries"""
+    """Check that two sequences contain the same lists of dictionaries"""
 
-	def norm_row(row):
-		if isinstance(row, dict):
-			return tuple((k, row[k]) for k in sorted(row))
-		else:
-			return tuple(sorted(row))
-				 
-	def norm_rows(rows):
-		return tuple(sorted(norm_row(row) for row in rows))
+    def norm_row(row):
+        if isinstance(row, dict):
+            return tuple((k, row[k]) for k in sorted(row))
+        else:
+            return tuple(sorted(row))
+                 
+    def norm_rows(rows):
+        return tuple(sorted(norm_row(row) for row in rows))
 
-	assert_equal(norm_rows(rows1), norm_rows(rows2))
+    assert_equal(norm_rows(rows1), norm_rows(rows2))

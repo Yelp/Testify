@@ -19,255 +19,255 @@ VERBOSITY_NORMAL    = 1  # Output dots for each test method run
 VERBOSITY_VERBOSE   = 2  # Output method names and timing information
 
 class TestLoggerBase(object):
-	traceback_formater = staticmethod(traceback.format_exception)
+    traceback_formater = staticmethod(traceback.format_exception)
 
-	def __init__(self, verbosity, stream=sys.stdout):
-		self.verbosity = verbosity
-		self.stream = stream
+    def __init__(self, verbosity, stream=sys.stdout):
+        self.verbosity = verbosity
+        self.stream = stream
 
-	# These methods should be implemented by a TestLoggerBase subclass
-	def report_test_name(self, test_name): raise NotImplementedError
-	def report_test_result(self, result): raise NotImplementedError
-	def report_failures(self, failed_results):
-		results = {
-			'FAILURES': [],
-			'EXPECTED_FAILURES': []
-			}
-		
-		[results['EXPECTED_FAILURES'].append(result) if result.expected_failure else results['FAILURES'].append(result) for result in failed_results]
+    # These methods should be implemented by a TestLoggerBase subclass
+    def report_test_name(self, test_name): raise NotImplementedError
+    def report_test_result(self, result): raise NotImplementedError
+    def report_failures(self, failed_results):
+        results = {
+            'FAILURES': [],
+            'EXPECTED_FAILURES': []
+            }
+        
+        [results['EXPECTED_FAILURES'].append(result) if result.expected_failure else results['FAILURES'].append(result) for result in failed_results]
 
-		if results['EXPECTED_FAILURES']:
-			self.heading('EXPECTED FAILURES', 'The following tests have been marked expected-failure.')
-			for result in results['EXPECTED_FAILURES']:
-				self.failure(result)
+        if results['EXPECTED_FAILURES']:
+            self.heading('EXPECTED FAILURES', 'The following tests have been marked expected-failure.')
+            for result in results['EXPECTED_FAILURES']:
+                self.failure(result)
 
-		if results['FAILURES']:
-			self.heading('FAILURES', 'The following tests are expected to pass.')
-			for result in results['FAILURES']:
-				self.failure(result)
-		else:
-			# throwing this in so that someone looking at the bottom of the
-			# output won't have to scroll up to figure out whether failures
-			# were expected or not.
-			self.heading('FAILURES', 'None!')
-		
-	def report_failure(self, result): raise NotImplementedError
-	def report_skippeds(self, skipped_results): raise NotImplementedError
-	def report_stats(self, test_case_count, all_results, failed_results, skipped_results, unknown_results): raise NotImplementedError
+        if results['FAILURES']:
+            self.heading('FAILURES', 'The following tests are expected to pass.')
+            for result in results['FAILURES']:
+                self.failure(result)
+        else:
+            # throwing this in so that someone looking at the bottom of the
+            # output won't have to scroll up to figure out whether failures
+            # were expected or not.
+            self.heading('FAILURES', 'None!')
+        
+    def report_failure(self, result): raise NotImplementedError
+    def report_skippeds(self, skipped_results): raise NotImplementedError
+    def report_stats(self, test_case_count, all_results, failed_results, skipped_results, unknown_results): raise NotImplementedError
 
-	def _format_test_method_name(self, test_method):
-		"""Take a test method as input and return a string for output"""
-		out = []
-		if test_method.im_class.__module__ != "__main__":
-			out.append("%s " % test_method.im_class.__module__)
-		out.append("%s.%s" % (test_method.im_class.__name__, test_method.__name__))
+    def _format_test_method_name(self, test_method):
+        """Take a test method as input and return a string for output"""
+        out = []
+        if test_method.im_class.__module__ != "__main__":
+            out.append("%s " % test_method.im_class.__module__)
+        out.append("%s.%s" % (test_method.im_class.__name__, test_method.__name__))
 
-		return''.join(out)
+        return''.join(out)
 
-	# Helper methods for extracting relevant entries from a stack trace
-	def _format_exception_info(self, exception_info_tuple):
-		exctype, value, tb = exception_info_tuple
-		# Skip test runner traceback levels
-		while tb and self.__is_relevant_tb_level(tb):
-			tb = tb.tb_next
-		if exctype is AssertionError:
-			# Skip testify.assertions traceback levels
-			length = self.__count_relevant_tb_levels(tb)
-			return self.traceback_formater(exctype, value, tb, length)
+    # Helper methods for extracting relevant entries from a stack trace
+    def _format_exception_info(self, exception_info_tuple):
+        exctype, value, tb = exception_info_tuple
+        # Skip test runner traceback levels
+        while tb and self.__is_relevant_tb_level(tb):
+            tb = tb.tb_next
+        if exctype is AssertionError:
+            # Skip testify.assertions traceback levels
+            length = self.__count_relevant_tb_levels(tb)
+            return self.traceback_formater(exctype, value, tb, length)
 
-		if not tb:
-			return "Exception: %r (%r)" % (exctype, value)
+        if not tb:
+            return "Exception: %r (%r)" % (exctype, value)
 
-		return self.traceback_formater(exctype, value, tb)
+        return self.traceback_formater(exctype, value, tb)
 
-	def __is_relevant_tb_level(self, tb):
-		return tb.tb_frame.f_globals.has_key('__testify')
+    def __is_relevant_tb_level(self, tb):
+        return tb.tb_frame.f_globals.has_key('__testify')
 
-	def __count_relevant_tb_levels(self, tb):
-		length = 0
-		while tb and not self.__is_relevant_tb_level(tb):
-			length += 1
-			tb = tb.tb_next
-		return length
-		
+    def __count_relevant_tb_levels(self, tb):
+        length = 0
+        while tb and not self.__is_relevant_tb_level(tb):
+            length += 1
+            tb = tb.tb_next
+        return length
+        
 class TextTestLogger(TestLoggerBase):
-	traceback_formater = staticmethod(ultraTB.ColorTB().text)
+    traceback_formater = staticmethod(ultraTB.ColorTB().text)
 
-	def write(self, message):
-		"""Write a message to the output stream, no trailing newline"""
-		self.stream.write(message)
-		self.stream.flush()
+    def write(self, message):
+        """Write a message to the output stream, no trailing newline"""
+        self.stream.write(message)
+        self.stream.flush()
 
-	def writeln(self, message):
-		"""Write a message and append a newline"""
-		self.stream.write("%s\n" % message)
-		self.stream.flush()
+    def writeln(self, message):
+        """Write a message and append a newline"""
+        self.stream.write("%s\n" % message)
+        self.stream.flush()
 
-	BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(30, 38)
+    BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(30, 38)
 
-	def _colorize(self, message, color = CYAN):
-		if not color:
-			return message
-		else:
-			start_color = chr(0033) + '[1;%sm' % color
-			end_color = chr(0033) + '[m'
-			return start_color + message + end_color
+    def _colorize(self, message, color = CYAN):
+        if not color:
+            return message
+        else:
+            start_color = chr(0033) + '[1;%sm' % color
+            end_color = chr(0033) + '[m'
+            return start_color + message + end_color
 
-	def report_test_name(self, test_method):
-		_log.info("running: %s", self._format_test_method_name(test_method))
-		if self.verbosity >= VERBOSITY_VERBOSE:
-			self.write("%s ... " % self._format_test_method_name(test_method))
+    def report_test_name(self, test_method):
+        _log.info("running: %s", self._format_test_method_name(test_method))
+        if self.verbosity >= VERBOSITY_VERBOSE:
+            self.write("%s ... " % self._format_test_method_name(test_method))
 
-	def report_test_result(self, result):
-		if self.verbosity > VERBOSITY_SILENT:
+    def report_test_result(self, result):
+        if self.verbosity > VERBOSITY_SILENT:
 
-			if result.success:
-				if not result.unexpected_success:
-					_log.info("success: %s", self._format_test_method_name(result.test_method))
-					if self.verbosity == VERBOSITY_NORMAL:
-						self.write(self._colorize('.', self.GREEN))
-					else:
-						self.writeln("%s in %s" % (self._colorize('ok', self.GREEN), result.normalized_run_time()))
-				else:
-					_log.info("unexpected success: %s", self._format_test_method_name(result.test_method))
-					if self.verbosity == VERBOSITY_NORMAL:
-						self.write(self._colorize('.', self.RED))
-					else:
-						self.writeln("%s in %s" % (self._colorize('UNEXPECTED SUCCESS', self.RED), result.normalized_run_time()))
+            if result.success:
+                if not result.unexpected_success:
+                    _log.info("success: %s", self._format_test_method_name(result.test_method))
+                    if self.verbosity == VERBOSITY_NORMAL:
+                        self.write(self._colorize('.', self.GREEN))
+                    else:
+                        self.writeln("%s in %s" % (self._colorize('ok', self.GREEN), result.normalized_run_time()))
+                else:
+                    _log.info("unexpected success: %s", self._format_test_method_name(result.test_method))
+                    if self.verbosity == VERBOSITY_NORMAL:
+                        self.write(self._colorize('.', self.RED))
+                    else:
+                        self.writeln("%s in %s" % (self._colorize('UNEXPECTED SUCCESS', self.RED), result.normalized_run_time()))
 
-			elif result.failure:
-				if result.test_method.im_class.in_suite(result.test_method, 'expected-failure'):
-					_log.error("fail (expected): %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
-					if self.verbosity == VERBOSITY_NORMAL:
-						self.write(self._colorize('f', self.RED))
-					else:
-						self.writeln("%s in %s" % (self._colorize("FAIL (EXPECTED)", self.RED), result.normalized_run_time()))
-				else:
-					_log.error("fail: %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
-					if self.verbosity == VERBOSITY_NORMAL:
-						self.write(self._colorize('F', self.RED))
-					else:
-						self.writeln("%s in %s" % (self._colorize("FAIL", self.RED), result.normalized_run_time()))
+            elif result.failure:
+                if result.test_method.im_class.in_suite(result.test_method, 'expected-failure'):
+                    _log.error("fail (expected): %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
+                    if self.verbosity == VERBOSITY_NORMAL:
+                        self.write(self._colorize('f', self.RED))
+                    else:
+                        self.writeln("%s in %s" % (self._colorize("FAIL (EXPECTED)", self.RED), result.normalized_run_time()))
+                else:
+                    _log.error("fail: %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
+                    if self.verbosity == VERBOSITY_NORMAL:
+                        self.write(self._colorize('F', self.RED))
+                    else:
+                        self.writeln("%s in %s" % (self._colorize("FAIL", self.RED), result.normalized_run_time()))
 
-			elif result.error:
-				if result.test_method.im_class.in_suite(result.test_method, 'expected-failure'):
-					_log.error("error (expected): %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
-					if self.verbosity == VERBOSITY_NORMAL:
-						self.write(self._colorize('e', self.RED))
-					else:
-						self.writeln("%s in %s" % (self._colorize("ERROR (EXPECTED)", self.RED), result.normalized_run_time()))
-				else:
-					_log.error("error: %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
-					if self.verbosity == VERBOSITY_NORMAL:
-						self.write(self._colorize('E', self.RED))
-					else:
-						self.writeln("%s in %s" % (self._colorize("ERROR", self.RED), result.normalized_run_time()))
+            elif result.error:
+                if result.test_method.im_class.in_suite(result.test_method, 'expected-failure'):
+                    _log.error("error (expected): %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
+                    if self.verbosity == VERBOSITY_NORMAL:
+                        self.write(self._colorize('e', self.RED))
+                    else:
+                        self.writeln("%s in %s" % (self._colorize("ERROR (EXPECTED)", self.RED), result.normalized_run_time()))
+                else:
+                    _log.error("error: %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
+                    if self.verbosity == VERBOSITY_NORMAL:
+                        self.write(self._colorize('E', self.RED))
+                    else:
+                        self.writeln("%s in %s" % (self._colorize("ERROR", self.RED), result.normalized_run_time()))
 
-			elif result.skipped:
-				_log.info("skipped: %s", self._format_test_method_name(result.test_method))
-				if self.verbosity == VERBOSITY_NORMAL:
-					self.write(self._colorize('S', self.CYAN))
-				else:
-					self.writeln(self._colorize('SKIPPED', self.CYAN))
+            elif result.skipped:
+                _log.info("skipped: %s", self._format_test_method_name(result.test_method))
+                if self.verbosity == VERBOSITY_NORMAL:
+                    self.write(self._colorize('S', self.CYAN))
+                else:
+                    self.writeln(self._colorize('SKIPPED', self.CYAN))
 
-			elif result.incomplete:
-				_log.info("incomplete: %s", self._format_test_method_name(result.test_method))
-				if self.verbosity == VERBOSITY_NORMAL:
-					self.write(self._colorize('-', self.YELLOW))
-				else:
-					self.writeln(self._colorize('INCOMPLETE', self.YELLOW))
+            elif result.incomplete:
+                _log.info("incomplete: %s", self._format_test_method_name(result.test_method))
+                if self.verbosity == VERBOSITY_NORMAL:
+                    self.write(self._colorize('-', self.YELLOW))
+                else:
+                    self.writeln(self._colorize('INCOMPLETE', self.YELLOW))
 
-			else:
-				_log.info("unknown: %s", self._format_test_method_name(result.test_method))
-				if self.verbosity == VERBOSITY_NORMAL:
-					self.write('?')
-				else:
-					self.writeln('UNKNOWN')
+            else:
+                _log.info("unknown: %s", self._format_test_method_name(result.test_method))
+                if self.verbosity == VERBOSITY_NORMAL:
+                    self.write('?')
+                else:
+                    self.writeln('UNKNOWN')
 
-	def heading(self, *messages):
-		self.writeln("")
-		self.writeln("=" * 72)
-		for line in messages:
-			self.writeln(line)
+    def heading(self, *messages):
+        self.writeln("")
+        self.writeln("=" * 72)
+        for line in messages:
+            self.writeln(line)
 
-	def failure(self, result):
-		self.writeln("")
-		self.writeln("=" * 72)
-		# self.write("%s: " % self._colorize(('FAIL' if result.failure else 'ERROR'), self.RED))
-		self.writeln(self._format_test_method_name(result.test_method))
-		self.writeln(''.join(self._format_exception_info(result.exception_info)))
-		self.writeln('=' * 72)
-		self.writeln("")
+    def failure(self, result):
+        self.writeln("")
+        self.writeln("=" * 72)
+        # self.write("%s: " % self._colorize(('FAIL' if result.failure else 'ERROR'), self.RED))
+        self.writeln(self._format_test_method_name(result.test_method))
+        self.writeln(''.join(self._format_exception_info(result.exception_info)))
+        self.writeln('=' * 72)
+        self.writeln("")
 
-	def report_skippeds(self, skipped_results):
-		self.writeln("")
-		self.writeln(self._colorize('SKIPPED tests:', self.CYAN))
-		for result in skipped_results:
-			self.write(self._format_test_method_name(result.test_method))
-			self.writeln(" %s" % list(result.test_method.im_self.method_excluded(result.test_method)))
+    def report_skippeds(self, skipped_results):
+        self.writeln("")
+        self.writeln(self._colorize('SKIPPED tests:', self.CYAN))
+        for result in skipped_results:
+            self.write(self._format_test_method_name(result.test_method))
+            self.writeln(" %s" % list(result.test_method.im_self.method_excluded(result.test_method)))
 
-	def report_stats(self, test_case_count, **results):
-		successful = results.get('successful', [])
-		unexpected_success = results.get('unexpected_success', [])
-		failed = results.get('failed', [])
-		skipped = results.get('skipped', [])
-		incomplete = results.get('incomplete', [])
-		unknown = results.get('unknown', [])
+    def report_stats(self, test_case_count, **results):
+        successful = results.get('successful', [])
+        unexpected_success = results.get('unexpected_success', [])
+        failed = results.get('failed', [])
+        skipped = results.get('skipped', [])
+        incomplete = results.get('incomplete', [])
+        unknown = results.get('unknown', [])
 
-		test_method_count = sum(len(bucket) for bucket in results.values())
-		test_word = "test" if test_method_count == 1 else "tests"
-		case_word = "case" if test_case_count == 1 else "cases"
-		unexpected_failed = [result for result in failed if not result.test_method.im_class.in_suite(result.test_method, 'expected-failure')]
-		overall_success = not unexpected_failed and not unknown and not incomplete
+        test_method_count = sum(len(bucket) for bucket in results.values())
+        test_word = "test" if test_method_count == 1 else "tests"
+        case_word = "case" if test_case_count == 1 else "cases"
+        unexpected_failed = [result for result in failed if not result.test_method.im_class.in_suite(result.test_method, 'expected-failure')]
+        overall_success = not unexpected_failed and not unknown and not incomplete
 
-		self.writeln('')
-		status_string = self._colorize("PASSED", self.GREEN) if overall_success else self._colorize("FAILED", self.RED)
-		self.write("%s.  " % status_string)
-		self.write("%d %s / %d %s: " % (test_method_count, test_word, test_case_count, case_word))
+        self.writeln('')
+        status_string = self._colorize("PASSED", self.GREEN) if overall_success else self._colorize("FAILED", self.RED)
+        self.write("%s.  " % status_string)
+        self.write("%d %s / %d %s: " % (test_method_count, test_word, test_case_count, case_word))
 
-		passed_string = self._colorize("%d passed" % len(successful+unexpected_success), (self.GREEN if len(successful+unexpected_success) else None))
-		passed_string += self._colorize(" (%d unexpected)" % len(unexpected_success), (self.RED if len(unexpected_success) else None))
+        passed_string = self._colorize("%d passed" % len(successful+unexpected_success), (self.GREEN if len(successful+unexpected_success) else None))
+        passed_string += self._colorize(" (%d unexpected)" % len(unexpected_success), (self.RED if len(unexpected_success) else None))
 
-		failed_string = self._colorize("%d failed" % len(failed), (self.RED if len(failed) else None))
-		failed_string += self._colorize(" (%d expected)" % (len(failed) - len(unexpected_failed)), (self.RED if len(unexpected_failed) else None))
+        failed_string = self._colorize("%d failed" % len(failed), (self.RED if len(failed) else None))
+        failed_string += self._colorize(" (%d expected)" % (len(failed) - len(unexpected_failed)), (self.RED if len(unexpected_failed) else None))
 
-		skipped_string = self._colorize("%d skipped" % len(skipped), (self.CYAN if len(skipped) else None))
+        skipped_string = self._colorize("%d skipped" % len(skipped), (self.CYAN if len(skipped) else None))
 
-		self.write("%s, %s, %s.  " % (passed_string, failed_string, skipped_string))
+        self.write("%s, %s, %s.  " % (passed_string, failed_string, skipped_string))
 
-		total_test_time = reduce(
-			operator.add, 
-			(result.run_time for result in (successful+unexpected_success+failed+incomplete)), 
-			datetime.timedelta())
-		self.writeln("(Total test time %.2fs)" % (total_test_time.seconds + total_test_time.microseconds / 1000000.0))
+        total_test_time = reduce(
+            operator.add, 
+            (result.run_time for result in (successful+unexpected_success+failed+incomplete)), 
+            datetime.timedelta())
+        self.writeln("(Total test time %.2fs)" % (total_test_time.seconds + total_test_time.microseconds / 1000000.0))
 
 class HTMLTestLogger(TextTestLogger):
-	traceback_formater = staticmethod(traceback.format_exception)
+    traceback_formater = staticmethod(traceback.format_exception)
 
-	def writeln(self, message):
-		"""Write a message and append a newline"""
-		self.stream.write("%s<br />" % message)
-		self.stream.flush()
+    def writeln(self, message):
+        """Write a message and append a newline"""
+        self.stream.write("%s<br />" % message)
+        self.stream.flush()
 
-	BLACK   = "#000"
-	BLUE    = "#00F"
-	GREEN   = "#0F0"
-	CYAN    = "#0FF"
-	RED     = "#F00"
-	MAGENTA = "#F0F"
-	YELLOW  = "#FF0"
-	WHITE   = "#FFF"
+    BLACK   = "#000"
+    BLUE    = "#00F"
+    GREEN   = "#0F0"
+    CYAN    = "#0FF"
+    RED     = "#F00"
+    MAGENTA = "#F0F"
+    YELLOW  = "#FF0"
+    WHITE   = "#FFF"
 
-	def _colorize(self, message, color = CYAN):
-		if not color:
-			return message
-		else:
-			start_color = "<span style='color:%s'>" % color
-			end_color = "</span>"
-			return start_color + message + end_color
+    def _colorize(self, message, color = CYAN):
+        if not color:
+            return message
+        else:
+            start_color = "<span style='color:%s'>" % color
+            end_color = "</span>"
+            return start_color + message + end_color
 
 class ColorlessTextTestLogger(TextTestLogger):
-	traceback_formater = staticmethod(traceback.format_exception)
+    traceback_formater = staticmethod(traceback.format_exception)
 
-	def _colorize(self, message, color=None):
-		return message
+    def _colorize(self, message, color=None):
+        return message

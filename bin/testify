@@ -1,6 +1,5 @@
 #!/usr/local/bin/python
-
-from yelp.testing.test_program import TestProgram
+from testify import test_program
 
 if __name__ == "__main__":
-	TestProgram()
+	test_program.TestProgram()
