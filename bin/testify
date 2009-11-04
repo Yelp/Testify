@@ -1,0 +1,6 @@
+#!/usr/local/bin/python
+
+from yelp.testing.test_program import TestProgram
+
+if __name__ == "__main__":
+	TestProgram()
