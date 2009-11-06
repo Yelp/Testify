@@ -16,7 +16,7 @@ setup(
         "Intended Audience :: Developers",
         "Development Status :: 4 - Beta",
     ],
-    py_modules=["testify"],
+    packages=["testify", "testify.utils"],
 	scripts=['bin/testify'],
 	long_description="""\
 Testify is a replacement for Python's unittest module.  It is modeled after unittest, and tests written for unittest will run under testify with a minimum of adjustments, but it has features above and beyond unittest:
