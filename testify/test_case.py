@@ -42,6 +42,13 @@ deprecated_fixture_type_map = {
     'tearDown': 'teardown', 
     'classTearDown': 'class_teardown'}
 
+class TwistedFailureError(Exception): 
+    """Exception that indicates the value is an instance of twisted.python.failure.Failure
+    
+    This is part of the magic that's required to get a proper stack trace out of twisted applications
+    """
+    pass
+
 class MetaTestCase(type):
     """This base metaclass is used to collect each TestCase's decorated fixture methods at
     runtime.  It is implemented as a metaclass so we can determine the order in which 
@@ -364,6 +371,15 @@ class TestCase(object):
             block_fxn()
         except (KeyboardInterrupt, SystemExit):
             raise
+        except TwistedFailureError, exception:
+            # We provide special support for handling the failures that are generated from twisted.
+            # Due to complexities in error handling and cleanup, it's difficult to get the raw exception
+            # data from an asynchcronous failure, so we really get a pseudo traceback object. 
+            failure = exception.args[0]
+            exc_info = (failure.type, failure.value, failure.getTracebackObject())
+            result.end_in_error(exc_info)
+            if is_class_level:
+                self.__class_level_failure = exc_info
         except Exception, exception:
             if isinstance(exception, AssertionError):
                 result.end_in_failure(sys.exc_info())
