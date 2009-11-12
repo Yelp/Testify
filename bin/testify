@@ -13,8 +13,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 
 from testify import test_program
 
 if __name__ == "__main__":
-	test_program.TestProgram()
+    # Add our directory to the system path so we can import modules in our current directory
+    sys.path.insert(0, ".")
+
+    # Start the program
+    test_program.TestProgram()

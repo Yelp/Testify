@@ -40,7 +40,5 @@ from test_case import (
    						class_teardown,
    						suite)
 
-# print "testify says: %s" % test_case
-# # from test_discovery import discover
-# from test_runner import TestRunner, run_tests
-# import test_program
+import test_program
+run = lambda: test_program.TestProgram(["__main__"] + sys.argv[1:])
