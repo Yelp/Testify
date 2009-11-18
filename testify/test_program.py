@@ -18,6 +18,7 @@ from optparse import OptionParser
 import os
 import pwd
 import sys
+import logging
 
 from testify.test_logger import TextTestLogger, ColorlessTextTestLogger, VERBOSITY_NORMAL, VERBOSITY_SILENT, VERBOSITY_VERBOSE
 from testify.test_runner import TestRunner
@@ -65,6 +66,9 @@ def parse_test_runner_command_line_args(args):
 
     parser.add_option("--summary", action="store_true", dest="summary_mode")
     parser.add_option("--no-color", action="store_true", dest="disable_color")
+    
+    parser.add_option("--log-file", action="store", dest="log_file", type="string", default=None)
+    parser.add_option("--log-level", action="store", dest="log_level", type="string", default="INFO")
 
     (options, args) = parser.parse_args(args)
     test_path, module_method_overrides = _parse_test_runner_command_line_module_method_overrides(args)
@@ -119,6 +123,8 @@ class TestProgram(object):
 
         runner_action, test_path, test_runner_args, other_opts = parse_test_runner_command_line_args(command_line_args)
         
+        self.setup_logging(other_opts)
+        
         runner = TestRunner(**test_runner_args)
 
         runner.discover(test_path, bucket=other_opts.bucket, bucket_count=other_opts.bucket_count)
@@ -133,5 +139,21 @@ class TestProgram(object):
             result = runner.run()
             sys.exit(not result)
 
+    def setup_logging(self, options):
+        if options.log_file is None:
+            return
+        
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.DEBUG)
+                
+        handler = logging.FileHandler(options.log_file, "a")
+        handler.setFormatter(logging.Formatter('%(asctime)s\t%(name)-12s: %(levelname)-8s %(message)s'))
+        
+        log_level = getattr(logging, options.log_level)
+        handler.setLevel(log_level)
+        
+        root_logger.addHandler(handler)
+
+        
 if __name__ == "__main__":
     TestProgram()
