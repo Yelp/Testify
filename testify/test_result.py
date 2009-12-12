@@ -22,7 +22,7 @@ class TestResult(object):
         super(TestResult, self).__init__(self)
         self.test_method = test_method
         self.test_method_name = test_method.__name__
-        self.success = self.failure = self.error = self.skipped = self.incomplete = self.unexpected_success = self.expected_failure = None
+        self.success = self.failure = self.error = self.incomplete = self.unexpected_success = self.expected_failure = None
         self.complete = False
 
     def start(self):
@@ -32,11 +32,6 @@ class TestResult(object):
         self.complete = True
         self.end_time = datetime.datetime.now()
         self.run_time = self.end_time - self.start_time
-
-    def end_in_skipped(self):
-        if not self.complete:
-            self._complete()
-            self.skipped = True
 
     def end_in_failure(self, exception_info):
         if not self.complete:

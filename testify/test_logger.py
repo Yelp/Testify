@@ -67,8 +67,7 @@ class TestLoggerBase(object):
             self.heading('FAILURES', 'None!')
         
     def report_failure(self, result): raise NotImplementedError
-    def report_skippeds(self, skipped_results): raise NotImplementedError
-    def report_stats(self, test_case_count, all_results, failed_results, skipped_results, unknown_results): raise NotImplementedError
+    def report_stats(self, test_case_count, all_results, failed_results, unknown_results): raise NotImplementedError
 
     def _format_test_method_name(self, test_method):
         """Take a test method as input and return a string for output"""
@@ -178,13 +177,6 @@ class TextTestLogger(TestLoggerBase):
                     else:
                         self.writeln("%s in %s" % (self._colorize("ERROR", self.RED), result.normalized_run_time()))
 
-            elif result.skipped:
-                _log.info("skipped: %s", self._format_test_method_name(result.test_method))
-                if self.verbosity == VERBOSITY_NORMAL:
-                    self.write(self._colorize('S', self.CYAN))
-                else:
-                    self.writeln(self._colorize('SKIPPED', self.CYAN))
-
             elif result.incomplete:
                 _log.info("incomplete: %s", self._format_test_method_name(result.test_method))
                 if self.verbosity == VERBOSITY_NORMAL:
@@ -214,18 +206,10 @@ class TextTestLogger(TestLoggerBase):
         self.writeln('=' * 72)
         self.writeln("")
 
-    def report_skippeds(self, skipped_results):
-        self.writeln("")
-        self.writeln(self._colorize('SKIPPED tests:', self.CYAN))
-        for result in skipped_results:
-            self.write(self._format_test_method_name(result.test_method))
-            self.writeln(" %s" % list(result.test_method.im_self.method_excluded(result.test_method)))
-
     def report_stats(self, test_case_count, **results):
         successful = results.get('successful', [])
         unexpected_success = results.get('unexpected_success', [])
         failed = results.get('failed', [])
-        skipped = results.get('skipped', [])
         incomplete = results.get('incomplete', [])
         unknown = results.get('unknown', [])
 
@@ -246,9 +230,7 @@ class TextTestLogger(TestLoggerBase):
         failed_string = self._colorize("%d failed" % len(failed), (self.RED if len(failed) else None))
         failed_string += self._colorize(" (%d expected)" % (len(failed) - len(unexpected_failed)), (self.RED if len(unexpected_failed) else None))
 
-        skipped_string = self._colorize("%d skipped" % len(skipped), (self.CYAN if len(skipped) else None))
-
-        self.write("%s, %s, %s.  " % (passed_string, failed_string, skipped_string))
+        self.write("%s, %s.  " % (passed_string, failed_string))
 
         total_test_time = reduce(
             operator.add, 

@@ -123,7 +123,7 @@ class TestRunner(object):
                         self.logger.report_test_name(result.test_method)
                         self.logger.report_test_result(result)
                         results.append(result)
-                    if not result.success and not result.skipped and not TestCase.in_suite(result.test_method, 'expected-failure'):
+                    if not result.success and not TestCase.in_suite(result.test_method, 'expected-failure'):
                         self.logger.failure(result)
 
                 test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, _append_relevant_results_and_log_relevant_failures)
@@ -154,8 +154,6 @@ class TestRunner(object):
                     results_by_status['successful'].append(result)
             elif result.failure or result.error:
                 results_by_status['failed'].append(result)
-            elif result.skipped:
-                results_by_status['skipped'].append(result)
             elif result.incomplete:
                 results_by_status['incomplete'].append(result)
             else:
@@ -163,8 +161,6 @@ class TestRunner(object):
 
         if self.summary_mode:
             self.logger.report_failures(results_by_status['failed'])
-        # if results_by_status['skipped']:
-        #   self.logger.report_skippeds(results_by_status['skipped'])
         self.logger.report_stats(len(self.test_case_classes), **results_by_status)
 
         return bool((len(results_by_status['failed']) + len(results_by_status['unknown'])) == 0)

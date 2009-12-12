@@ -206,11 +206,13 @@ class TestCase(object):
                 member = getattr(self, member_name)
                 if inspect.ismethod(member):
                     member_suites = set(getattr(member, '_suites', set()))
-                    # if there are any include suites, only run methods in them
-                    if not self.__suites_include or (self.__suites_include & member_suites):
-                        # if there are any name overrides, only run the named methods
-                        if self.__name_overrides is None or member.__name__ in self.__name_overrides:
-                            yield member
+                    # if there are any exclude suites, exclude methods under them
+                    if (not self.__suites_exclude) or (not self.__suites_exclude & member_suites):
+                        # if there are any include suites, only run methods in them
+                        if not self.__suites_include or (self.__suites_include & member_suites):
+                            # if there are any name overrides, only run the named methods
+                            if self.__name_overrides is None or member.__name__ in self.__name_overrides:
+                                yield member
 
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance"""
@@ -305,9 +307,7 @@ class TestCase(object):
                     callback(test_method)
                 result.start()
 
-                if self.method_excluded(test_method):
-                    result.end_in_skipped()
-                elif self.__class_level_failure:
+                if self.__class_level_failure:
                     result.end_in_failure(self.__class_level_failure)
                 elif self.__class_level_error:
                     result.end_in_error(self.__class_level_error)
