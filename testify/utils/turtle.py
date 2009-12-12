@@ -34,6 +34,7 @@ Then you can call:
 
 class Turtle(object):
     def __init__(self, *args, **kwargs):
+        self.__dict__.update(kwargs)
         self.calls = []
 
     def __getattr__(self, name):
