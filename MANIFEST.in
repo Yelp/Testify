@@ -1,0 +1,4 @@
+include *.txt
+include Makefile
+recursive-include debian *
+recursive-include test *.py
