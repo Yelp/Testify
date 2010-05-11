@@ -45,7 +45,8 @@ def discover(what):
         - add_test_module('tests')
     """
 
-    def discover_inner(locator, suites=[]):
+    def discover_inner(locator, suites=None):
+	suites = suites or []
         if isinstance(locator, basestring):
             try:
                 test_module = __import__(locator)
@@ -108,7 +109,7 @@ def discover(what):
                             setattr(test_module, '_suites', set())
                         elif not isinstance(test_module._suites, set):
                             test_module._suites = set(test_module._suites)
-                        test_module._suites.update(set(suites))
+                        test_module._suites = test_module._suites | set(suites)
                     discover_set.add(test_module)
                     yield test_module
 
