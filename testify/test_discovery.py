@@ -46,7 +46,7 @@ def discover(what):
     """
 
     def discover_inner(locator, suites=None):
-	suites = suites or []
+        suites = suites or []
         if isinstance(locator, basestring):
             try:
                 test_module = __import__(locator)
