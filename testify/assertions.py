@@ -71,9 +71,13 @@ def assert_gte(lval, rval, message=None):
     else:
         assert lval >= rval, 'assertion failed: %s >= %s' % (lval, rval)
 
-def assert_in_range(val, start, end, message=None):
-    real_message = message or "! %s < %r < %r" % (start, val, end)
-    assert start < val < end, real_message
+def assert_in_range(val, start, end, message=None, inclusive=False):
+	if inclusive:
+		real_message = message or "! %s <= %r <= %r" % (start, val, end)
+		assert start <= val <= end, real_message
+	else:
+		real_message = message or "! %s < %r < %r" % (start, val, end)
+		assert start < val < end, real_message
 
 def assert_in(item, sequence):
     assert item in sequence, "assertion failed: expected %r in %r" % (item, sequence)

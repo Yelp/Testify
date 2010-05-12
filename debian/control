@@ -1,0 +1,23 @@
+Source: python-testify
+Section: python
+Priority: optional
+Maintainer: Rhett Garber <rhett@yelp.com>
+Build-Depends: debhelper (>= 6.0.4), python-support (>= 0.5.3), cdbs (>= 0.4.51), python-central (>= 0.5.6)
+XS-Python-Version: >=2.5
+Standards-Version: 3.7.2
+
+Package: python-testify
+Architecture: all
+Homepage: http://github.com/Yelp/Testify
+XB-Python-Version: ${python:Versions}
+Depends: ${misc:Depends}, ${python:Depends}, ipython (>= 0.8.1-2), python-pkg-resources (>= 0.6c8-0ubuntu2)
+Description: Testify is a replacement for Python's unittest module.  
+  It is modeled after unittest, and tests written for unittest will run under testify with a minimum 
+  of adjustments, but it has features above and beyond unittest:
+    - class-level setup and teardown fixture methods which are run once each for an entire set of test methods.
+    - a decorator-based approach for fixture methods, eliminating the need for super() calls.
+    - More pythonic, less java-unittest
+    - enhanced test discovery - testify can drill down into packages to find test cases.
+    - support for collecting and running tests by 'tagging' modules, classes or methods.
+    - A decorator-based approach to temporarily disabling certain tests, which strongly encourages documentation and eventual fixing of bugs.
+    - Pretty test runner output (color!)
