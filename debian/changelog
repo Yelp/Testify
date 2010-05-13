@@ -1,3 +1,9 @@
+python-testify (0.1.1) unstable; urgency=low
+
+  * Fix for proper suite exclusion
+
+ -- Rhett Garber <rhettg@gmail.com>  Thu, 13 May 2010 10:45:00 -0700
+
 python-testify (0.1.0) UNRELEASED; urgency=low
 
   * Initial release. (Closes: #XXXXXX)

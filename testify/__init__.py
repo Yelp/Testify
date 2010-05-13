@@ -28,6 +28,7 @@ The basic components of this system are:
 """
 __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
+__version__ = "0.1.1"
 
 from assertions import *
 
