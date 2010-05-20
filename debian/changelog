@@ -1,3 +1,9 @@
+python-testify (0.1.2) unstable; urgency=low
+
+  * Ensure ability to move tests to a particular bucket
+
+ -- Daniel Chen <dchen@yelp.com>  Thu, 20 May 2010 15:10:00 -0700
+
 python-testify (0.1.1) unstable; urgency=low
 
   * Fix for proper suite exclusion
