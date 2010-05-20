@@ -63,6 +63,7 @@ def parse_test_runner_command_line_args(args):
 
     parser.add_option("--bucket", action="store", dest="bucket", type="int")
     parser.add_option("--bucket-count", action="store", dest="bucket_count", type="int")
+    parser.add_option("--bucket-overrides-file", action="store", dest="bucket_overrides_file", default=None)
 
     parser.add_option("--summary", action="store_true", dest="summary_mode")
     parser.add_option("--no-color", action="store_true", dest="disable_color")
@@ -127,7 +128,11 @@ class TestProgram(object):
         
         runner = TestRunner(**test_runner_args)
 
-        runner.discover(test_path, bucket=other_opts.bucket, bucket_count=other_opts.bucket_count)
+	bucket_overrides = {}
+	if other_opts.bucket_overrides_file:
+		bucket_overrides = get_bucket_overrides(other_opts.bucket_overrides_file)
+
+        runner.discover(test_path, bucket=other_opts.bucket, bucket_count=other_opts.bucket_count, bucket_overrides=bucket_overrides)
 
         if runner_action == ACTION_LIST_SUITES:
             runner.list_suites()
