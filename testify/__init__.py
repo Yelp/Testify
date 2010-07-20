@@ -32,6 +32,8 @@ __version__ = "0.1.1"
 
 from assertions import *
 
+from errors import TestifyError
+
 from test_case import (
    						MetaTestCase,
    						TestCase,

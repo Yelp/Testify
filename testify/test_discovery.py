@@ -21,6 +21,9 @@ import types
 import sys
 from test_case import MetaTestCase
 from test_logger import _log
+from errors import TestifyError
+
+class DiscoveryError(TestifyError): pass
 
 def gather_test_paths(testing_dir):
     """Given a directory path, yield up paths for all py files inside of it"""
@@ -51,7 +54,10 @@ def discover(what):
             try:
                 test_module = __import__(locator)
             except ImportError:
-                test_module = __import__('.'.join(locator.split('.')[:-1]))
+                try:
+                    test_module = __import__('.'.join(locator.split('.')[:-1]))
+                except ValueError:
+                    raise DiscoveryError("Failed to find module %s" % locator)
             
             for part in locator.split('.')[1:]:
                 try:
@@ -59,7 +65,7 @@ def discover(what):
                 except AttributeError, exc:
                     # The attribute error message isn't helpful at all.
                     message = "discovery(%s) failed: module %s has no attribute %s" % (locator,test_module, part)
-                    raise Exception(message)
+                    raise DiscoveryError(message)
         else:
             test_module = locator
 

@@ -20,8 +20,11 @@ import pwd
 import sys
 import logging
 
+import testify
 from testify.test_logger import TextTestLogger, ColorlessTextTestLogger, VERBOSITY_NORMAL, VERBOSITY_SILENT, VERBOSITY_VERBOSE
 from testify.test_runner import TestRunner
+from testify import test_discovery
+from testify.utils import class_logger
 
 ACTION_RUN_TESTS = 0
 ACTION_LIST_SUITES = 1
@@ -47,7 +50,7 @@ def get_bucket_overrides(filename):
 
 def parse_test_runner_command_line_args(args):
     """Parse command line args for the TestRunner to determine verbosity and other stuff"""
-    parser = OptionParser()
+    parser = OptionParser(usage="%prog <test path> [options]", version="%%prog %s" % testify.__version__)
 
     parser.set_defaults(verbosity=VERBOSITY_NORMAL)
     parser.add_option("-s", "--silent", action="store_const", const=VERBOSITY_SILENT, dest="verbosity")
@@ -73,6 +76,9 @@ def parse_test_runner_command_line_args(args):
     parser.add_option("--log-level", action="store", dest="log_level", type="string", default="INFO")
 
     (options, args) = parser.parse_args(args)
+    if len(args) < 1:
+        parser.error("Test path required")
+
     test_path, module_method_overrides = _parse_test_runner_command_line_module_method_overrides(args)
 
     if pwd.getpwuid(os.getuid()).pw_name == 'buildbot':
@@ -118,6 +124,8 @@ def _parse_test_runner_command_line_module_method_overrides(args):
     return test_path, module_method_overrides
 
 class TestProgram(object):
+    log = class_logger.ClassLogger()
+
     def __init__(self, command_line_args=None):
         """Initialize and run the test with the given command_line_args
             command_line_args will be passed to parser.parse_args
@@ -130,11 +138,15 @@ class TestProgram(object):
         
         runner = TestRunner(**test_runner_args)
 
-	bucket_overrides = {}
-	if other_opts.bucket_overrides_file:
-		bucket_overrides = get_bucket_overrides(other_opts.bucket_overrides_file)
+        bucket_overrides = {}
+        if other_opts.bucket_overrides_file:
+            bucket_overrides = get_bucket_overrides(other_opts.bucket_overrides_file)
 
-        runner.discover(test_path, bucket=other_opts.bucket, bucket_count=other_opts.bucket_count, bucket_overrides=bucket_overrides)
+        try:
+            runner.discover(test_path, bucket=other_opts.bucket, bucket_count=other_opts.bucket_count, bucket_overrides=bucket_overrides)
+        except test_discovery.DiscoveryError, e:
+            self.log.error("Failure loading tests: %s", e)
+            sys.exit(1)
 
         if runner_action == ACTION_LIST_SUITES:
             runner.list_suites()
@@ -147,12 +159,18 @@ class TestProgram(object):
             sys.exit(not result)
 
     def setup_logging(self, options):
-        if options.log_file is None:
-            return
         
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.DEBUG)
+
+        console = logging.StreamHandler()
+        console.setFormatter(logging.Formatter("%(levelname)-8s %(message)s"))
+        console.setLevel(logging.WARNING)
+        root_logger.addHandler(console)
                 
+        if options.log_file is None:
+            return
+
         handler = logging.FileHandler(options.log_file, "a")
         handler.setFormatter(logging.Formatter('%(asctime)s\t%(name)-12s: %(levelname)-8s %(message)s'))
         
