@@ -54,6 +54,7 @@ def parse_test_runner_command_line_args(args):
     parser.add_option("-v", "--verbose", action="store_const", const=VERBOSITY_VERBOSE, dest="verbosity")
 
     parser.add_option("-c", "--coverage", action="store_true", dest="coverage")
+    parser.add_option("-p", "--profile", action="store_true", dest="profile")
 
     parser.add_option("-i", "--include-suite", action="append", dest="suites_include", type="string", default=[])
     parser.add_option("-x", "--exclude-suite", action="append", dest="suites_exclude", type="string", default=[])
@@ -89,6 +90,7 @@ def parse_test_runner_command_line_args(args):
         'suites_include': options.suites_include,
         'suites_exclude': options.suites_exclude,
         'coverage': options.coverage,
+        'profile': options.profile,
         'module_method_overrides': module_method_overrides,
         'summary_mode': options.summary_mode,
         'test_logger_class': (TextTestLogger if not options.disable_color else ColorlessTextTestLogger)
