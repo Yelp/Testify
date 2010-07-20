@@ -28,6 +28,7 @@ import traceback
 import types
 
 import code_coverage
+import cProfile
 from test_case import MetaTestCase, TestCase
 import test_discovery
 from test_logger import _log, TextTestLogger, VERBOSITY_SILENT, VERBOSITY_NORMAL, VERBOSITY_VERBOSE
@@ -44,6 +45,7 @@ class TestRunner(object):
         suites_include=[],
         suites_exclude=[],
         coverage=False,
+        profile=False,
         summary_mode=False,
         test_logger_class=TextTestLogger,
         module_method_overrides={}):
@@ -54,6 +56,7 @@ class TestRunner(object):
         self.suites_exclude = set(suites_exclude)
 
         self.coverage = coverage
+        self.profile = profile
         self.logger = test_logger_class(self.verbosity)
         self.summary_mode = summary_mode
 
@@ -133,7 +136,11 @@ class TestRunner(object):
                     code_coverage.start(test_case.__class__.__module__ + "." + test_case.__class__.__name__)
                     
                 # callbacks registered, this will actually run the TestCase's fixture and test methods
-                test_case.run()
+                if self.profile:
+                    cprofile_filename = test_case.__class__.__module__ + "." + test_case.__class__.__name__ + '.cprofile'
+                    cProfile.runctx('test_case.run()', globals(), locals(), cprofile_filename)
+                else:
+                    test_case.run()
                 
                 # Stop tracking and save the coverage info
                 if self.coverage:
