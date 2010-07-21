@@ -1,3 +1,10 @@
+python-testify (0.1.3) unstable; urgency=low
+
+  * Profiling option (eskil)
+  * User friendly command line errors (Closes: #3) (rhettg)
+
+ -- Rhett Garber <rhett@yelp.com>  Tue, 20 July 2010 16:55:00 -0700
+
 python-testify (0.1.2) unstable; urgency=low
 
   * Ensure ability to move tests to a particular bucket

@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name="testify",
-    version='0.1.1',
+    version='0.1.3',
 	provides="testify",
     author="Yelp",
     author_email="opensource@yelp.com",
