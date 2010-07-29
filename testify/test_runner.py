@@ -20,6 +20,7 @@ __testify = 1
 from collections import defaultdict
 import datetime
 import logging
+import functools
 from optparse import OptionParser
 import os
 import pprint
@@ -27,8 +28,7 @@ import sys
 import traceback
 import types
 
-import code_coverage
-import cProfile
+
 from test_case import MetaTestCase, TestCase
 import test_discovery
 from test_logger import _log, TextTestLogger, VERBOSITY_SILENT, VERBOSITY_NORMAL, VERBOSITY_VERBOSE
@@ -41,25 +41,20 @@ class TestRunner(object):
     """
 
     def __init__(self,
-        verbosity=VERBOSITY_NORMAL,
-        suites_include=[],
-        suites_exclude=[],
-        coverage=False,
-        profile=False,
-        summary_mode=False,
-        test_logger_class=TextTestLogger,
-        module_method_overrides={}):
+                 suites_include=[],
+                 suites_exclude=[],
+                 options=None,
+                 test_reporters=None,
+                 plugin_modules=None,
+                 module_method_overrides={}):
         """After instantiating a TestRunner, call add_test_case() to add some tests, and run() to run them."""
-        self.verbosity = verbosity
-
         self.suites_include = set(suites_include)
         self.suites_exclude = set(suites_exclude)
 
-        self.coverage = coverage
-        self.profile = profile
-        self.logger = test_logger_class(self.verbosity)
-        self.summary_mode = summary_mode
+        self.options = options
 
+        self.plugin_modules = plugin_modules or []
+        self.test_reporters = test_reporters or []
         self.module_method_overrides = module_method_overrides
         self.test_case_classes = []
 
@@ -92,7 +87,6 @@ class TestRunner(object):
         testing exceptions and summaries printed out.
         """
 
-        results = []
         try:
             for test_case_class in self.test_case_classes:
                 name_overrides = self.module_method_overrides.setdefault(test_case_class.__name__, None)
@@ -100,78 +94,36 @@ class TestRunner(object):
                     suites_include=self.suites_include,
                     suites_exclude=self.suites_exclude,
                     name_overrides=name_overrides)
+
+                # We allow our plugins to mutate the test case prior to execution 
+                for plugin_mod in self.plugin_modules:
+                    if hasattr(plugin_mod, "prepare_test_case"):
+                        plugin_mod.prepare_test_case(self.options, test_case)
+
                 if not any(test_case.runnable_test_methods()):
                     continue
 
-                # the TestCase on_run_test_method callback calls its registrants with
-                # the test method as the argument.
-                def _log_real_test_method_names(test_method):
-                    """Log the names of test methods before they are executed"""
-                    if not test_case.is_fixture_method(test_method) and not test_case.method_excluded(test_method):
-                        self.logger.report_test_name(test_method)
+                for reporter in self.test_reporters:
+                    test_case.register_callback(test_case.EVENT_ON_RUN_TEST_METHOD, reporter.test_start)
+                    test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, reporter.test_complete)
 
-                test_case.register_callback(test_case.EVENT_ON_RUN_TEST_METHOD, _log_real_test_method_names)
+                # Now we wrap our test case like an onion. Each plugin given the opportunity to wrap it.
+                runnable = test_case.run
+                for plugin_mod in self.plugin_modules:
+                    if hasattr(plugin_mod, "run_test_case"):
+                        runnable = functools.partial(plugin_mod.run_test_case, self.options, test_case, runnable)
 
-                # The TestCase on_complete_test_method callback calls its registrants
-                # with the result object as the argument.
-                def _append_relevant_results_and_log_relevant_failures(result):
-                    """Log the results of test methods."""
-                    if not test_case.is_fixture_method(result.test_method):
-                        if not test_case.method_excluded(result.test_method):
-                            self.logger.report_test_result(result)
-                        results.append(result)
-                    elif result.test_method._fixture_type == 'class_teardown' and (result.failure or result.error):
-                        # For a class_teardown failure, log the name too (since it wouldn't have 
-                        # already been logged by on_run_test_method).
-                        self.logger.report_test_name(result.test_method)
-                        self.logger.report_test_result(result)
-                        results.append(result)
-                    if not result.success and not TestCase.in_suite(result.test_method, 'expected-failure'):
-                        self.logger.failure(result)
-
-                test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, _append_relevant_results_and_log_relevant_failures)
-
-                # Now that we are going to run the actually test case, start tracking coverage if requested.
-                if self.coverage:
-                    code_coverage.start(test_case.__class__.__module__ + "." + test_case.__class__.__name__)
-                    
-                # callbacks registered, this will actually run the TestCase's fixture and test methods
-                if self.profile:
-                    cprofile_filename = test_case.__class__.__module__ + "." + test_case.__class__.__name__ + '.cprofile'
-                    cProfile.runctx('test_case.run()', globals(), locals(), cprofile_filename)
-                else:
-                    test_case.run()
-                
-                # Stop tracking and save the coverage info
-                if self.coverage:
-                    code_coverage.stop()
+                # And we finally execute our finely wrapped test case
+                runnable()
 
         except (KeyboardInterrupt, SystemExit), e:
             # we'll catch and pass a keyboard interrupt so we can cancel in the middle of a run
             # but still get a testing summary.
             pass
 
-        # All the TestCases have been run - now collate results by status and log them
-        results_by_status = defaultdict(list)
-        for result in results:
-            if result.success:
-                if result.unexpected_success:
-                    results_by_status['unexpected_success'].append(result)
-                else:
-                    results_by_status['successful'].append(result)
-            elif result.failure or result.error:
-                results_by_status['failed'].append(result)
-            elif result.incomplete:
-                results_by_status['incomplete'].append(result)
-            else:
-                results_by_status['unknown'].append(result)
+        report = [reporter.report() for reporter in self.test_reporters]
+        return all(report)
 
-        if self.summary_mode:
-            self.logger.report_failures(results_by_status['failed'])
-        self.logger.report_stats(len(self.test_case_classes), **results_by_status)
-
-        return bool((len(results_by_status['failed']) + len(results_by_status['unknown'])) == 0)
-    
     def list_suites(self):
         """List the suites represented by this TestRunner's tests."""
         suites = defaultdict(list)

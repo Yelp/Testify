@@ -86,15 +86,18 @@ def discover(what):
                     contents = os.listdir(module_filesystem_path)
                     for item in contents:
                         # ignore .svn and other miscellanea
-                        if not item.startswith('.'):
-                            if os.path.isdir(os.path.join(module_filesystem_path, item)):
-                                for test_case_class in discover_inner("%s.%s" % (locator, item), suites+module_suites):
-                                    yield test_case_class
+                        if item.startswith('.'):
+                            continue
+                    
+                        # If it's actually a package (directory + __init__.py)
+                        if os.path.isdir(os.path.join(module_filesystem_path, item)) and os.path.exists(os.path.join(module_filesystem_path, item, '__init__.py')):
+                            for test_case_class in discover_inner("%s.%s" % (locator, item), suites+module_suites):
+                                yield test_case_class
 
-                            # other than directories, only look in .py files
-                            elif item.endswith('.py'):
-                                for test_case_class in discover_inner("%s.%s" % (locator, item[:-3]), suites+module_suites):
-                                    yield test_case_class
+                        # other than directories, only look in .py files
+                        elif item.endswith('.py'):
+                            for test_case_class in discover_inner("%s.%s" % (locator, item[:-3]), suites+module_suites):
+                                yield test_case_class
 
             # Otherwise it's some other type of module
             else:

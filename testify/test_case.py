@@ -29,7 +29,6 @@ import sys
 import traceback
 import types
 
-from test_logger import _log
 from test_result import TestResult
 import deprecated_assertions
 from testify.utils import class_logger
@@ -229,7 +228,7 @@ class TestCase(object):
 
             try:
                 for callback in self.__on_run_test_method_callbacks:
-                    callback(fixture_method)
+                    callback(self, fixture_method)
 
                 result.start()
 
@@ -238,11 +237,11 @@ class TestCase(object):
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_incomplete(sys.exc_info())
                 for callback in self.__on_complete_test_method_callbacks:
-                    callback(result)
+                    callback(self, result)
                 raise
             else:
                 for callback in self.__on_complete_test_method_callbacks:
-                    callback(result)
+                    callback(self, result)
 
         self.__run_deprecated_fixture_method('classSetUp')
 
@@ -256,7 +255,7 @@ class TestCase(object):
             result = TestResult(fixture_method)
             try:
                 for callback in self.__on_run_test_method_callbacks:
-                    callback(fixture_method)
+                    callback(self, fixture_method)
 
                 result.start()
 
@@ -265,11 +264,11 @@ class TestCase(object):
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_incomplete(sys.exc_info())
                 for callback in self.__on_complete_test_method_callbacks:
-                    callback(result)
+                    callback(self, result)
                 raise
             else:
                 for callback in self.__on_complete_test_method_callbacks:
-                    callback(result)
+                    callback(self, result)
 
     @classmethod
     def in_suite(cls, method, suite_name):
@@ -304,7 +303,7 @@ class TestCase(object):
             try:
                 # run "on-run" callbacks. eg/ print out the test method name
                 for callback in self.__on_run_test_method_callbacks:
-                    callback(test_method)
+                    callback(self, test_method)
                 result.start()
 
                 if self.__class_level_failure:
@@ -339,11 +338,11 @@ class TestCase(object):
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_incomplete(sys.exc_info())
                 for callback in self.__on_complete_test_method_callbacks:
-                    callback(result)
+                    callback(self, result)
                 raise
             else:
                 for callback in self.__on_complete_test_method_callbacks:
-                    callback(result)
+                    callback(self, result)
 
     EVENT_ON_RUN_TEST_METHOD = 1
     EVENT_ON_COMPLETE_TEST_METHOD = 2
@@ -414,7 +413,7 @@ class TestCase(object):
                 result = TestResult(deprecated_method)
                 try:
                     for callback in self.__on_run_test_method_callbacks:
-                        callback(deprecated_method)
+                        callback(self, deprecated_method)
 
                     result.start()
                     if self.__execute_block_recording_exceptions(deprecated_method, result, is_class_level=True):
@@ -422,11 +421,11 @@ class TestCase(object):
                 except (KeyboardInterrupt, SystemExit):
                     result.end_in_incomplete(sys.exc_info())
                     for callback in self.__on_complete_test_method_callbacks:
-                        callback(result)
+                        callback(self, result)
                     raise
                 else:
                     for callback in self.__on_complete_test_method_callbacks:
-                        callback(result)
+                        callback(self, result)
             else:
                 deprecated_method()
 

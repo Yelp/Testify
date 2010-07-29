@@ -30,6 +30,8 @@ __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 __version__ = "0.1.3"
 
+import sys
+
 from assertions import *
 
 from errors import TestifyError

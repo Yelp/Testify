@@ -17,7 +17,8 @@ class FakeCoverage:
     @classmethod
     def start(cls):
         if not cls.warning_printed:
-            print "*** WARNING: To gather coverage information you must install the Python coverage package.\nSee: https://trac.yelpcorp.com/wiki/TestingCoverage"
+            print >>sys.stderr, "*** WARNING: To gather coverage information you must install the Python coverage package."
+            print >>sys.stderr, "See: http://pypi.python.org/pypi/coverage/"
             cls.warning_printed = True
 
     @staticmethod   
@@ -56,7 +57,7 @@ def stop():
 
 if __name__ == "__main__":
     if coverage is None:
-        print """You must install the Python coverage 3.0.b3 package to use coverage.\nSee: https://trac.yelpcorp.com/wiki/TestingCoverage"""
+        print """You must install the Python coverage 3.0.b3 package to use coverage.\nhttp://pypi.python.org/pypi/coverage/"""
         quit()
 
     if len(sys.argv) < 2:

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import with_statement
 
 from collections import defaultdict
 from optparse import OptionParser
@@ -19,9 +19,11 @@ import os
 import pwd
 import sys
 import logging
+import imp
 
 import testify
-from testify.test_logger import TextTestLogger, ColorlessTextTestLogger, VERBOSITY_NORMAL, VERBOSITY_SILENT, VERBOSITY_VERBOSE
+from testify import test_logger
+from testify import test_reporter
 from testify.test_runner import TestRunner
 from testify import test_discovery
 from testify.utils import class_logger
@@ -29,6 +31,10 @@ from testify.utils import class_logger
 ACTION_RUN_TESTS = 0
 ACTION_LIST_SUITES = 1
 ACTION_LIST_TESTS = 2
+
+DEFAULT_PLUGIN_PATH = os.path.join(os.path.split(__file__)[0], 'plugins')
+
+log = logging.getLogger('testify')
 
 def get_bucket_overrides(filename):
     """Returns a map from test class name to test bucket.
@@ -48,16 +54,48 @@ def get_bucket_overrides(filename):
     ofile.close()
     return overrides
 
-def parse_test_runner_command_line_args(args):
+def load_plugins():
+    """Load any plugin modules
+    
+    We load plugin modules based on directories provided to us by the environment, as well as a default in our own folder.
+    
+    Returns a list of module objects
+    """
+    # This function is a little wacky, doesn't seem like we SHOULD have to do all this just to get the behavior we want.
+    # The idea will be to check out the directory contents and pick up any files that seem to match what python knows how to
+    # import. 
+    
+    # To properly load the module, we'll need to identify what type it is by the file extension
+    suffix_map = {}
+    for suffix in imp.get_suffixes():
+        suffix_map[suffix[0]] = suffix
+
+    plugin_directories = [DEFAULT_PLUGIN_PATH]
+    if 'TESTIFY_PLUGIN_PATH' in os.environ:
+        plugin_directories += os.environ['TESTIFY_PLUGIN_PATH'].split(':')
+
+    plugin_modules = []
+    for plugin_path in plugin_directories:
+        for file_name in os.listdir(plugin_path):
+
+            # For any file that we know how to load, try to import it
+            if any(file_name.endswith('.py') and not file_name.startswith('.') for suffix in suffix_map.iterkeys()):
+                full_file_path = os.path.join(plugin_path, file_name)
+                mod_name, suffix = os.path.splitext(file_name)
+
+                with open(full_file_path, "r") as file:
+                    plugin_modules.append(imp.load_module(mod_name, file, full_file_path, suffix_map.get(suffix)))
+                    
+    return plugin_modules
+    
+    
+def parse_test_runner_command_line_args(plugin_modules, args):
     """Parse command line args for the TestRunner to determine verbosity and other stuff"""
     parser = OptionParser(usage="%prog <test path> [options]", version="%%prog %s" % testify.__version__)
 
-    parser.set_defaults(verbosity=VERBOSITY_NORMAL)
-    parser.add_option("-s", "--silent", action="store_const", const=VERBOSITY_SILENT, dest="verbosity")
-    parser.add_option("-v", "--verbose", action="store_const", const=VERBOSITY_VERBOSE, dest="verbosity")
-
-    parser.add_option("-c", "--coverage", action="store_true", dest="coverage")
-    parser.add_option("-p", "--profile", action="store_true", dest="profile")
+    parser.set_defaults(verbosity=test_logger.VERBOSITY_NORMAL)
+    parser.add_option("-s", "--silent", action="store_const", const=test_logger.VERBOSITY_SILENT, dest="verbosity")
+    parser.add_option("-v", "--verbose", action="store_const", const=test_logger.VERBOSITY_VERBOSE, dest="verbosity")
 
     parser.add_option("-i", "--include-suite", action="append", dest="suites_include", type="string", default=[])
     parser.add_option("-x", "--exclude-suite", action="append", dest="suites_exclude", type="string", default=[])
@@ -65,15 +103,22 @@ def parse_test_runner_command_line_args(args):
     parser.add_option("--list-suites", action="store_true", dest="list_suites")
     parser.add_option("--list-tests", action="store_true", dest="list_tests")
 
+    parser.add_option("--label", action="store", dest="label", type="string", help="label for this test run")
+
     parser.add_option("--bucket", action="store", dest="bucket", type="int")
     parser.add_option("--bucket-count", action="store", dest="bucket_count", type="int")
     parser.add_option("--bucket-overrides-file", action="store", dest="bucket_overrides_file", default=None)
 
     parser.add_option("--summary", action="store_true", dest="summary_mode")
-    parser.add_option("--no-color", action="store_true", dest="disable_color")
+    parser.add_option("--no-color", action="store_true", dest="disable_color", default=bool(not os.isatty(sys.stdout.fileno())))
     
     parser.add_option("--log-file", action="store", dest="log_file", type="string", default=None)
     parser.add_option("--log-level", action="store", dest="log_level", type="string", default="INFO")
+
+    # Add in any additional options
+    for plugin in plugin_modules:
+        if hasattr(plugin, 'add_command_line_options'):
+            plugin.add_command_line_options(parser)
 
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
@@ -91,16 +136,24 @@ def parse_test_runner_command_line_args(args):
     else:
         runner_action = ACTION_RUN_TESTS
     
+    reporters = []
+    if options.disable_color:
+        reporters.append(test_logger.ColorlessTextTestLogger(options))
+    else:
+        reporters.append(test_logger.TextTestLogger(options))
+    
+    for plugin in plugin_modules:
+        if hasattr(plugin, "build_test_reporters"):
+            reporters += plugin.build_test_reporters(options)
+    
     test_runner_args = {
-        'verbosity': options.verbosity,
         'suites_include': options.suites_include,
         'suites_exclude': options.suites_exclude,
-        'coverage': options.coverage,
-        'profile': options.profile,
         'module_method_overrides': module_method_overrides,
-        'summary_mode': options.summary_mode,
-        'test_logger_class': (TextTestLogger if not options.disable_color else ColorlessTextTestLogger)
-        }
+        'test_reporters': reporters,            # Should be pushed into plugin
+        'options': options,
+        'plugin_modules': plugin_modules
+    }
 
     return runner_action, test_path, test_runner_args, options
 
@@ -124,15 +177,15 @@ def _parse_test_runner_command_line_module_method_overrides(args):
     return test_path, module_method_overrides
 
 class TestProgram(object):
-    log = class_logger.ClassLogger()
-
     def __init__(self, command_line_args=None):
         """Initialize and run the test with the given command_line_args
             command_line_args will be passed to parser.parse_args
         """
         command_line_args = command_line_args or sys.argv[1:]
 
-        runner_action, test_path, test_runner_args, other_opts = parse_test_runner_command_line_args(command_line_args)
+        plugin_modules = load_plugins()
+
+        runner_action, test_path, test_runner_args, other_opts = parse_test_runner_command_line_args(plugin_modules, command_line_args)
         
         self.setup_logging(other_opts)
         
@@ -145,7 +198,7 @@ class TestProgram(object):
         try:
             runner.discover(test_path, bucket=other_opts.bucket, bucket_count=other_opts.bucket_count, bucket_overrides=bucket_overrides)
         except test_discovery.DiscoveryError, e:
-            self.log.error("Failure loading tests: %s", e)
+            log.error("Failure loading tests: %s", e)
             sys.exit(1)
 
         if runner_action == ACTION_LIST_SUITES:
@@ -155,11 +208,17 @@ class TestProgram(object):
             runner.list_tests()
             sys.exit(0)
         elif runner_action == ACTION_RUN_TESTS:
+            label_text = ""
+            bucket_text = ""
+            if other_opts.label:
+                label_text = " " + other_opts.label
+            if other_opts.bucket_count:
+                bucket_text = " (bucket %d of %d)" % (other_opts.bucket, other_opts.bucket_count)
+            log.info("starting test run%s%s", label_text, bucket_text)
             result = runner.run()
             sys.exit(not result)
 
     def setup_logging(self, options):
-        
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.DEBUG)
 
@@ -167,17 +226,15 @@ class TestProgram(object):
         console.setFormatter(logging.Formatter("%(levelname)-8s %(message)s"))
         console.setLevel(logging.WARNING)
         root_logger.addHandler(console)
-                
-        if options.log_file is None:
-            return
 
-        handler = logging.FileHandler(options.log_file, "a")
-        handler.setFormatter(logging.Formatter('%(asctime)s\t%(name)-12s: %(levelname)-8s %(message)s'))
+        if options.log_file:
+            handler = logging.FileHandler(options.log_file, "a")
+            handler.setFormatter(logging.Formatter('%(asctime)s\t%(name)-12s: %(levelname)-8s %(message)s'))
         
-        log_level = getattr(logging, options.log_level)
-        handler.setLevel(log_level)
+            log_level = getattr(logging, options.log_level)
+            handler.setLevel(log_level)
         
-        root_logger.addHandler(handler)
+            root_logger.addHandler(handler)
 
         
 if __name__ == "__main__":
