@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """A custom framework for running tests.
 
 The basic components of this system are:
@@ -26,7 +24,6 @@ The basic components of this system are:
         a class which collects TestCase subclasses based on search criteria and asks them
         to kindly execute themselves.
 """
-__author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 __version__ = "0.1.3"
 
@@ -37,13 +34,15 @@ from assertions import *
 from errors import TestifyError
 
 from test_case import (
-   						MetaTestCase,
-   						TestCase,
-   						class_setup,
-   						setup,
-   						teardown,
-   						class_teardown,
-   						suite)
+                        MetaTestCase,
+                        TestCase,
+                        class_setup,
+                        setup,
+                        teardown,
+                        class_teardown,
+                        suite)
+
+from utils import turtle
 
 import test_program
 run = lambda: test_program.TestProgram(["__main__"] + sys.argv[1:])

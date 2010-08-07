@@ -17,16 +17,25 @@
 This framework is built around the 'Turtle' object. A Turtle object returns another turtle for every 
 unknown (not predefined) attributed asked for. It is also callable, returning (of course) a turtle.
 
+After a turtle is used, it can be inspected to find out what happened:
+
+  >>> leonardo = turtle.Turtle()
+  >>> leonardo.color = "blue"
+  >>> leonardo.attack(weapon="katanas")
+  <testify.utils.turtle.Turtle object at 0x7fbd01e67dd0>
+
+  >>> leonardo.do_katanas.calls
+  [[((), {'weapon': katanas})]]
+
 To control the behavior of a turtle (for example, if you want some function to call to return None instead)
 just set the attribute yourself
 
-my_custom_turtle = Turtle()
-my_custom_turtle.default_value = None
-
-my_custom_turtle.is_done = lambda : False
+  >>> raphael = Turtle()
+  >>> raphael.color = "red"
+  >>> raphael.is_lame = lambda : False
 
 Then you can call:
-  if my_custom_turtle.default_value is None and my_custom_turtle.is_done():
+  if raphael.color is None or raphael.is_lame():
       <do stuff>
 
 "Turtles all the way down": http://en.wikipedia.org/wiki/Turtles_all_the_way_down
@@ -38,7 +47,8 @@ class Turtle(object):
         self.calls = []
 
     def __getattr__(self, name):
-        return Turtle()
+        self.__dict__[name] = Turtle()
+        return self.__dict__[name]
     
     def __call__(self, *args, **kwargs):
         self.calls.append((args, kwargs))
