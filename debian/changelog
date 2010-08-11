@@ -1,3 +1,13 @@
+python-testify (0.1.4) unstable; urgency=low
+
+  * Plugin functionality (rhettg)
+  * JSON result storing (rhettg)
+  * Turtle enhancements for memoized attribute access (rhettg)
+  * Resolved an issue with non-test case directories during test discovery (rhettg)
+  * Detect TTY to automatically disable colorized output (rhettg)
+
+ -- Rhett Garber <rhett@yelp.com>  Tue, 10 August 2010 17:34:00 -0700
+
 python-testify (0.1.3) unstable; urgency=low
 
   * Profiling option (eskil)
