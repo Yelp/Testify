@@ -131,6 +131,7 @@ class TestCase(object):
 
         self.__suites_include = kwargs.get('suites_include', set())
         self.__suites_exclude = kwargs.get('suites_exclude', set())
+        self.__suites_require = kwargs.get('suites_require', set())
         self.__name_overrides = kwargs.get('name_overrides', None)
 
         # if the class has any suites applied to it, copy them down into its test methods
@@ -209,9 +210,11 @@ class TestCase(object):
                     if (not self.__suites_exclude) or (not self.__suites_exclude & member_suites):
                         # if there are any include suites, only run methods in them
                         if not self.__suites_include or (self.__suites_include & member_suites):
-                            # if there are any name overrides, only run the named methods
-                            if self.__name_overrides is None or member.__name__ in self.__name_overrides:
-                                yield member
+                            # if there are any require suites, only run methods in *all* of those suites
+                            if not self.__suites_require or ((self.__suites_require & member_suites) == self.__suites_require):
+                                # if there are any name overrides, only run the named methods
+                                if self.__name_overrides is None or member.__name__ in self.__name_overrides:
+                                    yield member
 
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance"""

@@ -43,6 +43,7 @@ class TestRunner(object):
     def __init__(self,
                  suites_include=[],
                  suites_exclude=[],
+                 suites_require=[],
                  options=None,
                  test_reporters=None,
                  plugin_modules=None,
@@ -50,6 +51,7 @@ class TestRunner(object):
         """After instantiating a TestRunner, call add_test_case() to add some tests, and run() to run them."""
         self.suites_include = set(suites_include)
         self.suites_exclude = set(suites_exclude)
+        self.suites_require = set(suites_require)
 
         self.options = options
 
@@ -93,6 +95,7 @@ class TestRunner(object):
                 test_case = test_case_class(
                     suites_include=self.suites_include,
                     suites_exclude=self.suites_exclude,
+                    suites_require=self.suites_require,
                     name_overrides=name_overrides)
 
                 # We allow our plugins to mutate the test case prior to execution 
@@ -130,7 +133,8 @@ class TestRunner(object):
         for test_case_class in self.test_case_classes:
             test_instance = test_case_class(
                 suites_include=self.suites_include,
-                suites_exclude=self.suites_exclude)
+                suites_exclude=self.suites_exclude,
+                suites_require=self.suites_require)
             for test_method in test_instance.runnable_test_methods():
                 for suite_name in test_method._suites:
                     suites[suite_name].append(test_method)
@@ -145,7 +149,8 @@ class TestRunner(object):
         for test_case_class in self.test_case_classes:
             test_instance = test_case_class(
                 suites_include=self.suites_include,
-                suites_exclude=self.suites_exclude)
+                suites_exclude=self.suites_exclude,
+                suites_require=self.suites_require)
             for test_method in test_instance.runnable_test_methods():
                 if not selected_suite_name or TestCase.in_suite(test_method, selected_suite_name):
                     test_list.append(test_method)

@@ -99,6 +99,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
 
     parser.add_option("-i", "--include-suite", action="append", dest="suites_include", type="string", default=[])
     parser.add_option("-x", "--exclude-suite", action="append", dest="suites_exclude", type="string", default=[])
+    parser.add_option("-q", "--require-suite", action="append", dest="suites_require", type="string", default=[])
 
     parser.add_option("--list-suites", action="store_true", dest="list_suites")
     parser.add_option("--list-tests", action="store_true", dest="list_tests")
@@ -149,6 +150,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     test_runner_args = {
         'suites_include': options.suites_include,
         'suites_exclude': options.suites_exclude,
+        'suites_require': options.suites_require,
         'module_method_overrides': module_method_overrides,
         'test_reporters': reporters,            # Should be pushed into plugin
         'options': options,
