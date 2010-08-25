@@ -84,8 +84,14 @@ def load_plugins():
                 mod_name, suffix = os.path.splitext(file_name)
 
                 with open(full_file_path, "r") as file:
-                    plugin_modules.append(imp.load_module(mod_name, file, full_file_path, suffix_map.get(suffix)))
-                    
+                    try:
+                        plugin_modules.append(imp.load_module(mod_name, file, full_file_path, suffix_map.get(suffix)))
+                    except TypeError:
+                        continue
+                    except ImportError, e:
+                        print >>sys.stderr, "Failed to import plugin %s: %r" % (full_file_path, e)
+                    except Exception, e:
+                        raise Exception('whaa?: %r' % e)
     return plugin_modules
     
     
