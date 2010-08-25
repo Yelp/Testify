@@ -19,7 +19,7 @@ import datetime
 
 class TestResult(object):
     def __init__(self, test_method):
-        super(TestResult, self).__init__(self)
+        super(TestResult, self).__init__()
         self.test_method = test_method
         self.test_method_name = test_method.__name__
         self.success = self.failure = self.error = self.incomplete = self.unexpected_success = self.expected_failure = None
