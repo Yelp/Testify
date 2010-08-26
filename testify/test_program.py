@@ -121,6 +121,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     
     parser.add_option("--log-file", action="store", dest="log_file", type="string", default=None)
     parser.add_option("--log-level", action="store", dest="log_level", type="string", default="INFO")
+    parser.add_option('--print-log', action="append", dest="print_loggers", type="string", default=[], help="Direct logging output for these loggers to the console")
 
     # Add in any additional options
     for plugin in plugin_modules:
@@ -243,6 +244,14 @@ class TestProgram(object):
             handler.setLevel(log_level)
         
             root_logger.addHandler(handler)
+
+        if options.print_loggers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(name)-12s: %(message)s')
+            console.setFormatter(formatter)
+
+            for logger_name in options.print_loggers:
+                logging.getLogger(logger_name).addHandler(handler)
 
         
 if __name__ == "__main__":

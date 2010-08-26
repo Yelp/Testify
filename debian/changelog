@@ -1,6 +1,7 @@
 python-testify (0.1.6) unstable; urgency=low
 
   * Packaging fixes (rhett@yelp.com)
+  * Console logging option (lenza@yelp.com) 
 
  -- Rhett Garber <rhett@yelp.com>  Thu, 26 August 2010 11:14:00 -0700
 
