@@ -1,8 +1,8 @@
 from distutils.core import setup
-
+import testify
 setup(
     name="testify",
-    version='0.1.5',
+    version=testify.__version__,
     provides="testify",
     author="Yelp",
     author_email="yelplabs@yelp.com",
