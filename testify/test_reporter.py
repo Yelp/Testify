@@ -37,6 +37,9 @@ class TestReporter(object):
         pass
 
     def report(self):
-        """Called at the end of the test run to report results"""
-        pass
+        """Called at the end of the test run to report results
+		
+		Should return a bool to indicate if the reporter thinks the test run was successful
+		"""
+        return True
 

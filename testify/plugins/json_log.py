@@ -98,8 +98,9 @@ class JSONReporter(test_reporter.TestReporter):
         
         self._reset_logging()
         
-    def test_report(self):
+    def report(self):
         self.log_file.close()
+        return True
 
 
 # Hooks for plugin system
