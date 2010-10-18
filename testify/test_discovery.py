@@ -51,9 +51,12 @@ def discover(what):
     def discover_inner(locator, suites=None):
         suites = suites or []
         if isinstance(locator, basestring):
+            import_error = None
             try:
                 test_module = __import__(locator)
-            except ImportError:
+            except ImportError, e:
+                import_error = e
+                _log.info('discover_inner: Failed to import %s: %s' % (locator, e))
                 try:
                     test_module = __import__('.'.join(locator.split('.')[:-1]))
                 except ValueError:
@@ -63,8 +66,9 @@ def discover(what):
                 try:
                     test_module = getattr(test_module, part)
                 except AttributeError, exc:
-                    # The attribute error message isn't helpful at all.
-                    message = "discovery(%s) failed: module %s has no attribute %s" % (locator,test_module, part)
+                    message = "discovery(%s) failed: module %s has no attribute %r" % (locator, test_module, part)
+                    if import_error is not None:
+                        message += "; this is most likely due to earlier error %r" % (import_error,)
                     raise DiscoveryError(message)
         else:
             test_module = locator

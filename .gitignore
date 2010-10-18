@@ -3,3 +3,4 @@ build
 MANIFEST
 *.pyc
 ._*
+*.sw[nop]
