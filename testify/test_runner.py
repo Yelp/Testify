@@ -64,11 +64,11 @@ class TestRunner(object):
     def get_test_method_name(cls, test_method):
         return '%s %s.%s' % (test_method.__module__, test_method.im_class.__name__, test_method.__name__)
 
-    def discover(self, test_path, bucket=None, bucket_count=None, bucket_overrides={}):
+    def discover(self, test_path, bucket=None, bucket_count=None, bucket_overrides={}, bucket_salt=None):
         for test_case_class in test_discovery.discover(test_path):
             override_bucket = bucket_overrides.get(MetaTestCase._cmp_str(test_case_class))
             if (bucket is None
-                or (override_bucket is None and test_case_class.bucket(bucket_count) == bucket)
+                or (override_bucket is None and test_case_class.bucket(bucket_count, bucket_salt) == bucket)
                 or (override_bucket is not None and override_bucket == bucket)):
                 if not self.module_method_overrides or test_case_class.__name__ in self.module_method_overrides:
                     self.add_test_case(test_case_class)

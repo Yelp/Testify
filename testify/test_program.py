@@ -115,6 +115,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option("--bucket", action="store", dest="bucket", type="int")
     parser.add_option("--bucket-count", action="store", dest="bucket_count", type="int")
     parser.add_option("--bucket-overrides-file", action="store", dest="bucket_overrides_file", default=None)
+    parser.add_option("--bucket-salt", action="store", dest="bucket_salt", default=None)
 
     parser.add_option("--summary", action="store_true", dest="summary_mode")
     parser.add_option("--no-color", action="store_true", dest="disable_color", default=bool(not os.isatty(sys.stdout.fileno())))
@@ -205,7 +206,7 @@ class TestProgram(object):
             bucket_overrides = get_bucket_overrides(other_opts.bucket_overrides_file)
 
         try:
-            runner.discover(test_path, bucket=other_opts.bucket, bucket_count=other_opts.bucket_count, bucket_overrides=bucket_overrides)
+            runner.discover(test_path, bucket=other_opts.bucket, bucket_count=other_opts.bucket_count, bucket_overrides=bucket_overrides, bucket_salt=other_opts.bucket_salt)
         except test_discovery.DiscoveryError, e:
             log.error("Failure loading tests: %s", e)
             sys.exit(1)
@@ -222,7 +223,8 @@ class TestProgram(object):
             if other_opts.label:
                 label_text = " " + other_opts.label
             if other_opts.bucket_count:
-                bucket_text = " (bucket %d of %d)" % (other_opts.bucket, other_opts.bucket_count)
+                salt_info =  (' [salt: %s]' % other_opts.bucket_salt) if other_opts.bucket_salt else ''
+                bucket_text = " (bucket %d of %d%s)" % (other_opts.bucket, other_opts.bucket_count, salt_info)
             log.info("starting test run%s%s", label_text, bucket_text)
             result = runner.run()
             sys.exit(not result)
