@@ -3,7 +3,7 @@ import testify
 setup(
     name="testify",
     version=testify.__version__,
-    provides="testify",
+    provides=["testify"],
     author="Yelp",
     author_email="yelplabs@yelp.com",
     url="http://github.com/Yelp/Testify",
