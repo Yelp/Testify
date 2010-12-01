@@ -1,3 +1,10 @@
+python-testify (0.1.9) unstable; urgency=low
+
+  * Fix 'provides' field for PyPI (eklitzke)
+  * Add --bucket-salt option for shaking up test bucketing (ayust)
+
+ -- Amber Yust <ayust@yelp.com>  Tue, 30 November 2010 17:14:14 -0700
+
 python-testify (0.1.8) unstable; urgency=low
 
   * Print a better error message when test discovery fails (eklitzke)
