@@ -99,6 +99,7 @@ class JSONReporter(test_reporter.TestReporter):
         self._reset_logging()
         
     def report(self):
+        self.log_file.write("RUN COMPLETE\n")
         self.log_file.close()
         return True
 
