@@ -23,23 +23,23 @@ class ResultLogHandler(logging.Handler):
     """Log Handler to collect log output during a test run"""
     def __init__(self, *args, **kwargs):
         logging.Handler.__init__(self, *args, **kwargs)
-        
+
         self.records = []
-        
+
     def emit(self, record):
         self.records.append(record)
 
     def results(self):
         return [self.formatter.format(rec) for rec in self.records]
-            
+
 
 class JSONReporter(test_reporter.TestReporter):
     def __init__(self, *args, **kwargs):
         super(JSONReporter, self).__init__(*args, **kwargs)
-        
+
         # Time to open a log file
         self.log_file = open(self.options.json_results, "a")
-        
+
         # We also want to track log output
         self.log_hndl = None
         self._reset_logging()
@@ -49,7 +49,7 @@ class JSONReporter(test_reporter.TestReporter):
         if self.log_hndl:
             # Remove it if we already have one
             root.removeHandler(self.log_hndl)
-        
+
         # Create a new one
         if self.options.json_results_logging:
             self.log_hndl = ResultLogHandler(logging.Handler)
@@ -72,8 +72,8 @@ class JSONReporter(test_reporter.TestReporter):
         if self.options.bucket_count is not None:
             out_result['bucket_count'] = self.options.bucket_count
 
-        out_result['name'] = '%s %s.%s' % (result.test_method.__module__, result.test_method.im_class.__name__, result.test_method.__name__)
-        out_result['module'] = '%s' % result.test_method.__module__
+        out_result['name'] = '%s %s.%s' % (result.test_method.im_class.__module__, result.test_method.im_class.__name__, result.test_method.__name__)
+        out_result['module'] = '%s' % result.test_method.im_class.__module__
         out_result['start_time'] = time.mktime(result.start_time.timetuple())
         out_result['end_time'] = time.mktime(result.end_time.timetuple())
         out_result['run_time'] = result.run_time.seconds + float(result.run_time.microseconds) / 1000000
@@ -85,7 +85,7 @@ class JSONReporter(test_reporter.TestReporter):
             out_result['type'] = 'excluded'
         else:
             out_result['type'] = 'test'
-        
+
         out_result['success'] = bool(result.success)
         if not result.success:
             out_result['tb'] = exception.format_exception_info(result.exception_info)
@@ -95,9 +95,9 @@ class JSONReporter(test_reporter.TestReporter):
 
         self.log_file.write(simplejson.dumps(out_result))
         self.log_file.write("\n")
-        
+
         self._reset_logging()
-        
+
     def report(self):
         self.log_file.write("RUN COMPLETE\n")
         self.log_file.close()

@@ -4,3 +4,4 @@ MANIFEST
 *.pyc
 ._*
 *.sw[nop]
+*.egg-info
