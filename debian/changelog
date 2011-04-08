@@ -1,3 +1,11 @@
+python-testify (0.1.10) unstable; urgency=low
+
+  * Fix JSON logging to include proper test method class. Fixes #13 (sumeet)
+  * Fix setup.py to not import testify, preventing some installation 
+    issues (rhettg)
+
+ -- Rhett Garber <rhett@yelp.com>  Fri, 7 April 2011 16:29:16 -0700
+
 python-testify (0.1.9) unstable; urgency=low
 
   * Fix 'provides' field for PyPI (eklitzke)
