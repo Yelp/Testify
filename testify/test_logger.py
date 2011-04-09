@@ -16,13 +16,20 @@
 """This module contains classes and constants related to outputting test results."""
 __testify = 1
 
-import datetime
-import operator
-import traceback
-import sys
-import logging
 import collections
-from IPython import ultraTB
+import datetime
+import logging
+import operator
+import subprocess
+import sys
+import traceback
+
+# If IPython is available, use it for fancy color traceback formatting
+try:
+    from IPython import ultraTB
+    fancy_tb_formatter = staticmethod(ultraTB.ColorTB().text)
+except ImportError:
+    fancy_tb_formatter = staticmethod(traceback.format_exception)
 
 from testify import test_reporter
 from testify.test_case import TestCase
@@ -38,7 +45,7 @@ VERBOSITY_NORMAL    = 1  # Output dots for each test method run
 VERBOSITY_VERBOSE   = 2  # Output method names and timing information
 
 class TestLoggerBase(test_reporter.TestReporter):
-    traceback_formater = staticmethod(traceback.format_exception)
+    traceback_formatter = staticmethod(traceback.format_exception)
 
     def __init__(self, options, stream=sys.stdout):
         super(TestLoggerBase, self).__init__(options)
@@ -141,12 +148,12 @@ class TestLoggerBase(test_reporter.TestReporter):
         if exctype is AssertionError:
             # Skip testify.assertions traceback levels
             length = self.__count_relevant_tb_levels(tb)
-            return self.traceback_formater(exctype, value, tb, length)
+            return self.traceback_formatter(exctype, value, tb, length)
 
         if not tb:
             return "Exception: %r (%r)" % (exctype, value)
 
-        return self.traceback_formater(exctype, value, tb)
+        return self.traceback_formatter(exctype, value, tb)
 
     def __is_relevant_tb_level(self, tb):
         return tb.tb_frame.f_globals.has_key('__testify')
@@ -160,7 +167,22 @@ class TestLoggerBase(test_reporter.TestReporter):
 
 
 class TextTestLogger(TestLoggerBase):
-    traceback_formater = staticmethod(ultraTB.ColorTB().text)
+    traceback_formatter = fancy_tb_formatter
+    def __init__(self, options, stream=sys.stdout):
+        super(TextTestLogger, self).__init__(options)
+
+        # Checking for color support isn't as fun as we might hope.  We're
+        # going to use the command 'tput colors' to get a list of colors
+        # supported by the shell. But of course we if this fails terribly,
+        # we'll want to just fall back to no colors
+        self.use_color = False
+        if sys.stdin.isatty():
+            try:
+                output = subprocess.Popen(["tput", "colors"], stdout=subprocess.PIPE).communicate()[0]
+                if int(output.strip()) >= 8:
+                    self.use_color = True
+            except Exception, e:
+                _log.debug("Failed to find color support: %r", e)
 
     def write(self, message):
         """Write a message to the output stream, no trailing newline"""
@@ -175,7 +197,7 @@ class TextTestLogger(TestLoggerBase):
     BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(30, 38)
 
     def _colorize(self, message, color = CYAN):
-        if not color:
+        if not color or not self.use_color:
             return message
         else:
             start_color = chr(0033) + '[1;%sm' % color
@@ -294,7 +316,7 @@ class TextTestLogger(TestLoggerBase):
         self.writeln("(Total test time %.2fs)" % (total_test_time.seconds + total_test_time.microseconds / 1000000.0))
 
 class HTMLTestLogger(TextTestLogger):
-    traceback_formater = staticmethod(traceback.format_exception)
+    traceback_formatter = staticmethod(traceback.format_exception)
 
     def writeln(self, message):
         """Write a message and append a newline"""
@@ -319,7 +341,7 @@ class HTMLTestLogger(TextTestLogger):
             return start_color + message + end_color
 
 class ColorlessTextTestLogger(TextTestLogger):
-    traceback_formater = staticmethod(traceback.format_exception)
+    traceback_formatter = staticmethod(traceback.format_exception)
 
     def _colorize(self, message, color=None):
         return message
