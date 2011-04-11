@@ -32,9 +32,12 @@ class JSONReporterTestCase(test_case.TestCase):
     extended_test_case = ExtendedTestCase()
 
     json_reporter_options = turtle.Turtle(json_results_logging=True,
-                                          json_results=None, label=None,
-                                          extra_json_info=None, bucket=None,
-                                          bucket_count=None, verbosity=0)
+                                          json_results=None, 
+                                          label=None,
+                                          extra_json_info=None, 
+                                          bucket=None,
+                                          bucket_count=None, 
+                                          verbosity=0)
 
     @setup
     def setup(self):
