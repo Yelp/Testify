@@ -64,7 +64,7 @@ class TestLoggerBase(test_reporter.TestReporter):
                 self.report_test_result(result)
             self.results.append(result)
         elif result.test_method._fixture_type == 'class_teardown' and (result.failure or result.error):
-            # For a class_teardown failure, log the name too (since it wouldn't have 
+            # For a class_teardown failure, log the name too (since it wouldn't have
             # already been logged by on_run_test_method).
             self.report_test_name(result.test_method)
             self.report_test_result(result)
@@ -96,7 +96,7 @@ class TestLoggerBase(test_reporter.TestReporter):
 
         return bool((len(results_by_status['failed']) + len(results_by_status['unknown'])) == 0)
 
-    def report_test_name(self, test_name): 
+    def report_test_name(self, test_name):
         pass
     def report_test_result(self, result):
         pass
@@ -106,7 +106,7 @@ class TestLoggerBase(test_reporter.TestReporter):
             'FAILURES': [],
             'EXPECTED_FAILURES': []
             }
-        
+
         [results['EXPECTED_FAILURES'].append(result) if result.expected_failure else results['FAILURES'].append(result) for result in failed_results]
 
         if results['EXPECTED_FAILURES']:
@@ -123,8 +123,8 @@ class TestLoggerBase(test_reporter.TestReporter):
             # output won't have to scroll up to figure out whether failures
             # were expected or not.
             self.heading('FAILURES', 'None!')
-        
-    def report_failure(self, result): 
+
+    def report_failure(self, result):
         pass
 
     def report_stats(self, test_case_count, all_results, failed_results, unknown_results):
@@ -137,7 +137,7 @@ class TestLoggerBase(test_reporter.TestReporter):
             out.append("%s " % test_method.im_class.__module__)
         out.append("%s.%s" % (test_method.im_class.__name__, test_method.__name__))
 
-        return''.join(out)
+        return ''.join(out)
 
     # Helper methods for extracting relevant entries from a stack trace
     def _format_exception_info(self, exception_info_tuple):
@@ -310,8 +310,8 @@ class TextTestLogger(TestLoggerBase):
         self.write("%s, %s.  " % (passed_string, failed_string))
 
         total_test_time = reduce(
-            operator.add, 
-            (result.run_time for result in (successful+unexpected_success+failed+incomplete)), 
+            operator.add,
+            (result.run_time for result in (successful+unexpected_success+failed+incomplete)),
             datetime.timedelta())
         self.writeln("(Total test time %.2fs)" % (total_test_time.seconds + total_test_time.microseconds / 1000000.0))
 

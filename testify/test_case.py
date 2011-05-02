@@ -21,12 +21,10 @@ __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 
 from collections import defaultdict
-import datetime
 import inspect
 import logging
 from new import instancemethod
 import sys
-import traceback
 import types
 
 from test_result import TestResult
@@ -36,21 +34,21 @@ from testify.utils import class_logger
 # just a useful list to have
 fixture_types = ['class_setup', 'setup', 'teardown', 'class_teardown']
 deprecated_fixture_type_map = {
-    'classSetUp': 'class_setup', 
-    'setUp': 'setup', 
-    'tearDown': 'teardown', 
+    'classSetUp': 'class_setup',
+    'setUp': 'setup',
+    'tearDown': 'teardown',
     'classTearDown': 'class_teardown'}
 
-class TwistedFailureError(Exception): 
+class TwistedFailureError(Exception):
     """Exception that indicates the value is an instance of twisted.python.failure.Failure
-    
+
     This is part of the magic that's required to get a proper stack trace out of twisted applications
     """
     pass
 
 class MetaTestCase(type):
     """This base metaclass is used to collect each TestCase's decorated fixture methods at
-    runtime.  It is implemented as a metaclass so we can determine the order in which 
+    runtime.  It is implemented as a metaclass so we can determine the order in which
     fixture methods are defined.
     """
     __test__ = False
@@ -76,7 +74,7 @@ class MetaTestCase(type):
     def __cmp__(self, other):
         """Sort TestCases by a particular string representation."""
         return cmp(MetaTestCase._cmp_str(self), MetaTestCase._cmp_str(other))
-    
+
     def bucket(self, bucket_count, bucket_salt=None):
         """Bucket a TestCase using a relatively consistant hash - for dividing tests across runners."""
         if bucket_salt:
@@ -89,12 +87,12 @@ def discovered_test_cases():
 
 class TestCase(object):
     """The TestCase class defines test methods and fixture methods; it is the meat and potatoes of testing.
-    
-    QuickStart: 
+
+    QuickStart:
         define a test method, instantiate an instance and call test_case.run()
 
     Extended information:
-        TestCases can contain any number of test methods, as well as class-level 
+        TestCases can contain any number of test methods, as well as class-level
         setup/teardown methods and setup/teardowns to be wrapped around each test
         method. These are defined by decorators.
 
@@ -109,7 +107,7 @@ class TestCase(object):
         class_teardown
 
         The results of test methods are stored in TestResult objects.
-    
+
         Additional behavior beyond running tests, such as logging results, is achieved
         by registered callbacks.  For more information see the docstrings for:
             register_on_complete_test_method_callback
@@ -123,7 +121,7 @@ class TestCase(object):
     STAGE_TEST_METHOD = 3
     STAGE_TEARDOWN = 4
     STAGE_CLASS_TEARDOWN = 5
-    
+
     log = class_logger.ClassLogger()
 
     def __init__(self, *args, **kwargs):
@@ -149,7 +147,7 @@ class TestCase(object):
         # callbacks for various stages of execution, used for stuff like logging
         self.__on_run_test_method_callbacks = []
         self.__on_complete_test_method_callbacks = []
-        
+
         # one of these will later be populated with exception info if there's an
         # exception in the class_setup/class_teardown stage
         self.__class_level_failure = None
@@ -254,7 +252,7 @@ class TestCase(object):
     def __run_class_teardown_fixtures(self):
         """End the process of running tests.  Run the class's class_teardown methods"""
         self._stage = self.STAGE_CLASS_TEARDOWN
-        
+
         self.__run_deprecated_fixture_method('classTearDown')
 
         for fixture_method in self.class_teardown_fixtures:
@@ -292,8 +290,8 @@ class TestCase(object):
 
     def __run_test_methods(self):
         """Run this class's setup fixtures / test methods / teardown fixtures.
-        
-        These are run in the obvious order - setup and teardown go before and after, 
+
+        These are run in the obvious order - setup and teardown go before and after,
         respectively, every test method.  If there was a failure in the class_setup
         phase, no method-level fixtures or test methods will be run, and we'll eventually
         skip all the way to the class_teardown phase.   If a given test method is marked
@@ -369,7 +367,7 @@ class TestCase(object):
 
     def __execute_block_recording_exceptions(self, block_fxn, result, is_class_level=False):
         """Excerpted code for executing a block of code that might except and cause us to update a result object.
-        
+
         Return value is a boolean describing whether the block was successfully executed without exceptions.
         """
         try:
@@ -379,21 +377,29 @@ class TestCase(object):
         except TwistedFailureError, exception:
             # We provide special support for handling the failures that are generated from twisted.
             # Due to complexities in error handling and cleanup, it's difficult to get the raw exception
-            # data from an asynchcronous failure, so we really get a pseudo traceback object. 
+            # data from an asynchcronous failure, so we really get a pseudo traceback object.
             failure = exception.args[0]
             exc_info = (failure.type, failure.value, failure.getTracebackObject())
             result.end_in_error(exc_info)
             if is_class_level:
                 self.__class_level_failure = exc_info
         except Exception, exception:
-            if isinstance(exception, AssertionError):
-                result.end_in_failure(sys.exc_info())
-                if is_class_level:
-                    self.__class_level_failure = sys.exc_info()
+            # some code may want to use an alternative exc_info for an exception
+            # (for instance, in an event loop). You can signal an alternative
+            # stack to use by adding a _testify_exc_tb attribute to the
+            # exception object
+            if hasattr(exception, '_testify_exc_tb'):
+                exc_info = (type(exception), exception, exception._testify_exc_tb)
             else:
-                result.end_in_error(sys.exc_info())
+                exc_info = sys.exc_info()
+            if isinstance(exception, AssertionError):
+                result.end_in_failure(exc_info)
                 if is_class_level:
-                    self.__class_level_error = sys.exc_info()
+                    self.__class_level_failure = exc_info
+            else:
+                result.end_in_error(exc_info)
+                if is_class_level:
+                    self.__class_level_error = exc_info
             return False
         else:
             return True

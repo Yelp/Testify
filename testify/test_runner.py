@@ -18,15 +18,8 @@ __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 
 from collections import defaultdict
-import datetime
-import logging
 import functools
-from optparse import OptionParser
-import os
 import pprint
-import sys
-import traceback
-import types
 
 
 from test_case import MetaTestCase, TestCase
@@ -34,9 +27,9 @@ import test_discovery
 from test_logger import _log, TextTestLogger, VERBOSITY_SILENT, VERBOSITY_NORMAL, VERBOSITY_VERBOSE
 
 class TestRunner(object):
-    """TestRunner is the controller class of the testify suite.  
+    """TestRunner is the controller class of the testify suite.
 
-    It is responsible for collecting a list of TestCase subclasses, instantiating and 
+    It is responsible for collecting a list of TestCase subclasses, instantiating and
     running them, delegating the collection of results and printing of statistics.
     """
 
@@ -81,10 +74,10 @@ class TestRunner(object):
 
         We use this opportunity to apply any test method name overrides that were parsed
         from the command line (or rather, passed in on initialization).
-        
-        Logging of individual results is accomplished by registering callbacks for 
+
+        Logging of individual results is accomplished by registering callbacks for
         the TestCase instances to call when they begin and finish running each test.
-        
+
         At its conclusion, we pass our collected results and to our TestLogger to get
         testing exceptions and summaries printed out.
         """
@@ -98,7 +91,7 @@ class TestRunner(object):
                     suites_require=self.suites_require,
                     name_overrides=name_overrides)
 
-                # We allow our plugins to mutate the test case prior to execution 
+                # We allow our plugins to mutate the test case prior to execution
                 for plugin_mod in self.plugin_modules:
                     if hasattr(plugin_mod, "prepare_test_case"):
                         plugin_mod.prepare_test_case(self.options, test_case)
