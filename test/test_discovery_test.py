@@ -2,7 +2,7 @@ from testify import TestCase, run, test_discovery
 
 class DiscoveryTestCase(TestCase):
     def discover(self, path):
-        # Exhause the generator to catch exceptons
+        # Exhaust the generator to catch exceptons
         [mod for mod in test_discovery.discover(path)]
 
 class TestDiscoverDottedPath(DiscoveryTestCase):

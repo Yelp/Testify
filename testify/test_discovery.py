@@ -52,7 +52,7 @@ def discover(what):
         suites = suites or []
         if isinstance(locator, basestring):
             # Transform file paths into dotted import paths
-            locator = locator.replace('/', '.')
+            locator = locator.replace(os.sep, '.')
             if locator.endswith('.py'):
                 locator = locator.rstrip('.py')
 
