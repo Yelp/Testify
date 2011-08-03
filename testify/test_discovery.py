@@ -51,8 +51,11 @@ def discover(what):
     def discover_inner(locator, suites=None):
         suites = suites or []
         if isinstance(locator, basestring):
+            # Transform file paths into dotted import paths
             locator = locator.replace('/', '.')
-            locator = locator.replace('.py', '')
+            if locator.endswith('.py'):
+                locator = locator.rstrip('.py')
+
             import_error = None
             try:
                 test_module = __import__(locator)
