@@ -51,6 +51,11 @@ def discover(what):
     def discover_inner(locator, suites=None):
         suites = suites or []
         if isinstance(locator, basestring):
+            # Transform file paths into dotted import paths
+            locator = locator.replace(os.sep, '.')
+            if locator.endswith('.py'):
+                locator = locator.rstrip('.py')
+
             import_error = None
             try:
                 test_module = __import__(locator)
@@ -61,7 +66,7 @@ def discover(what):
                     test_module = __import__('.'.join(locator.split('.')[:-1]))
                 except ValueError:
                     raise DiscoveryError("Failed to find module %s" % locator)
-            
+
             for part in locator.split('.')[1:]:
                 try:
                     test_module = getattr(test_module, part)
@@ -92,7 +97,7 @@ def discover(what):
                         # ignore .svn and other miscellanea
                         if item.startswith('.'):
                             continue
-                    
+
                         # If it's actually a package (directory + __init__.py)
                         if os.path.isdir(os.path.join(module_filesystem_path, item)) and os.path.exists(os.path.join(module_filesystem_path, item, '__init__.py')):
                             for test_case_class in discover_inner("%s.%s" % (locator, item), suites+module_suites):
