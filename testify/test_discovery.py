@@ -13,12 +13,10 @@
 # limitations under the License.
 
 
-import logging
 import os
 import os.path
 import time
 import types
-import sys
 from test_case import MetaTestCase
 from test_logger import _log
 from errors import TestifyError
@@ -51,26 +49,33 @@ def discover(what):
     def discover_inner(locator, suites=None):
         suites = suites or []
         if isinstance(locator, basestring):
-            # Transform file paths into dotted import paths
-            locator = locator.replace(os.sep, '.')
-            if locator.endswith('.py'):
-                locator = locator.rstrip('.py')
-
             import_error = None
             try:
                 test_module = __import__(locator)
-            except ImportError, e:
+            except (ValueError, ImportError), e:
+                #import code; code.interact(local=locals())
                 import_error = e
                 _log.info('discover_inner: Failed to import %s: %s' % (locator, e))
-                try:
-                    test_module = __import__('.'.join(locator.split('.')[:-1]))
-                except ValueError:
-                    raise DiscoveryError("Failed to find module %s" % locator)
+                if os.path.isfile(locator) or os.path.isfile(locator+'.py'):
+                    new_loc = os.path.relpath(os.path.normpath(locator))
+                    new_loc = new_loc.rsplit('.py',1)[0] #allows for .pyc and .pyo as well
+                    new_loc = new_loc.replace(os.sep,'.')
+                    try:
+                        test_module = __import__(new_loc)
+                        locator = new_loc
+                        del new_loc
+                    except (ValueError, ImportError):
+                        raise DiscoveryError("Failed to find module %s" % locator)
+                else:
+                    try:
+                        test_module = __import__('.'.join(locator.split('.')[:-1]))
+                    except (ValueError, ImportError):
+                        raise DiscoveryError("Failed to find module %s" % locator)
 
             for part in locator.split('.')[1:]:
                 try:
                     test_module = getattr(test_module, part)
-                except AttributeError, exc:
+                except AttributeError:
                     message = "discovery(%s) failed: module %s has no attribute %r" % (locator, test_module, part)
                     if import_error is not None:
                         message += "; this is most likely due to earlier error %r" % (import_error,)
