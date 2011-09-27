@@ -26,8 +26,14 @@ import traceback
 
 # If IPython is available, use it for fancy color traceback formatting
 try:
-    from IPython import ultraTB
-    fancy_tb_formatter = staticmethod(ultraTB.ColorTB().text)
+    try:
+        # IPython >= 0.11
+        from IPython.core.ultratb import ColorTB
+    except ImportError:
+        # IPython < 0.11
+        from IPython.ultraTB import ColorTB
+
+    fancy_tb_formatter = staticmethod(ColorTB().text)
 except ImportError:
     fancy_tb_formatter = staticmethod(traceback.format_exception)
 
