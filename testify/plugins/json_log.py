@@ -14,7 +14,10 @@
 import logging
 import time
 
-import simplejson
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 from testify import test_reporter
 from testify.utils import exception
@@ -65,7 +68,7 @@ class JSONReporter(test_reporter.TestReporter):
             out_result['label'] = self.options.label
         if self.options.extra_json_info:
             if not hasattr(self.options, 'parsed_extra_json_info'):
-                self.options.parsed_extra_json_info = simplejson.loads(self.options.extra_json_info)
+                self.options.parsed_extra_json_info = json.loads(self.options.extra_json_info)
             out_result.update(self.options.parsed_extra_json_info)
         if self.options.bucket is not None:
             out_result['bucket'] = self.options.bucket
@@ -93,7 +96,7 @@ class JSONReporter(test_reporter.TestReporter):
             if self.log_hndl:
                 out_result['log'] = self.log_hndl.results()
 
-        self.log_file.write(simplejson.dumps(out_result))
+        self.log_file.write(json.dumps(out_result))
         self.log_file.write("\n")
 
         self._reset_logging()
