@@ -29,6 +29,8 @@ try:
     try:
         # IPython >= 0.11
         from IPython.core.ultratb import ColorTB
+        _hush_pyflakes = [ColorTB]
+        del _hush_pyflakes
     except ImportError:
         # IPython < 0.11
         from IPython.ultraTB import ColorTB
@@ -39,8 +41,6 @@ except ImportError:
 
 from testify import test_reporter
 from testify.test_case import TestCase
-
-# from test_case import TestCase
 
 # Beyond the nicely formatted test output provided by the test logger classes, we
 # also want to make basic test running /result info available via standard python logger

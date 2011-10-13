@@ -53,7 +53,6 @@ def discover(what):
             try:
                 test_module = __import__(locator)
             except (ValueError, ImportError), e:
-                #import code; code.interact(local=locals())
                 import_error = e
                 _log.info('discover_inner: Failed to import %s: %s' % (locator, e))
                 if os.path.isfile(locator) or os.path.isfile(locator+'.py'):

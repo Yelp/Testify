@@ -9,11 +9,10 @@ See https://trac.yelpcorp.com/wiki/TestingCoverage for more information
 """
 
 import sys
-import pkg_resources
 
 class FakeCoverage:
     warning_printed = False
-    
+
     @classmethod
     def start(cls):
         if not cls.warning_printed:
@@ -21,14 +20,16 @@ class FakeCoverage:
             print >>sys.stderr, "See: http://pypi.python.org/pypi/coverage/"
             cls.warning_printed = True
 
-    @staticmethod   
+    @staticmethod
     def stop(): pass
-    
-    @staticmethod   
+
+    @staticmethod
     def save(): pass
-    
+
 try:
     import coverage
+    _hush_pyflakes = [coverage]
+    del _hush_pyflakes
 except (ImportError, NameError), ex:
     coverage = None
 
@@ -43,7 +44,7 @@ def start(testcase_name = None):
         coverage_instance = coverage.coverage(data_file="coverage_file.", data_suffix=testcase_name, auto_data=True)
     else:
         coverage_instance = FakeCoverage()
-    
+
     coverage_instance.start()
     started = True
 
@@ -68,7 +69,7 @@ if __name__ == "__main__":
         diff_file = sys.argv[2]
     else:
         diff_file = None
-        
+
     directory = sys.argv[1]
     coverage_instance = coverage.coverage(data_file="coverage_file.", auto_data=True)
     coverage_instance.exclude("^import")
@@ -78,7 +79,7 @@ if __name__ == "__main__":
         coverage_instance.html_report(morfs=None, directory=directory, ignore_errors=False, omit_prefixes=None)
     else:
         coverage_instance.svnhtml_report(morfs=None, directory=directory, ignore_errors=False, omit_prefixes=None, filename=diff_file)
-    
+
     #coverage_result = coverage_entry_point()
     #sys.exit(coverage_result)
-    
+

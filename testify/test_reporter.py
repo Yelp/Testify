@@ -11,18 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
-import traceback
 
 
 class TestReporter(object):
     """Base interface for tracking results of test runs
-    
+
     A TestReporter is configured as a callback for each test case by test_runner.
     """
     def __init__(self, options):
         """Constructor
-        
+
         Args -
             options - The result of  OptionParser which contains, as attributes, all the options for the running program.
         """
@@ -38,7 +36,7 @@ class TestReporter(object):
 
     def report(self):
         """Called at the end of the test run to report results
-		
+
 		Should return a bool to indicate if the reporter thinks the test run was successful
 		"""
         return True

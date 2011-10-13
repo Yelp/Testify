@@ -23,10 +23,8 @@ import imp
 
 import testify
 from testify import test_logger
-from testify import test_reporter
 from testify.test_runner import TestRunner
 from testify import test_discovery
-from testify.utils import class_logger
 
 ACTION_RUN_TESTS = 0
 ACTION_LIST_SUITES = 1
@@ -56,15 +54,15 @@ def get_bucket_overrides(filename):
 
 def load_plugins():
     """Load any plugin modules
-    
+
     We load plugin modules based on directories provided to us by the environment, as well as a default in our own folder.
-    
+
     Returns a list of module objects
     """
     # This function is a little wacky, doesn't seem like we SHOULD have to do all this just to get the behavior we want.
     # The idea will be to check out the directory contents and pick up any files that seem to match what python knows how to
-    # import. 
-    
+    # import.
+
     # To properly load the module, we'll need to identify what type it is by the file extension
     suffix_map = {}
     for suffix in imp.get_suffixes():
@@ -93,8 +91,8 @@ def load_plugins():
                     except Exception, e:
                         raise Exception('whaa?: %r' % e)
     return plugin_modules
-    
-    
+
+
 def parse_test_runner_command_line_args(plugin_modules, args):
     """Parse command line args for the TestRunner to determine verbosity and other stuff"""
     parser = OptionParser(usage="%prog <test path> [options]", version="%%prog %s" % testify.__version__)
@@ -119,7 +117,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
 
     parser.add_option("--summary", action="store_true", dest="summary_mode")
     parser.add_option("--no-color", action="store_true", dest="disable_color", default=bool(not os.isatty(sys.stdout.fileno())))
-    
+
     parser.add_option("--log-file", action="store", dest="log_file", type="string", default=None)
     parser.add_option("--log-level", action="store", dest="log_level", type="string", default="INFO")
     parser.add_option('--print-log', action="append", dest="print_loggers", type="string", default=[], help="Direct logging output for these loggers to the console")
@@ -144,17 +142,17 @@ def parse_test_runner_command_line_args(plugin_modules, args):
         runner_action = ACTION_LIST_TESTS
     else:
         runner_action = ACTION_RUN_TESTS
-    
+
     reporters = []
     if options.disable_color:
         reporters.append(test_logger.ColorlessTextTestLogger(options))
     else:
         reporters.append(test_logger.TextTestLogger(options))
-    
+
     for plugin in plugin_modules:
         if hasattr(plugin, "build_test_reporters"):
             reporters += plugin.build_test_reporters(options)
-    
+
     test_runner_args = {
         'suites_include': options.suites_include,
         'suites_exclude': options.suites_exclude,
@@ -183,7 +181,7 @@ def _parse_test_runner_command_line_module_method_overrides(args):
             module_method_overrides[module_name].add(method_name)
         else:
             module_method_overrides[module_name] = None
-    
+
     return test_path, module_method_overrides
 
 class TestProgram(object):
@@ -196,9 +194,9 @@ class TestProgram(object):
         plugin_modules = load_plugins()
 
         runner_action, test_path, test_runner_args, other_opts = parse_test_runner_command_line_args(plugin_modules, command_line_args)
-        
+
         self.setup_logging(other_opts)
-        
+
         runner = TestRunner(**test_runner_args)
 
         bucket_overrides = {}
@@ -241,10 +239,10 @@ class TestProgram(object):
         if options.log_file:
             handler = logging.FileHandler(options.log_file, "a")
             handler.setFormatter(logging.Formatter('%(asctime)s\t%(name)-12s: %(levelname)-8s %(message)s'))
-        
+
             log_level = getattr(logging, options.log_level)
             handler.setLevel(log_level)
-        
+
             root_logger.addHandler(handler)
 
         if options.print_loggers:
@@ -255,6 +253,6 @@ class TestProgram(object):
             for logger_name in options.print_loggers:
                 logging.getLogger(logger_name).addHandler(handler)
 
-        
+
 if __name__ == "__main__":
     TestProgram()

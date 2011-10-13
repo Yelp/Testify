@@ -2,6 +2,8 @@ import __builtin__
 import StringIO
 try:
     import simplejson as json
+    _hush_pyflakes = [json]
+    del _hush_pyflakes
 except ImportError:
     import json
 
@@ -11,7 +13,6 @@ from testify import setup
 from testify import teardown
 from testify import test_case
 from testify import test_result
-from testify import test_runner
 from testify.plugins import json_log
 from testify.utils import turtle
 

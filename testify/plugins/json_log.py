@@ -16,6 +16,8 @@ import time
 
 try:
     import simplejson as json
+    _hush_pyflakes = [json]
+    del _hush_pyflakes
 except ImportError:
     import json
 

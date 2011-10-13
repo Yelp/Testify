@@ -22,7 +22,6 @@ __testify = 1
 
 from collections import defaultdict
 import inspect
-import logging
 from new import instancemethod
 import sys
 import types
@@ -192,7 +191,7 @@ class TestCase(object):
 
     def _generate_test_method(self, method_name, function):
         """Allow tests to define new test methods in their __init__'s and have appropriate suites applied."""
-        suited_function = suite(*getattr(self, '_suites', set()))(function)
+        suite(*getattr(self, '_suites', set()))(function)
         setattr(self, method_name, instancemethod(function, self, self.__class__))
 
     def runnable_test_methods(self):

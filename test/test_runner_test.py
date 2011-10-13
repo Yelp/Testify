@@ -5,7 +5,7 @@ prepared = False
 running = False
 
 def prepare_test_case(options, test_case):
-    global prepared 
+    global prepared
     prepared = True
 
 def run_test_case(options, test_case, runnable):
@@ -19,12 +19,12 @@ def run_test_case(options, test_case, runnable):
 
 class PluginTestCase(test_case.TestCase):
     """Verify plugin support
-    
+
     This is pretty complex and deserves some amount of explanation.
     What we're doing here is creating a module object on the fly (our plugin) and a
     test case class so we can call runner directly and verify the right parts get called.
-    
-    If you have a failure in here the stack is going to look crazy because we are a test case, being called by 
+
+    If you have a failure in here the stack is going to look crazy because we are a test case, being called by
     a test running, which is building and running ANOTHER test runner to execute ANOTHER test case. Cheers.
     """
     @setup
@@ -47,10 +47,10 @@ class PluginTestCase(test_case.TestCase):
     def test_plugin_run(self):
         runner = test_runner.TestRunner(plugin_modules=[self.our_module])
         runner.add_test_case(self.dummy_test_class)
-        
+
         assert runner.run()
         assert self.ran_test
         assert not running
         assert prepared
 
-        
+

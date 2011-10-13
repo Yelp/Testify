@@ -1,4 +1,4 @@
-from testify import *
+from testify import run, class_teardown, class_setup, setup, teardown, TestCase
 
 class TestMethodsGetRun(TestCase):
     def test_method_1(self):
@@ -15,20 +15,20 @@ class TestMethodsGetRun(TestCase):
 class DeprecatedClassSetupFixturesGetRun(TestCase):
     def classSetUp(self):
         self.test_var = True
-    
+
     def test_test_var(self):
         assert self.test_var
 
 class DeprecatedSetupFixturesGetRun(TestCase):
     def setUp(self):
         self.test_var = True
-    
+
     def test_test_var(self):
         assert self.test_var
 
 class DeprecatedTeardownFixturesGetRun(TestCase):
     COUNTER = 0
-    
+
     def tearDown(self):
         self.test_var = True
 
@@ -37,7 +37,7 @@ class DeprecatedTeardownFixturesGetRun(TestCase):
         if self.COUNTER > 1:
             assert self.test_var
 
-    def test_test_var_pass_2(self): 
+    def test_test_var_pass_2(self):
         self.COUNTER += 1
         if self.COUNTER > 1:
             assert self.test_var
@@ -45,10 +45,10 @@ class DeprecatedTeardownFixturesGetRun(TestCase):
 class DeprecatedClassTeardownFixturesGetRun(TestCase):
     def test_placeholder(self):
         pass
-    
+
     def class_teardown(self):
         self.test_var = True
-    
+
     @class_teardown
     def test_test_var(self):
         assert self.test_var
@@ -57,7 +57,7 @@ class ClassSetupFixturesGetRun(TestCase):
     @class_setup
     def set_test_var(self):
         self.test_var = True
-    
+
     def test_test_var(self):
         assert self.test_var
 
@@ -65,22 +65,22 @@ class SetupFixturesGetRun(TestCase):
     @setup
     def set_test_var(self):
         self.test_var = True
-    
+
     def test_test_var(self):
         assert self.test_var
 
 class TeardownFixturesGetRun(TestCase):
     COUNTER = 0
-    
+
     @teardown
     def set_test_var(self):
         self.test_var = True
-    
+
     def test_test_var_first_pass(self):
         self.COUNTER += 1
         if self.COUNTER > 1:
             assert self.test_var
-    
+
     def test_test_var_second_pass(self):
         self.COUNTER += 1
         if self.COUNTER > 1:
@@ -121,7 +121,7 @@ class FixtureMethodRegistrationOrderTest(TestCase):
     def __init__(self, *args, **kwargs):
         super(FixtureMethodRegistrationOrderTest, self).__init__(*args, **kwargs)
         self.counter = 0
-    
+
     @class_setup
     def __class_setup_prerun_1(self):
         assert self.counter == 0
@@ -131,12 +131,12 @@ class FixtureMethodRegistrationOrderTest(TestCase):
     def __class_setup_prerun_2(self):
         assert self.counter == 1
         self.counter += 1
-    
+
     @class_setup
     def third_setup(self):
         assert self.counter == 2
         self.counter += 1
-    
+
     @setup
     def __setup_prerun_1(self):
         assert self.counter == 3
@@ -151,21 +151,21 @@ class FixtureMethodRegistrationOrderTest(TestCase):
     def real_setup(self):
         assert self.counter == 5
         self.counter += 1
-    
+
     def test_fixture_registration_order(self):
         assert self.counter == 6
         self.counter += 1
-    
+
     @teardown
     def do_some_teardown(self):
         assert self.counter == 7
         self.counter += 1
-    
+
     @teardown
     def __zteardown_postrun_1(self):
         assert self.counter == 8
         self.counter += 1
-    
+
     @teardown
     def __teardown_postrun_2(self):
         assert self.counter == 9
@@ -188,13 +188,13 @@ class FixtureMethodRegistrationOrderTest(TestCase):
 class OverrideTest(TestCase):
     def test_method_1(self):
         pass
-    
+
     def test_method_2(self):
         pass
 # class ExceptionsInClassSetup(TestCase):
 #   def classSetUp(self):
 #       raise Exception, "oh snap"
-#   
+#
 #   def test_something(self):
 #       pass
 

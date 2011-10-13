@@ -24,7 +24,6 @@ import pprint
 
 from test_case import MetaTestCase, TestCase
 import test_discovery
-from test_logger import _log, TextTestLogger, VERBOSITY_SILENT, VERBOSITY_NORMAL, VERBOSITY_VERBOSE
 
 class TestRunner(object):
     """TestRunner is the controller class of the testify suite.
@@ -112,7 +111,7 @@ class TestRunner(object):
                 # And we finally execute our finely wrapped test case
                 runnable()
 
-        except (KeyboardInterrupt, SystemExit), e:
+        except (KeyboardInterrupt, SystemExit):
             # we'll catch and pass a keyboard interrupt so we can cancel in the middle of a run
             # but still get a testing summary.
             pass
