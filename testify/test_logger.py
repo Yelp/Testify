@@ -100,7 +100,10 @@ class TestLoggerBase(test_reporter.TestReporter):
             self.report_failures(results_by_status['failed'])
         self.report_stats(len(self.test_case_classes), **results_by_status)
 
-        return bool((len(results_by_status['failed']) + len(results_by_status['unknown'])) == 0)
+        if len(self.results) == 0:
+            return False
+        else:
+            return bool((len(results_by_status['failed']) + len(results_by_status['unknown'])) == 0)
 
     def report_test_name(self, test_name):
         pass
@@ -303,7 +306,15 @@ class TextTestLogger(TestLoggerBase):
         overall_success = not unexpected_failed and not unknown and not incomplete
 
         self.writeln('')
-        status_string = self._colorize("PASSED", self.GREEN) if overall_success else self._colorize("FAILED", self.RED)
+
+        if overall_success:
+            if successful or unexpected_success:
+                status_string = self._colorize("PASSED", self.GREEN)
+            else:
+                status_string = self._colorize("ERROR", self.MAGENTA)
+        else:
+            self._colorize("FAILED", self.RED)
+
         self.write("%s.  " % status_string)
         self.write("%d %s / %d %s: " % (test_method_count, test_word, test_case_count, case_word))
 

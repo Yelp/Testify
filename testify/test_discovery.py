@@ -14,7 +14,6 @@
 
 
 import os
-import os.path
 import time
 import types
 from test_case import MetaTestCase
