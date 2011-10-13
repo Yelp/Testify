@@ -1,3 +1,12 @@
+python-testify (0.1.12) unstable; urgency=low
+
+  * Add support for test specification via file paths
+  * Use env to invoke python
+  * Remove hard dependency on simplejson (fall back to json)
+  * Fix IPython importing for IPython >= 0.11
+
+ -- Amber Yust <ayust@yelp.com>  Thu, 13 Oct 2011 15:03:28 -0700
+
 python-testify (0.1.11) unstable; urgency=low
 
   * Teach testify how to use alternate exception tracebacks
