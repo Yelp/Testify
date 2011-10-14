@@ -24,7 +24,6 @@ import imp
 import testify
 from testify import test_logger
 from testify.test_runner import TestRunner
-from testify import test_discovery
 
 ACTION_RUN_TESTS = 0
 ACTION_LIST_SUITES = 1
@@ -197,17 +196,18 @@ class TestProgram(object):
 
         self.setup_logging(other_opts)
 
-        runner = TestRunner(**test_runner_args)
-
         bucket_overrides = {}
         if other_opts.bucket_overrides_file:
             bucket_overrides = get_bucket_overrides(other_opts.bucket_overrides_file)
 
-        try:
-            runner.discover(test_path, bucket=other_opts.bucket, bucket_count=other_opts.bucket_count, bucket_overrides=bucket_overrides, bucket_salt=other_opts.bucket_salt)
-        except test_discovery.DiscoveryError, e:
-            log.error("Failure loading tests: %s", e)
-            sys.exit(1)
+        runner = TestRunner(
+            test_path,
+            bucket_overrides=bucket_overrides,
+            bucket_count=other_opts.bucket_count,
+            bucket_salt=other_opts.bucket_salt,
+            bucket=other_opts.bucket,
+            **test_runner_args
+        )
 
         if runner_action == ACTION_LIST_SUITES:
             runner.list_suites()
