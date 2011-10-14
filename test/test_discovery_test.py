@@ -1,3 +1,4 @@
+from functools import wraps
 from testify import TestCase, run, test_discovery
 from os.path import dirname, join, abspath
 from os import getcwd, chdir
@@ -11,6 +12,7 @@ class DiscoveryTestCase(TestCase):
 
 def relative(func):
     'decorator for tests that rely on relative paths'
+    @wraps(func)
     def wrapped(*args, **kwargs):
         cwd = getcwd()
         chdir(HERE)

@@ -71,7 +71,7 @@ class TestRunner(object):
     def discover(self):
         if isinstance(self.test_path, (TestCase, MetaTestCase)):
             # For testing purposes only.
-            yield self.test_path
+            yield {'class': self.test_path, 'methods': None}
             return
         for test_case_class in test_discovery.discover(self.test_path):
             override_bucket = self.bucket_overrides.get(MetaTestCase._cmp_str(test_case_class))
@@ -79,7 +79,7 @@ class TestRunner(object):
                 or (override_bucket is None and test_case_class.bucket(self.bucket_count, self.bucket_salt) == self.bucket)
                 or (override_bucket is not None and override_bucket == self.bucket)):
                 if not self.module_method_overrides or test_case_class.__name__ in self.module_method_overrides:
-                    yield test_case_class
+                    yield {'class': test_case_class, 'methods': self.module_method_overrides.get(test_case_class.__name__, None)}
 
     def run(self):
         """Instantiate our found test case classes and run their test methods.
@@ -95,13 +95,12 @@ class TestRunner(object):
         """
 
         try:
-            for test_case_class in self.discover():
-                name_overrides = self.module_method_overrides.get(test_case_class.__name__, None)
-                test_case = test_case_class(
+            for tests_dict in self.discover():
+                test_case = tests_dict['class'](
                     suites_include=self.suites_include,
                     suites_exclude=self.suites_exclude,
                     suites_require=self.suites_require,
-                    name_overrides=name_overrides)
+                    name_overrides=tests_dict['methods'])
 
                 # We allow our plugins to mutate the test case prior to execution
                 for plugin_mod in self.plugin_modules:
@@ -135,7 +134,8 @@ class TestRunner(object):
     def list_suites(self):
         """List the suites represented by this TestRunner's tests."""
         suites = defaultdict(list)
-        for test_case_class in self.discover():
+        for tests_dict in self.discover():
+            test_case_class = tests_dict['class']
             test_instance = test_case_class(
                 suites_include=self.suites_include,
                 suites_exclude=self.suites_exclude,
@@ -151,7 +151,8 @@ class TestRunner(object):
     def list_tests(self, selected_suite_name=None):
         """Lists all tests, optionally scoped to a single suite."""
         test_list = []
-        for test_case_class in self.discover():
+        for tests_dict in self.discover():
+            test_case_class = tests_dict['class']
             test_instance = test_case_class(
                 suites_include=self.suites_include,
                 suites_exclude=self.suites_exclude,
