@@ -202,19 +202,25 @@ class TestCase(object):
         limit itself to test methods in those suites.
         """
         for member_name in dir(self):
-            if member_name.startswith("test"):
-                member = getattr(self, member_name)
-                if inspect.ismethod(member):
-                    member_suites = set(getattr(member, '_suites', set()))
-                    # if there are any exclude suites, exclude methods under them
-                    if (not self.__suites_exclude) or (not self.__suites_exclude & member_suites):
-                        # if there are any include suites, only run methods in them
-                        if not self.__suites_include or (self.__suites_include & member_suites):
-                            # if there are any require suites, only run methods in *all* of those suites
-                            if not self.__suites_require or ((self.__suites_require & member_suites) == self.__suites_require):
-                                # if there are any name overrides, only run the named methods
-                                if self.__name_overrides is None or member.__name__ in self.__name_overrides:
-                                    yield member
+            if not member_name.startswith("test"):
+                continue
+            member = getattr(self, member_name)
+            if not inspect.ismethod(member):
+                continue
+            member_suites = set(getattr(member, '_suites', set()))
+            # if there are any exclude suites, exclude methods under them
+            if self.__suites_exclude and self.__suites_exclude & member_suites:
+                continue
+            # if there are any include suites, only run methods in them
+            if self.__suites_include and not (self.__suites_include & member_suites):
+                continue
+            # if there are any require suites, only run methods in *all* of those suites
+            if self.__suites_require and not ((self.__suites_require & member_suites) == self.__suites_require):
+                continue
+
+            # if there are any name overrides, only run the named methods
+            if self.__name_overrides is None or member.__name__ in self.__name_overrides:
+                yield member
 
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance"""
