@@ -31,7 +31,7 @@ class TestReporter(object):
         pass
 
     def test_complete(self, test_case, result):
-        """Called when a test case is complete"""
+        """Called when a test method is complete"""
         pass
 
     def report(self):
