@@ -121,6 +121,9 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option("--log-level", action="store", dest="log_level", type="string", default="INFO")
     parser.add_option('--print-log', action="append", dest="print_loggers", type="string", default=[], help="Direct logging output for these loggers to the console")
 
+    parser.add_option('--serve', action="store", dest="serve_port", type="int", default=None)
+    parser.add_option('--connect', action="store", dest="connect_addr", type="string", default=None)
+
     # Add in any additional options
     for plugin in plugin_modules:
         if hasattr(plugin, 'add_command_line_options'):
@@ -200,7 +203,18 @@ class TestProgram(object):
         if other_opts.bucket_overrides_file:
             bucket_overrides = get_bucket_overrides(other_opts.bucket_overrides_file)
 
-        runner = TestRunner(
+        if other_opts.serve_port:
+            from test_runner_server import TestRunnerServer
+            test_runner_class = TestRunnerServer
+            test_runner_args['serve_port'] = other_opts.serve_port
+        elif other_opts.connect_addr:
+            from test_runner_client import TestRunnerClient
+            test_runner_class = TestRunnerClient
+            test_runner_args['connect_addr'] = other_opts.connect_addr
+        else:
+            test_runner_class = TestRunner
+
+        runner = test_runner_class(
             test_path,
             bucket_overrides=bucket_overrides,
             bucket_count=other_opts.bucket_count,
