@@ -49,7 +49,9 @@ class TestRunnerServer(TestRunner):
             def post(handler):
                 runner_id = handler.get_argument('runner')
                 results = json.loads(handler.request.body)
-                checked_out[results['class']] = None
+
+                print 'Result: %r' % results
+
                 handler.write("kthx")
 
 
