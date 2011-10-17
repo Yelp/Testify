@@ -1,13 +1,14 @@
 from testify import test_reporter
 import urllib2
 import time
+from testify.utils import exception
 
 try:
-    import simplejson as json
-    _hush_pyflakes = [json]
-    del _hush_pyflakes
+	import simplejson as json
+	_hush_pyflakes = [json]
+	del _hush_pyflakes
 except ImportError:
-    import json
+	import json
 
 class HTTPReporter(test_reporter.TestReporter):
 	def __init__(self, options, *args, **kwargs):
@@ -17,15 +18,18 @@ class HTTPReporter(test_reporter.TestReporter):
 	def test_complete(self, test_case, result):
 		if test_case.is_fixture_method(result.test_method) or test_case.method_excluded(result.test_method):
 			return
-		urllib2.urlopen('http://%s/results?runner=test' % self.connect_addr, json.dumps({
-			'class' : '%s %s' % (result.test_method.im_class.__module__, result.test_method.im_class.__name__),
-			'method' : result.test_method.__name__,
-			'success' : bool(result.success),
-			'start_time' : time.mktime(result.start_time.timetuple()),
-			'end_time' : time.mktime(result.end_time.timetuple()),
-            'tb' : exception.format_exception_info(result.exception_info) if not result.success else None,
-            'error' : str(out_result['tb'][-1]).strip() if not result.success else None,
-		}))
+		try:
+			urllib2.urlopen('http://%s/results?runner=test' % self.connect_addr, json.dumps({
+				'class' : '%s %s' % (result.test_method.im_class.__module__, result.test_method.im_class.__name__),
+				'method' : result.test_method.__name__,
+				'success' : bool(result.success),
+				'start_time' : time.mktime(result.start_time.timetuple()),
+				'end_time' : time.mktime(result.end_time.timetuple()),
+				'tb' : exception.format_exception_info(result.exception_info) if not result.success else None,
+				'error' : str(result['tb'][-1]).strip() if not result.success else None,
+			}))
+		except urllib2.URLError:
+			pass
 
 
 def build_test_reporters(options):
