@@ -121,6 +121,15 @@ class TestCase(object):
     STAGE_TEARDOWN = 4
     STAGE_CLASS_TEARDOWN = 5
 
+    EVENT_ON_RUN_TEST_METHOD = 1
+    EVENT_ON_COMPLETE_TEST_METHOD = 2
+    EVENT_ON_RUN_CLASS_SETUP_METHOD = 3
+    EVENT_ON_COMPLETE_CLASS_SETUP_METHOD = 4
+    EVENT_ON_RUN_CLASS_TEARDOWN_METHOD = 5
+    EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD = 6
+    EVENT_ON_RUN_FIXTURE_METHOD = 7
+    EVENT_ON_COMPLETE_FIXTURE_METHOD = 8
+
     log = class_logger.ClassLogger()
 
     def __init__(self, *args, **kwargs):
@@ -144,8 +153,7 @@ class TestCase(object):
                         setattr(self, member_name, suited_function)
 
         # callbacks for various stages of execution, used for stuff like logging
-        self.__on_run_test_method_callbacks = []
-        self.__on_complete_test_method_callbacks = []
+        self.__callbacks = defaultdict(list)
 
         # one of these will later be populated with exception info if there's an
         # exception in the class_setup/class_teardown stage
@@ -236,7 +244,7 @@ class TestCase(object):
             result = TestResult(fixture_method)
 
             try:
-                for callback in self.__on_run_test_method_callbacks:
+                for callback in self.__callbacks[self.EVENT_ON_RUN_CLASS_SETUP_METHOD]:
                     callback(self, fixture_method)
 
                 result.start()
@@ -245,11 +253,11 @@ class TestCase(object):
                     result.end_in_success()
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_incomplete(sys.exc_info())
-                for callback in self.__on_complete_test_method_callbacks:
+                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD]:
                     callback(self, result)
                 raise
             else:
-                for callback in self.__on_complete_test_method_callbacks:
+                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD]:
                     callback(self, result)
 
         self.__run_deprecated_fixture_method('classSetUp')
@@ -263,7 +271,7 @@ class TestCase(object):
         for fixture_method in self.class_teardown_fixtures:
             result = TestResult(fixture_method)
             try:
-                for callback in self.__on_run_test_method_callbacks:
+                for callback in self.__callbacks[self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD]:
                     callback(self, fixture_method)
 
                 result.start()
@@ -272,11 +280,11 @@ class TestCase(object):
                     result.end_in_success()
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_incomplete(sys.exc_info())
-                for callback in self.__on_complete_test_method_callbacks:
+                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD]:
                     callback(self, result)
                 raise
             else:
-                for callback in self.__on_complete_test_method_callbacks:
+                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD]:
                     callback(self, result)
 
     @classmethod
@@ -311,7 +319,7 @@ class TestCase(object):
 
             try:
                 # run "on-run" callbacks. eg/ print out the test method name
-                for callback in self.__on_run_test_method_callbacks:
+                for callback in self.__callbacks[self.EVENT_ON_RUN_TEST_METHOD]:
                     callback(self, test_method)
                 result.start()
 
@@ -346,15 +354,12 @@ class TestCase(object):
                     result.end_in_success()
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_incomplete(sys.exc_info())
-                for callback in self.__on_complete_test_method_callbacks:
+                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_METHOD]:
                     callback(self, result)
                 raise
             else:
-                for callback in self.__on_complete_test_method_callbacks:
+                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_METHOD]:
                     callback(self, result)
-
-    EVENT_ON_RUN_TEST_METHOD = 1
-    EVENT_ON_COMPLETE_TEST_METHOD = 2
 
     def register_callback(self, event, callback):
         """Register a callback for an internal event, usually used for logging.
@@ -363,12 +368,7 @@ class TestCase(object):
 
         Fixture objects can be distinguished by the running them through self.is_fixture_method().
         """
-        if event == self.EVENT_ON_RUN_TEST_METHOD:
-            self.__on_run_test_method_callbacks.append(callback)
-        elif event == self.EVENT_ON_COMPLETE_TEST_METHOD:
-            self.__on_complete_test_method_callbacks.append(callback)
-        else:
-            raise ValueError("Invalid callback event: %s" % event)
+        self.__callbacks[event].append(callback)
 
     def __execute_block_recording_exceptions(self, block_fxn, result, is_class_level=False):
         """Excerpted code for executing a block of code that might except and cause us to update a result object.
@@ -429,7 +429,7 @@ class TestCase(object):
             if fixture_name.startswith('class'):
                 result = TestResult(deprecated_method)
                 try:
-                    for callback in self.__on_run_test_method_callbacks:
+                    for callback in self.__callbacks[self.EVENT_ON_RUN_FIXTURE_METHOD]:
                         callback(self, deprecated_method)
 
                     result.start()
@@ -437,11 +437,11 @@ class TestCase(object):
                         result.end_in_success()
                 except (KeyboardInterrupt, SystemExit):
                     result.end_in_incomplete(sys.exc_info())
-                    for callback in self.__on_complete_test_method_callbacks:
+                    for callback in self.__callbacks[self.EVENT_ON_COMPLETE_FIXTURE_METHOD]:
                         callback(self, result)
                     raise
                 else:
-                    for callback in self.__on_complete_test_method_callbacks:
+                    for callback in self.__callbacks[self.EVENT_ON_COMPLETE_FIXTURE_METHOD]:
                         callback(self, result)
             else:
                 deprecated_method()
