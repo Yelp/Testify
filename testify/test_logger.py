@@ -76,8 +76,7 @@ class TestLoggerBase(test_reporter.TestReporter):
             self.report_test_result(result)
 
             self.results.append(result)
-
-        if not result.success and not TestCase.in_suite(result.test_method, 'expected-failure'):
+        if not result.success:
             self.report_failure(result)
 
     def report(self):
@@ -85,10 +84,7 @@ class TestLoggerBase(test_reporter.TestReporter):
         results_by_status = collections.defaultdict(list)
         for result in self.results:
             if result.success:
-                if result.unexpected_success:
-                    results_by_status['unexpected_success'].append(result)
-                else:
-                    results_by_status['successful'].append(result)
+                results_by_status['successful'].append(result)
             elif result.failure or result.error:
                 results_by_status['failed'].append(result)
             elif result.incomplete:
@@ -111,21 +107,9 @@ class TestLoggerBase(test_reporter.TestReporter):
         pass
 
     def report_failures(self, failed_results):
-        results = {
-            'FAILURES': [],
-            'EXPECTED_FAILURES': []
-            }
-
-        [results['EXPECTED_FAILURES'].append(result) if result.expected_failure else results['FAILURES'].append(result) for result in failed_results]
-
-        if results['EXPECTED_FAILURES']:
-            self.heading('EXPECTED FAILURES', 'The following tests have been marked expected-failure.')
-            for result in results['EXPECTED_FAILURES']:
-                self.failure(result)
-
-        if results['FAILURES']:
+        if failed_results:
             self.heading('FAILURES', 'The following tests are expected to pass.')
-            for result in results['FAILURES']:
+            for result in failed_results:
                 self.failure(result)
         else:
             # throwing this in so that someone looking at the bottom of the
@@ -219,49 +203,29 @@ class TextTestLogger(TestLoggerBase):
             self.write("%s ... " % self._format_test_method_name(test_method))
 
     def report_test_result(self, result):
+        # TODO(krall) simplify
         if self.options.verbosity > VERBOSITY_SILENT:
 
             if result.success:
-                if not result.unexpected_success:
-                    _log.info("success: %s", self._format_test_method_name(result.test_method))
-                    if self.options.verbosity == VERBOSITY_NORMAL:
-                        self.write(self._colorize('.', self.GREEN))
-                    else:
-                        self.writeln("%s in %s" % (self._colorize('ok', self.GREEN), result.normalized_run_time()))
+                _log.info("success: %s", self._format_test_method_name(result.test_method))
+                if self.options.verbosity == VERBOSITY_NORMAL:
+                    self.write(self._colorize('.', self.GREEN))
                 else:
-                    _log.info("unexpected success: %s", self._format_test_method_name(result.test_method))
-                    if self.options.verbosity == VERBOSITY_NORMAL:
-                        self.write(self._colorize('.', self.RED))
-                    else:
-                        self.writeln("%s in %s" % (self._colorize('UNEXPECTED SUCCESS', self.RED), result.normalized_run_time()))
+                    self.writeln("%s in %s" % (self._colorize('ok', self.GREEN), result.normalized_run_time()))
 
             elif result.failure:
-                if result.test_method.im_class.in_suite(result.test_method, 'expected-failure'):
-                    _log.error("fail (expected): %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
-                    if self.options.verbosity == VERBOSITY_NORMAL:
-                        self.write(self._colorize('f', self.RED))
-                    else:
-                        self.writeln("%s in %s" % (self._colorize("FAIL (EXPECTED)", self.RED), result.normalized_run_time()))
+                _log.error("fail: %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
+                if self.options.verbosity == VERBOSITY_NORMAL:
+                    self.write(self._colorize('F', self.RED))
                 else:
-                    _log.error("fail: %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
-                    if self.options.verbosity == VERBOSITY_NORMAL:
-                        self.write(self._colorize('F', self.RED))
-                    else:
-                        self.writeln("%s in %s" % (self._colorize("FAIL", self.RED), result.normalized_run_time()))
+                    self.writeln("%s in %s" % (self._colorize("FAIL", self.RED), result.normalized_run_time()))
 
             elif result.error:
-                if result.test_method.im_class.in_suite(result.test_method, 'expected-failure'):
-                    _log.error("error (expected): %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
-                    if self.options.verbosity == VERBOSITY_NORMAL:
-                        self.write(self._colorize('e', self.RED))
-                    else:
-                        self.writeln("%s in %s" % (self._colorize("ERROR (EXPECTED)", self.RED), result.normalized_run_time()))
+                _log.error("error: %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
+                if self.options.verbosity == VERBOSITY_NORMAL:
+                    self.write(self._colorize('E', self.RED))
                 else:
-                    _log.error("error: %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
-                    if self.options.verbosity == VERBOSITY_NORMAL:
-                        self.write(self._colorize('E', self.RED))
-                    else:
-                        self.writeln("%s in %s" % (self._colorize("ERROR", self.RED), result.normalized_run_time()))
+                    self.writeln("%s in %s" % (self._colorize("ERROR", self.RED), result.normalized_run_time()))
 
             elif result.incomplete:
                 _log.info("incomplete: %s", self._format_test_method_name(result.test_method))
@@ -294,7 +258,6 @@ class TextTestLogger(TestLoggerBase):
 
     def report_stats(self, test_case_count, **results):
         successful = results.get('successful', [])
-        unexpected_success = results.get('unexpected_success', [])
         failed = results.get('failed', [])
         incomplete = results.get('incomplete', [])
         unknown = results.get('unknown', [])
@@ -302,13 +265,12 @@ class TextTestLogger(TestLoggerBase):
         test_method_count = sum(len(bucket) for bucket in results.values())
         test_word = "test" if test_method_count == 1 else "tests"
         case_word = "case" if test_case_count == 1 else "cases"
-        unexpected_failed = [result for result in failed if not result.test_method.im_class.in_suite(result.test_method, 'expected-failure')]
-        overall_success = not unexpected_failed and not unknown and not incomplete
+        overall_success = not failed and not unknown and not incomplete
 
         self.writeln('')
 
         if overall_success:
-            if successful or unexpected_success:
+            if successful:
                 status_string = self._colorize("PASSED", self.GREEN)
             else:
                 status_string = self._colorize("ERROR", self.MAGENTA)
@@ -318,17 +280,15 @@ class TextTestLogger(TestLoggerBase):
         self.write("%s.  " % status_string)
         self.write("%d %s / %d %s: " % (test_method_count, test_word, test_case_count, case_word))
 
-        passed_string = self._colorize("%d passed" % len(successful+unexpected_success), (self.GREEN if len(successful+unexpected_success) else None))
-        passed_string += self._colorize(" (%d unexpected)" % len(unexpected_success), (self.RED if len(unexpected_success) else None))
+        passed_string = self._colorize("%d passed" % len(successful), (self.GREEN if len(successful) else None))
 
         failed_string = self._colorize("%d failed" % len(failed), (self.RED if len(failed) else None))
-        failed_string += self._colorize(" (%d expected)" % (len(failed) - len(unexpected_failed)), (self.RED if len(unexpected_failed) else None))
 
         self.write("%s, %s.  " % (passed_string, failed_string))
 
         total_test_time = reduce(
             operator.add,
-            (result.run_time for result in (successful+unexpected_success+failed+incomplete)),
+            (result.run_time for result in (successful+failed+incomplete)),
             datetime.timedelta())
         self.writeln("(Total test time %.2fs)" % (total_test_time.seconds + total_test_time.microseconds / 1000000.0))
 
