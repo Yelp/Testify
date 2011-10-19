@@ -203,43 +203,39 @@ class TextTestLogger(TestLoggerBase):
             self.write("%s ... " % self._format_test_method_name(test_method))
 
     def report_test_result(self, result):
-        # TODO(krall) simplify
         if self.options.verbosity > VERBOSITY_SILENT:
-
             if result.success:
-                _log.info("success: %s", self._format_test_method_name(result.test_method))
-                if self.options.verbosity == VERBOSITY_NORMAL:
-                    self.write(self._colorize('.', self.GREEN))
-                else:
-                    self.writeln("%s in %s" % (self._colorize('ok', self.GREEN), result.normalized_run_time()))
-
+                status = "success"
             elif result.failure:
-                _log.error("fail: %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
-                if self.options.verbosity == VERBOSITY_NORMAL:
-                    self.write(self._colorize('F', self.RED))
-                else:
-                    self.writeln("%s in %s" % (self._colorize("FAIL", self.RED), result.normalized_run_time()))
-
+                status = "fail"
             elif result.error:
-                _log.error("error: %s", self._format_test_method_name(result.test_method), exc_info=result.exception_info)
-                if self.options.verbosity == VERBOSITY_NORMAL:
-                    self.write(self._colorize('E', self.RED))
-                else:
-                    self.writeln("%s in %s" % (self._colorize("ERROR", self.RED), result.normalized_run_time()))
-
+                status = "error"
             elif result.incomplete:
-                _log.info("incomplete: %s", self._format_test_method_name(result.test_method))
-                if self.options.verbosity == VERBOSITY_NORMAL:
-                    self.write(self._colorize('-', self.YELLOW))
-                else:
-                    self.writeln(self._colorize('INCOMPLETE', self.YELLOW))
-
+                status = "incomplete"
             else:
-                _log.info("unknown: %s", self._format_test_method_name(result.test_method))
-                if self.options.verbosity == VERBOSITY_NORMAL:
-                    self.write('?')
+                status = "unknown"
+
+            status_description, status_letter, color = {
+                "success" : ('ok', '.', self.GREEN),
+                "fail" : ('FAIL', 'F', self.RED),
+                "error" : ('ERROR', 'E', self.RED),
+                "incomplete" : ('INCOMPLETE', '-', self.YELLOW),
+                "unknown" : ('UNKNOWN', '?', None),
+            }[status]
+
+            if status in ('fail', 'error'):
+                _log.error("%s: %s", status, self._format_test_method_name(result.test_method), exc_info=result.exception_info)
+            else:
+                _log.info("%s: %s", status, self._format_test_method_name(result.test_method))
+
+            if self.options.verbosity == VERBOSITY_NORMAL:
+                self.write(self._colorize(status_letter, color))
+            else:
+                if result.normalized_run_time():
+                    self.writeln("%s in %s" % (self._colorize(status_description, color), result.normalized_run_time()))
                 else:
-                    self.writeln('UNKNOWN')
+                    self.writeln(self._colorize(status_description, color))
+
 
     def heading(self, *messages):
         self.writeln("")
