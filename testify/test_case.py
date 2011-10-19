@@ -238,35 +238,31 @@ class TestCase(object):
 
     def __run_class_setup_fixtures(self):
         """Running the class's class_setup method chain."""
-        self._stage = self.STAGE_CLASS_SETUP
-
-        for fixture_method in self.class_setup_fixtures + [ self.classSetUp ]:
-            result = TestResult(fixture_method)
-
-            try:
-                for callback in self.__callbacks[self.EVENT_ON_RUN_CLASS_SETUP_METHOD]:
-                    callback(self, fixture_method)
-
-                result.start()
-
-                if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
-                    result.end_in_success()
-            except (KeyboardInterrupt, SystemExit):
-                result.end_in_incomplete(sys.exc_info())
-                raise
-            finally:
-                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD]:
-                    callback(self, result)
+        self.__run_class_fixtures(
+            self.STAGE_CLASS_SETUP,
+            self.class_setup_fixtures + [ self.classSetUp ],
+            self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
+            self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
+        )
 
     def __run_class_teardown_fixtures(self):
         """End the process of running tests.  Run the class's class_teardown methods"""
-        self._stage = self.STAGE_CLASS_TEARDOWN
+        self.__run_class_fixtures(
+            self.STAGE_CLASS_TEARDOWN,
+            [ self.classTearDown ] + self.class_teardown_fixtures,
+            self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
+            self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
+        )
 
-        for fixture_method in [ self.classTearDown ] + self.class_teardown_fixtures:
+    def __run_class_fixtures(self, stage, fixtures, callback_on_run_event, callback_on_complete_event):
+        """Set the current _stage, run a set of fixtures, calling callbacks before and after each."""
+        self._stage = stage
+
+        for fixture_method in fixtures:
             result = TestResult(fixture_method)
 
             try:
-                for callback in self.__callbacks[self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD]:
+                for callback in self.__callbacks[callback_on_run_event]:
                     callback(self, fixture_method)
 
                 result.start()
@@ -277,7 +273,7 @@ class TestCase(object):
                 result.end_in_incomplete(sys.exc_info())
                 raise
             finally:
-                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD]:
+                for callback in self.__callbacks[callback_on_complete_event]:
                     callback(self, result)
 
     @classmethod
