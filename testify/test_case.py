@@ -240,7 +240,7 @@ class TestCase(object):
         """Running the class's class_setup method chain."""
         self._stage = self.STAGE_CLASS_SETUP
 
-        for fixture_method in self.class_setup_fixtures:
+        for fixture_method in self.class_setup_fixtures + [ self.classSetUp ]:
             result = TestResult(fixture_method)
 
             try:
@@ -260,16 +260,13 @@ class TestCase(object):
                 for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD]:
                     callback(self, result)
 
-        self.__run_deprecated_fixture_method('classSetUp')
-
     def __run_class_teardown_fixtures(self):
         """End the process of running tests.  Run the class's class_teardown methods"""
         self._stage = self.STAGE_CLASS_TEARDOWN
 
-        self.__run_deprecated_fixture_method('classTearDown')
-
-        for fixture_method in self.class_teardown_fixtures:
+        for fixture_method in [ self.classTearDown ] + self.class_teardown_fixtures:
             result = TestResult(fixture_method)
+
             try:
                 for callback in self.__callbacks[self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD]:
                     callback(self, fixture_method)
@@ -331,9 +328,8 @@ class TestCase(object):
                     # first, run setup fixtures
                     self._stage = self.STAGE_SETUP
                     def _setup_block():
-                        for fixture_method in self.setup_fixtures:
+                        for fixture_method in self.setup_fixtures + [ self.setUp ]:
                             fixture_method()
-                        self.__run_deprecated_fixture_method('setUp')
                     self.__execute_block_recording_exceptions(_setup_block, result)
 
                     # then run the test method itself, assuming setup was successful
@@ -344,8 +340,7 @@ class TestCase(object):
                     # finally, run the teardown phase
                     self._stage = self.STAGE_TEARDOWN
                     def _teardown_block():
-                        self.__run_deprecated_fixture_method('tearDown')
-                        for fixture_method in self.teardown_fixtures:
+                        for fixture_method in [ self.tearDown ] + self.teardown_fixtures:
                             fixture_method()
                     self.__execute_block_recording_exceptions(_teardown_block, result)
 
@@ -420,31 +415,6 @@ class TestCase(object):
                 return True if (getattr(method, '_fixture_type') == fixture_type) else False
             else:
                 return True
-
-    def __run_deprecated_fixture_method(self, fixture_name):
-        """This runs an old-style (eg/ 'def setUp') fixture method."""
-        if hasattr(self, fixture_name):
-            deprecated_method = getattr(self, fixture_name)
-
-            if fixture_name.startswith('class'):
-                result = TestResult(deprecated_method)
-                try:
-                    for callback in self.__callbacks[self.EVENT_ON_RUN_FIXTURE_METHOD]:
-                        callback(self, deprecated_method)
-
-                    result.start()
-                    if self.__execute_block_recording_exceptions(deprecated_method, result, is_class_level=True):
-                        result.end_in_success()
-                except (KeyboardInterrupt, SystemExit):
-                    result.end_in_incomplete(sys.exc_info())
-                    for callback in self.__callbacks[self.EVENT_ON_COMPLETE_FIXTURE_METHOD]:
-                        callback(self, result)
-                    raise
-                else:
-                    for callback in self.__callbacks[self.EVENT_ON_COMPLETE_FIXTURE_METHOD]:
-                        callback(self, result)
-            else:
-                deprecated_method()
 
 def suite(*args, **kwargs):
     """Decorator to conditionally assign suites to individual test methods.
