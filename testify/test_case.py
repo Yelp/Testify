@@ -253,10 +253,8 @@ class TestCase(object):
                     result.end_in_success()
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_incomplete(sys.exc_info())
-                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD]:
-                    callback(self, result)
                 raise
-            else:
+            finally:
                 for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD]:
                     callback(self, result)
 
@@ -277,10 +275,8 @@ class TestCase(object):
                     result.end_in_success()
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_incomplete(sys.exc_info())
-                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD]:
-                    callback(self, result)
                 raise
-            else:
+            finally:
                 for callback in self.__callbacks[self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD]:
                     callback(self, result)
 
