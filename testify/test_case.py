@@ -254,7 +254,7 @@ class TestCase(object):
 
             try:
                 for callback in self.__callbacks[callback_on_run_event]:
-                    callback(self, fixture_method)
+                    callback(result.to_dict())
 
                 result.start()
 
@@ -265,7 +265,7 @@ class TestCase(object):
                 raise
             finally:
                 for callback in self.__callbacks[callback_on_complete_event]:
-                    callback(self, result)
+                    callback(result.to_dict())
 
     @classmethod
     def in_suite(cls, method, suite_name):
@@ -299,7 +299,7 @@ class TestCase(object):
             try:
                 # run "on-run" callbacks. eg/ print out the test method name
                 for callback in self.__callbacks[self.EVENT_ON_RUN_TEST_METHOD]:
-                    callback(self, test_method)
+                    callback(result.to_dict())
                 result.start()
 
                 if self.__class_level_failure:
@@ -331,7 +331,7 @@ class TestCase(object):
                 raise
             finally:
                 for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_METHOD]:
-                    callback(self, result)
+                    callback(result.to_dict())
 
     def register_callback(self, event, callback):
         """Register a callback for an internal event, usually used for logging.

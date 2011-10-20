@@ -22,7 +22,9 @@ class TestResult(object):
         super(TestResult, self).__init__()
         self.test_method = test_method
         self.test_method_name = test_method.__name__
-        self.success = self.failure = self.error = self.incomplete = None
+        self.success = self.failure = self.error = self.interrupted = None
+        self.run_time = self.start_time = self.end_time = None
+        self.exception_info = None
         self.complete = False
 
     def start(self):
@@ -50,11 +52,26 @@ class TestResult(object):
             self._complete()
             self.success = True
 
-    def end_in_incomplete(self, exception_info):
+    def end_in_interruption(self, exception_info):
         if not self.complete:
             self._complete()
-            self.incomplete = True
+            self.interrupted = True
             self.exception_info = exception_info
 
-    def normalized_run_time(self):
-        return "%.2fs" % (self.run_time.seconds + (self.run_time.microseconds / 1000000.0))
+    def to_dict(self):
+        return {
+            'run_time' : self.run_time,
+            'normalized_run_time' : None if not self.run_time else "%.2fs" % (self.run_time.seconds + (self.run_time.microseconds / 1000000.0)),
+            'complete': self.complete,
+            'success' : self.success,
+            'failure' : self.failure,
+            'error' : self.error,
+            'interrupted' : self.interrupted,
+            'exception_info' : self.exception_info,
+            'method' : {
+                'name' : self.test_method.__name__,
+                'module' : self.test_method.__module__,
+                'class' : self.test_method.im_class.__name__,
+                'fixture_type' : None if not self.test_method.im_self.is_fixture_method(self.test_method) else self.test_method._fixture_type,
+            }
+        }

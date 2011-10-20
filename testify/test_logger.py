@@ -59,35 +59,38 @@ class TestLoggerBase(test_reporter.TestReporter):
         self.results = []
         self.test_case_classes = set()
 
-    def test_start(self, test_case, test_method):
-        self.test_case_classes.add(test_case.__class__)
-        if not test_case.is_fixture_method(test_method) and not test_case.method_excluded(test_method):
-            self.report_test_name(test_method)
+    def test_start(self, result):
+        self.test_case_classes.add((result['method']['module'], result['method']['class']))
+        self.report_test_name(result['method'])
 
-    def test_complete(self, test_case, result):
-        if not test_case.is_fixture_method(result.test_method):
-            if not test_case.method_excluded(result.test_method):
-                self.report_test_result(result)
-            self.results.append(result)
-        elif result.test_method._fixture_type == 'class_teardown' and (result.failure or result.error):
+    def test_complete(self, result):
+        self.report_test_result(result)
+        self.results.append(result)
+        if not result['success']:
+            self.report_failure(result)
+
+    def fixture_start(self, result):
+        self.test_case_classes.add((result['method']['module'], result['method']['class']))
+
+    def fixture_complete(self, result):
+        if result['method']['fixture_type'] == 'class_teardown' and (result['failure'] or result['error']):
             # For a class_teardown failure, log the name too (since it wouldn't have
             # already been logged by on_run_test_method).
-            self.report_test_name(result.test_method)
+            self.report_test_name(result['method'])
             self.report_test_result(result)
 
             self.results.append(result)
-        if not result.success:
-            self.report_failure(result)
+
 
     def report(self):
         # All the TestCases have been run - now collate results by status and log them
         results_by_status = collections.defaultdict(list)
         for result in self.results:
-            if result.success:
+            if result['success']:
                 results_by_status['successful'].append(result)
-            elif result.failure or result.error:
+            elif result['failure'] or result['error']:
                 results_by_status['failed'].append(result)
-            elif result.incomplete:
+            elif result['incomplete']:
                 results_by_status['incomplete'].append(result)
             else:
                 results_by_status['unknown'].append(result)
@@ -101,7 +104,7 @@ class TestLoggerBase(test_reporter.TestReporter):
         else:
             return bool((len(results_by_status['failed']) + len(results_by_status['unknown'])) == 0)
 
-    def report_test_name(self, test_name):
+    def report_test_name(self, test_method):
         pass
     def report_test_result(self, result):
         pass
@@ -125,12 +128,10 @@ class TestLoggerBase(test_reporter.TestReporter):
 
     def _format_test_method_name(self, test_method):
         """Take a test method as input and return a string for output"""
-        out = []
-        if test_method.im_class.__module__ != "__main__":
-            out.append("%s " % test_method.im_class.__module__)
-        out.append("%s.%s" % (test_method.im_class.__name__, test_method.__name__))
-
-        return ''.join(out)
+        if test_method['module'] != '__main__':
+            return "%s %s.%s" % (test_method['module'], test_method['class'], test_method['name'])
+        else:
+            return "%s.%s" % (test_method['class'], test_method['name'])
 
     # Helper methods for extracting relevant entries from a stack trace
     def _format_exception_info(self, exception_info_tuple):
@@ -204,13 +205,13 @@ class TextTestLogger(TestLoggerBase):
 
     def report_test_result(self, result):
         if self.options.verbosity > VERBOSITY_SILENT:
-            if result.success:
+            if result['success']:
                 status = "success"
-            elif result.failure:
+            elif result['failure']:
                 status = "fail"
-            elif result.error:
+            elif result['error']:
                 status = "error"
-            elif result.incomplete:
+            elif result['incomplete']:
                 status = "incomplete"
             else:
                 status = "unknown"
@@ -224,15 +225,15 @@ class TextTestLogger(TestLoggerBase):
             }[status]
 
             if status in ('fail', 'error'):
-                _log.error("%s: %s", status, self._format_test_method_name(result.test_method), exc_info=result.exception_info)
+                _log.error("%s: %s", status, self._format_test_method_name(result['method']), exc_info=result['exception_info'])
             else:
-                _log.info("%s: %s", status, self._format_test_method_name(result.test_method))
+                _log.info("%s: %s", status, self._format_test_method_name(result['method']))
 
             if self.options.verbosity == VERBOSITY_NORMAL:
                 self.write(self._colorize(status_letter, color))
             else:
-                if result.normalized_run_time():
-                    self.writeln("%s in %s" % (self._colorize(status_description, color), result.normalized_run_time()))
+                if result['normalized_run_time']:
+                    self.writeln("%s in %s" % (self._colorize(status_description, color), result['normalized_run_time']))
                 else:
                     self.writeln(self._colorize(status_description, color))
 
@@ -247,8 +248,8 @@ class TextTestLogger(TestLoggerBase):
         self.writeln("")
         self.writeln("=" * 72)
         # self.write("%s: " % self._colorize(('FAIL' if result.failure else 'ERROR'), self.RED))
-        self.writeln(self._format_test_method_name(result.test_method))
-        self.writeln(''.join(self._format_exception_info(result.exception_info)))
+        self.writeln(self._format_test_method_name(result['method']))
+        self.writeln(''.join(self._format_exception_info(result['exception_info'])))
         self.writeln('=' * 72)
         self.writeln("")
 
@@ -284,7 +285,7 @@ class TextTestLogger(TestLoggerBase):
 
         total_test_time = reduce(
             operator.add,
-            (result.run_time for result in (successful+failed+incomplete)),
+            (result['run_time'] for result in (successful+failed+incomplete)),
             datetime.timedelta())
         self.writeln("(Total test time %.2fs)" % (total_test_time.seconds + total_test_time.microseconds / 1000000.0))
 
