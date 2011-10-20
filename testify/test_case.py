@@ -295,7 +295,6 @@ class TestCase(object):
         for test_method in self.runnable_test_methods():
 
             result = TestResult(test_method)
-            test_method.im_self.test_result = result
 
             try:
                 # run "on-run" callbacks. eg/ print out the test method name
