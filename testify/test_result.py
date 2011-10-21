@@ -16,6 +16,22 @@
 """This module contains the TestResult class, each instance of which holds status information for a single test method."""
 __testify = 1
 import datetime
+import traceback
+
+#If IPython is available, use it for fancy color traceback formatting
+try:
+    try:
+        # IPython >= 0.11
+        from IPython.core.ultratb import ColorTB
+        _hush_pyflakes = [ColorTB]
+        del _hush_pyflakes
+    except ImportError:
+        # IPython < 0.11
+        from IPython.ultraTB import ColorTB
+
+    fancy_tb_formatter = ColorTB().text
+except ImportError:
+    fancy_tb_formatter = None
 
 class TestResult(object):
     def __init__(self, test_method):
@@ -58,6 +74,38 @@ class TestResult(object):
             self.interrupted = True
             self.exception_info = exception_info
 
+
+    def format_exception_info(self, pretty=False):
+        if self.exception_info is None:
+            return None
+
+        tb_formatter = fancy_tb_formatter if (pretty and fancy_tb_formatter) else traceback.format_exception
+
+        def is_relevant_tb_level(tb):
+            return tb.tb_frame.f_globals.has_key('__testify')
+
+        def count_relevant_tb_levels(tb):
+            length = 0
+            while tb and not is_relevant_tb_level(tb):
+                length += 1
+                tb = tb.tb_next
+            return length
+
+        exctype, value, tb = self.exception_info
+
+        # Skip test runner traceback levels
+        while tb and is_relevant_tb_level(tb):
+            tb = tb.tb_next
+        if exctype is AssertionError:
+            # Skip testify.assertions traceback levels
+            length = count_relevant_tb_levels(tb)
+            return tb_formatter(exctype, value, tb, length)
+
+        if not tb:
+            return "Exception: %r (%r)" % (exctype, value)
+
+        return tb_formatter(exctype, value, tb)
+
     def to_dict(self):
         return {
             'run_time' : self.run_time,
@@ -67,7 +115,8 @@ class TestResult(object):
             'failure' : self.failure,
             'error' : self.error,
             'interrupted' : self.interrupted,
-            'exception_info' : self.exception_info,
+            'exception_info' : self.format_exception_info(),
+            'exception_info_pretty' : self.format_exception_info(pretty=True),
             'method' : {
                 'name' : self.test_method.__name__,
                 'module' : self.test_method.__module__,

@@ -22,25 +22,8 @@ import logging
 import operator
 import subprocess
 import sys
-import traceback
-
-# If IPython is available, use it for fancy color traceback formatting
-try:
-    try:
-        # IPython >= 0.11
-        from IPython.core.ultratb import ColorTB
-        _hush_pyflakes = [ColorTB]
-        del _hush_pyflakes
-    except ImportError:
-        # IPython < 0.11
-        from IPython.ultraTB import ColorTB
-
-    fancy_tb_formatter = staticmethod(ColorTB().text)
-except ImportError:
-    fancy_tb_formatter = staticmethod(traceback.format_exception)
 
 from testify import test_reporter
-from testify.test_case import TestCase
 
 # Beyond the nicely formatted test output provided by the test logger classes, we
 # also want to make basic test running /result info available via standard python logger
@@ -51,7 +34,6 @@ VERBOSITY_NORMAL    = 1  # Output dots for each test method run
 VERBOSITY_VERBOSE   = 2  # Output method names and timing information
 
 class TestLoggerBase(test_reporter.TestReporter):
-    traceback_formatter = staticmethod(traceback.format_exception)
 
     def __init__(self, options, stream=sys.stdout):
         super(TestLoggerBase, self).__init__(options)
@@ -133,35 +115,7 @@ class TestLoggerBase(test_reporter.TestReporter):
         else:
             return "%s.%s" % (test_method['class'], test_method['name'])
 
-    # Helper methods for extracting relevant entries from a stack trace
-    def _format_exception_info(self, exception_info_tuple):
-        exctype, value, tb = exception_info_tuple
-        # Skip test runner traceback levels
-        while tb and self.__is_relevant_tb_level(tb):
-            tb = tb.tb_next
-        if exctype is AssertionError:
-            # Skip testify.assertions traceback levels
-            length = self.__count_relevant_tb_levels(tb)
-            return self.traceback_formatter(exctype, value, tb, length)
-
-        if not tb:
-            return "Exception: %r (%r)" % (exctype, value)
-
-        return self.traceback_formatter(exctype, value, tb)
-
-    def __is_relevant_tb_level(self, tb):
-        return tb.tb_frame.f_globals.has_key('__testify')
-
-    def __count_relevant_tb_levels(self, tb):
-        length = 0
-        while tb and not self.__is_relevant_tb_level(tb):
-            length += 1
-            tb = tb.tb_next
-        return length
-
-
 class TextTestLogger(TestLoggerBase):
-    traceback_formatter = fancy_tb_formatter
     def __init__(self, options, stream=sys.stdout):
         super(TextTestLogger, self).__init__(options)
 
@@ -225,7 +179,7 @@ class TextTestLogger(TestLoggerBase):
             }[status]
 
             if status in ('fail', 'error'):
-                _log.error("%s: %s", status, self._format_test_method_name(result['method']), exc_info=result['exception_info'])
+                _log.error("%s: %s\n%s", status, self._format_test_method_name(result['method']), ''.join(result['exception_info']))
             else:
                 _log.info("%s: %s", status, self._format_test_method_name(result['method']))
 
@@ -249,7 +203,7 @@ class TextTestLogger(TestLoggerBase):
         self.writeln("=" * 72)
         # self.write("%s: " % self._colorize(('FAIL' if result.failure else 'ERROR'), self.RED))
         self.writeln(self._format_test_method_name(result['method']))
-        self.writeln(''.join(self._format_exception_info(result['exception_info'])))
+        self.writeln(''.join(result['exception_info_pretty']))
         self.writeln('=' * 72)
         self.writeln("")
 
@@ -290,7 +244,6 @@ class TextTestLogger(TestLoggerBase):
         self.writeln("(Total test time %.2fs)" % (total_test_time.seconds + total_test_time.microseconds / 1000000.0))
 
 class HTMLTestLogger(TextTestLogger):
-    traceback_formatter = staticmethod(traceback.format_exception)
 
     def writeln(self, message):
         """Write a message and append a newline"""
@@ -315,7 +268,6 @@ class HTMLTestLogger(TextTestLogger):
             return start_color + message + end_color
 
 class ColorlessTextTestLogger(TextTestLogger):
-    traceback_formatter = staticmethod(traceback.format_exception)
 
     def _colorize(self, message, color=None):
         return message
