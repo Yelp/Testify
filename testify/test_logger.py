@@ -201,7 +201,6 @@ class TextTestLogger(TestLoggerBase):
     def failure(self, result):
         self.writeln("")
         self.writeln("=" * 72)
-        # self.write("%s: " % self._colorize(('FAIL' if result.failure else 'ERROR'), self.RED))
         self.writeln(self._format_test_method_name(result['method']))
         self.writeln(''.join(result['exception_info_pretty']))
         self.writeln('=' * 72)
