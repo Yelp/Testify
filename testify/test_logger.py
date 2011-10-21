@@ -165,7 +165,7 @@ class TextTestLogger(TestLoggerBase):
                 status = "fail"
             elif result['error']:
                 status = "error"
-            elif result['incomplete']:
+            elif result['interrupted']:
                 status = "incomplete"
             else:
                 status = "unknown"
