@@ -108,6 +108,8 @@ class TestResult(object):
 
     def to_dict(self):
         return {
+            'start_time' : self.start_time,
+            'end_time' : self.end_time,
             'run_time' : self.run_time,
             'normalized_run_time' : None if not self.run_time else "%.2fs" % (self.run_time.seconds + (self.run_time.microseconds / 1000000.0)),
             'complete': self.complete,
