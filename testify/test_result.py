@@ -121,7 +121,7 @@ class TestResult(object):
             'exception_info_pretty' : self.format_exception_info(pretty=True),
             'method' : {
                 'name' : self.test_method.__name__,
-                'module' : self.test_method.__module__,
+                'module' : self.test_method.im_class.__module__,
                 'class' : self.test_method.im_class.__name__,
                 'fixture_type' : None if not self.test_method.im_self.is_fixture_method(self.test_method) else self.test_method._fixture_type,
             }
