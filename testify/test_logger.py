@@ -313,7 +313,7 @@ class TextTestLogger(TestLoggerBase):
             else:
                 status_string = self._colorize("ERROR", self.MAGENTA)
         else:
-            self._colorize("FAILED", self.RED)
+            status_string = self._colorize("FAILED", self.RED)
 
         self.write("%s.  " % status_string)
         self.write("%d %s / %d %s: " % (test_method_count, test_word, test_case_count, case_word))

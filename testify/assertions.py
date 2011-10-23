@@ -14,6 +14,10 @@
 
 
 """Methods to be used inside of assert statements"""
+
+from .utils import stringdiffer
+
+
 __testify = 1
 
 def assert_raises(expected_exception_class, callable_obj, *args, **kwargs):
@@ -25,11 +29,25 @@ def assert_raises(expected_exception_class, callable_obj, *args, **kwargs):
         return True
     assert_not_reached("No exception was raised (expected %s)" % expected_exception_class)
 
+def _diff_message(lhs, rhs):
+    """If `lhs` and `rhs` are strings, return the a formatted message
+    describing their differences. If they're not strings, describe the
+    differences in their `repr()`s.
+
+    NOTE: Only works well for strings not containing newlines.
+    """
+    lhs = repr(lhs) if not isinstance(lhs, basestring) else lhs
+    rhs = repr(rhs) if not isinstance(rhs, basestring) else rhs
+
+    return 'Diff:\nl: %s\nr: %s' % stringdiffer.highlight(lhs, rhs)
+
 def assert_equal(lval, rval, message=None):
     if message:
         assert lval == rval, message
     else:
-        assert lval == rval, "assertion failed: %r == %r" % (lval, rval)
+        assert lval == rval, \
+            "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
+                (lval, rval, _diff_message(lval, rval))
 
 assert_equals = assert_equal
 
@@ -45,7 +63,8 @@ def assert_not_equal(lval, rval, message=None):
     if message:
         assert lval != rval, message
     else:
-        assert lval != rval, 'assertion failed: %s != %s' % (lval, rval)
+        assert lval == rval, \
+            "assertion failed: l != r\nl: %r\n!=\nr: %r" % (lval, rval)
 
 def assert_lt(lval, rval, message=None):
     if message:
@@ -72,12 +91,12 @@ def assert_gte(lval, rval, message=None):
         assert lval >= rval, 'assertion failed: %s >= %s' % (lval, rval)
 
 def assert_in_range(val, start, end, message=None, inclusive=False):
-	if inclusive:
-		real_message = message or "! %s <= %r <= %r" % (start, val, end)
-		assert start <= val <= end, real_message
-	else:
-		real_message = message or "! %s < %r < %r" % (start, val, end)
-		assert start < val < end, real_message
+    if inclusive:
+        real_message = message or "! %s <= %r <= %r" % (start, val, end)
+        assert start <= val <= end, real_message
+    else:
+        real_message = message or "! %s < %r < %r" % (start, val, end)
+        assert start < val < end, real_message
 
 def assert_in(item, sequence):
     assert item in sequence, "assertion failed: expected %r in %r" % (item, sequence)
@@ -103,7 +122,7 @@ def assert_rows_equal(rows1, rows2):
             return tuple((k, row[k]) for k in sorted(row))
         else:
             return tuple(sorted(row))
-                 
+
     def norm_rows(rows):
         return tuple(sorted(norm_row(row) for row in rows))
 
