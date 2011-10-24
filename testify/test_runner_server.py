@@ -50,7 +50,11 @@ class TestRunnerServer(TestRunner):
                 runner_id = handler.get_argument('runner')
                 results = json.loads(handler.request.body)
 
-                print 'Result: %r' % results
+                for reporter in self.test_reporters:
+                    # Hopefully calling test_start with a complete result dict doesn't mess with any of our reporters too badly.
+                    # TODO(krall) set some of these fields (start_time, end_time, run_time) to None.
+                    reporter.test_start(results)
+                    reporter.test_complete(results)
 
                 handler.write("kthx")
 
