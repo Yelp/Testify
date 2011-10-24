@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import time
 
 try:
     import simplejson as json
@@ -22,7 +21,6 @@ except ImportError:
     import json
 
 from testify import test_reporter
-from testify.utils import exception
 
 class ResultLogHandler(logging.Handler):
     """Log Handler to collect log output during a test run"""
@@ -79,9 +77,9 @@ class JSONReporter(test_reporter.TestReporter):
 
         out_result['name'] = '%s %s.%s' % (result['method']['module'], result['method']['class'], result['method']['name'])
         out_result['module'] = '%s' % result['method']['module']
-        out_result['start_time'] = time.mktime(result['start_time'].timetuple())
-        out_result['end_time'] = time.mktime(result['end_time'].timetuple())
-        out_result['run_time'] = result['run_time'].seconds + float(result['run_time'].microseconds) / 1000000
+        out_result['start_time'] = result['start_time']
+        out_result['end_time'] = result['end_time']
+        out_result['run_time'] = result['run_time']
 
         # Classify the test
         if result['method']['fixture_type']:

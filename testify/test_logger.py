@@ -17,7 +17,6 @@
 __testify = 1
 
 import collections
-import datetime
 import logging
 import operator
 import subprocess
@@ -239,8 +238,9 @@ class TextTestLogger(TestLoggerBase):
         total_test_time = reduce(
             operator.add,
             (result['run_time'] for result in (successful+failed+incomplete)),
-            datetime.timedelta())
-        self.writeln("(Total test time %.2fs)" % (total_test_time.seconds + total_test_time.microseconds / 1000000.0))
+            0,
+            )
+        self.writeln("(Total test time %.2fs)" % total_test_time)
 
 class HTMLTestLogger(TextTestLogger):
 
