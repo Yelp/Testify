@@ -124,6 +124,7 @@ class TestResult(object):
                 'name' : self.test_method.__name__,
                 'module' : self.test_method.im_class.__module__,
                 'class' : self.test_method.im_class.__name__,
+                'full_name' : '%s %s.%s' % (self.test_method.im_class.__module__, self.test_method.im_class.__name__, self.test_method.__name__),
                 'fixture_type' : None if not self.test_method.im_self.is_fixture_method(self.test_method) else self.test_method._fixture_type,
             }
         }
