@@ -1,6 +1,7 @@
 from testify import test_case
 from testify import run
 from testify import test_result
+from testify import assert_equal
 
 try:
     import simplejson as json
@@ -23,6 +24,29 @@ class TestResultIsSerializableTestCase(test_case.TestCase):
 		json.dumps(result.to_dict())
 		result.end_in_success()
 		json.dumps(result.to_dict())
+
+	def test_not_garbled_by_serialization(self):
+		"""Make sure that converting to JSON and back results in the same dictionary."""
+		result = test_result.TestResult(self.null_test_case.test_method)
+		assert_equal(
+			result.to_dict(),
+			json.loads(json.dumps(result.to_dict()))
+		)
+
+		result.start()
+		assert_equal(
+			result.to_dict(),
+			json.loads(json.dumps(result.to_dict()))
+		)
+
+		result.end_in_success()
+		assert_equal(
+			result.to_dict(),
+			json.loads(json.dumps(result.to_dict()))
+		)
+
+
+
 
 if __name__ == '__main__':
     run()
