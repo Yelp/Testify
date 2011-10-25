@@ -71,8 +71,8 @@ class TestLoggerBase(test_reporter.TestReporter):
                 results_by_status['successful'].append(result)
             elif result['failure'] or result['error']:
                 results_by_status['failed'].append(result)
-            elif result['incomplete']:
-                results_by_status['incomplete'].append(result)
+            elif result['interrupted']:
+                results_by_status['interrupted'].append(result)
             else:
                 results_by_status['unknown'].append(result)
 
@@ -165,7 +165,7 @@ class TextTestLogger(TestLoggerBase):
             elif result['error']:
                 status = "error"
             elif result['interrupted']:
-                status = "incomplete"
+                status = "interrupted"
             else:
                 status = "unknown"
 
@@ -173,7 +173,7 @@ class TextTestLogger(TestLoggerBase):
                 "success" : ('ok', '.', self.GREEN),
                 "fail" : ('FAIL', 'F', self.RED),
                 "error" : ('ERROR', 'E', self.RED),
-                "incomplete" : ('INCOMPLETE', '-', self.YELLOW),
+                "interrupted" : ('INTERRUPTED', '-', self.YELLOW),
                 "unknown" : ('UNKNOWN', '?', None),
             }[status]
 
@@ -208,13 +208,13 @@ class TextTestLogger(TestLoggerBase):
     def report_stats(self, test_case_count, **results):
         successful = results.get('successful', [])
         failed = results.get('failed', [])
-        incomplete = results.get('incomplete', [])
+        interrupted = results.get('interrupted', [])
         unknown = results.get('unknown', [])
 
         test_method_count = sum(len(bucket) for bucket in results.values())
         test_word = "test" if test_method_count == 1 else "tests"
         case_word = "case" if test_case_count == 1 else "cases"
-        overall_success = not failed and not unknown and not incomplete
+        overall_success = not failed and not unknown and not interrupted
 
         self.writeln('')
 
@@ -237,7 +237,7 @@ class TextTestLogger(TestLoggerBase):
 
         total_test_time = reduce(
             operator.add,
-            (result['run_time'] for result in (successful+failed+incomplete)),
+            (result['run_time'] for result in (successful+failed+interrupted)),
             0,
             )
         self.writeln("(Total test time %.2fs)" % total_test_time)

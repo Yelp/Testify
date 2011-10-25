@@ -261,7 +261,7 @@ class TestCase(object):
                 if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
                     result.end_in_success()
             except (KeyboardInterrupt, SystemExit):
-                result.end_in_incomplete(sys.exc_info())
+                result.end_in_interruption(sys.exc_info())
                 raise
             finally:
                 for callback in self.__callbacks[callback_on_complete_event]:
@@ -327,7 +327,7 @@ class TestCase(object):
                 if not result.complete:
                     result.end_in_success()
             except (KeyboardInterrupt, SystemExit):
-                result.end_in_incomplete(sys.exc_info())
+                result.end_in_interruption(sys.exc_info())
                 raise
             finally:
                 for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_METHOD]:
