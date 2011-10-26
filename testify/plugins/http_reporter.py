@@ -2,6 +2,7 @@ from testify import test_reporter
 import urllib2
 import time
 from testify.utils import exception
+import httplib
 
 try:
 	import simplejson as json
@@ -18,9 +19,8 @@ class HTTPReporter(test_reporter.TestReporter):
 	def test_complete(self, result):
 		try:
 			urllib2.urlopen('http://%s/results?runner=test' % self.connect_addr, json.dumps(result))
-		except urllib2.URLError:
-			#TODO log the error.
-			pass
+		except (urllib2.URLError, httplib.BadStatusLine), e:
+			print repr(e)
 
 
 def build_test_reporters(options):

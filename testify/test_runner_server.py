@@ -12,6 +12,7 @@ except ImportError:
 import Queue
 import time
 import itertools
+import time
 
 class TestRunnerServer(TestRunner):
     RUNNER_TIMEOUT = 300
@@ -69,18 +70,20 @@ class TestRunnerServer(TestRunner):
                 if not d or d['runner'] != runner_id:
                     return handler.send_error(409)
 
+                handler.finish("kthx")
+                handler.flush()
+
                 if result['success']:
                     d['passed_methods'][result['method']['name']] = result
                 else:
                     d['failed_methods'][result['method']['name']] = result
 
-                d['timeout_time']= time.time() + self.RUNNER_TIMEOUT,
+                d['timeout_time'] = time.time() + self.RUNNER_TIMEOUT
 
                 d['methods'].remove(result['method']['name'])
                 if not d['methods']:
                     self.check_in_class(runner_id, class_path, finished=True)
 
-                handler.write("kthx")
 
         # Enqueue all of our tests.
         for test_dict in self.discover():
@@ -129,4 +132,6 @@ class TestRunnerServer(TestRunner):
                     reporter.test_complete(result_dict)
 
             if self.test_queue.empty() and len(self.checked_out) == 0:
-                tornado.ioloop.IOLoop.instance().stop()
+                # Can't immediately call stop, otherwise the current POST won't ever get a response.
+                iol = tornado.ioloop.IOLoop.instance()
+                iol.add_timeout(time.time()+1, iol.stop)

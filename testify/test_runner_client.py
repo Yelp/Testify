@@ -6,7 +6,7 @@ try:
     del _hush_pyflakes
 except ImportError:
     import json
-
+import time
 
 class TestRunnerClient(TestRunner):
     def __init__(self, *args, **kwargs):
@@ -31,6 +31,10 @@ class TestRunnerClient(TestRunner):
                 yield {'class': klass, 'methods': methods}
 
     def get_next_tests(self):
-        response = urllib2.urlopen('http://%s/tests?runner=test' % self.connect_addr)
-        d = json.load(response)
-        return (d.get('class'), d.get('methods'), d['finished'])
+        try:
+            response = urllib2.urlopen('http://%s/tests?runner=test' % self.connect_addr)
+            d = json.load(response)
+            return (d.get('class'), d.get('methods'), d['finished'])
+        except urllib2.URLError, e:
+            print repr(e)
+            return None, None, True # Stop trying if we can't connect to the server.
