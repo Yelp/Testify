@@ -14,50 +14,83 @@ import time
 import itertools
 import time
 
+class AsyncQueue(object):
+    def __init__(self):
+        self.data_queue = Queue.PriorityQueue()
+        self.callback_queue = Queue.PriorityQueue()
+        self.finalized = False
+
+    def get(self, priority, callback):
+        if self.finalized:
+            callback(None)
+            return
+        try:
+            _, data = self.data_queue.get_nowait()
+            callback(data)
+        except Queue.Empty:
+            self.callback_queue.put((priority, callback,))
+
+    def put(self, priority, data):
+        try:
+            _, callback = self.callback_queue.get_nowait()
+            callback(data)
+        except Queue.Empty:
+            self.data_queue.put((priority, data,))
+
+    def empty(self):
+        return self.data_queue.empty()
+
+    def waiting(self):
+        return self.callback_queue.empty()
+
+    def finalize(self):
+        self.finalized = True
+        try:
+            while True:
+                _, callback = self.callback_queue.get_nowait()
+                callback(None)
+        except Queue.Empty:
+            pass
+
 class TestRunnerServer(TestRunner):
     RUNNER_TIMEOUT = 300
 
     def __init__(self, *args, **kwargs):
         self.serve_port = kwargs.pop('serve_port')
 
-        self.test_queue = Queue.PriorityQueue()
+        self.test_queue = AsyncQueue()
         self.checked_out = {}
 
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
     def run(self):
         class TestsHandler(tornado.web.RequestHandler):
+            @tornado.web.asynchronous
             def get(handler):
                 runner_id = handler.get_argument('runner')
-                if not self.test_queue.empty():
-                    methods = None
-                    _, tests_dict = self.test_queue.get()
 
-                    test_case_class = tests_dict['class']
-                    test_instance = test_case_class(
-                        suites_include=self.suites_include,
-                        suites_exclude=self.suites_exclude,
-                        suites_require=self.suites_require)
+                def callback(test_dict):
+                    if test_dict:
+                        test_case_class = test_dict['class']
+                        test_instance = test_case_class(
+                            suites_include=self.suites_include,
+                            suites_exclude=self.suites_exclude,
+                            suites_require=self.suites_require)
 
 
-                    class_path = '%s %s' % (test_case_class.__module__, test_case_class.__name__)
-                    methods = [test.__name__ for test in test_instance.runnable_test_methods()]
+                        self.check_out_class(runner_id, test_dict)
 
-                    # If this test class has no methods, skip it.
-                    if not methods:
-                        return handler.get()
+                        handler.finish(json.dumps({
+                            'class': test_dict['class_path'],
+                            'methods': test_dict['methods'],
+                            'finished': False,
+                        }))
+                    else:
+                        handler.finish(json.dumps({
+                            'finished': True,
+                        }))
 
-                    self.check_out_class(runner_id, class_path, methods)
-
-                    handler.write(json.dumps({
-                        'class': class_path,
-                        'methods': methods,
-                        'finished': False,
-                    }))
-                else:
-                    handler.write(json.dumps({
-                        'finished': True,
-                    }))
+                self.test_queue.get(0, callback)
 
         class ResultsHandler(tornado.web.RequestHandler):
             def post(handler):
@@ -87,7 +120,17 @@ class TestRunnerServer(TestRunner):
 
         # Enqueue all of our tests.
         for test_dict in self.discover():
-            self.test_queue.put((0, test_dict))
+            test_case_class = test_dict['class']
+            test_instance = test_case_class(
+                suites_include=self.suites_include,
+                suites_exclude=self.suites_exclude,
+                suites_require=self.suites_require)
+
+            test_dict['class_path'] = '%s %s' % (test_case_class.__module__, test_case_class.__name__)
+            test_dict['methods'] = [test.__name__ for test in test_instance.runnable_test_methods()]
+
+            if test_dict['methods']:
+                self.test_queue.put(0, test_dict)
 
         # Start an HTTP server.
         application = tornado.web.Application([
@@ -102,11 +145,11 @@ class TestRunnerServer(TestRunner):
         report = [reporter.report() for reporter in self.test_reporters]
         return all(report)
 
-    def check_out_class(self, runner, class_path, methods, timeout_rerun=False, failed_rerun=False):
-        self.checked_out[class_path] = {
+    def check_out_class(self, runner, test_dict, timeout_rerun=False, failed_rerun=False):
+        self.checked_out[test_dict['class_path']] = {
             'runner' : runner,
-            'class_path' : class_path,
-            'methods' : set(methods),
+            'class_path' : test_dict['class_path'],
+            'methods' : set(test_dict['methods']),
             'failed_methods' : {},
             'passed_methods' : {},
             'failed_rerun' : failed_rerun,
@@ -133,5 +176,6 @@ class TestRunnerServer(TestRunner):
 
             if self.test_queue.empty() and len(self.checked_out) == 0:
                 # Can't immediately call stop, otherwise the current POST won't ever get a response.
+                self.test_queue.finalize()
                 iol = tornado.ioloop.IOLoop.instance()
                 iol.add_timeout(time.time()+1, iol.stop)
