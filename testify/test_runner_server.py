@@ -12,7 +12,6 @@ except ImportError:
 import Queue
 import time
 import itertools
-import time
 
 class AsyncQueue(object):
     def __init__(self):
@@ -44,6 +43,7 @@ class AsyncQueue(object):
         return self.callback_queue.empty()
 
     def finalize(self):
+        """Call all queued callbacks with None, and make sure any future calls to get() immediately call their callback with None."""
         self.finalized = True
         try:
             while True:
@@ -71,13 +71,6 @@ class TestRunnerServer(TestRunner):
 
                 def callback(test_dict):
                     if test_dict:
-                        test_case_class = test_dict['class']
-                        test_instance = test_case_class(
-                            suites_include=self.suites_include,
-                            suites_exclude=self.suites_exclude,
-                            suites_require=self.suites_require)
-
-
                         self.check_out_class(runner_id, test_dict)
 
                         handler.finish(json.dumps({
@@ -128,6 +121,8 @@ class TestRunnerServer(TestRunner):
 
             test_dict['class_path'] = '%s %s' % (test_case_class.__module__, test_case_class.__name__)
             test_dict['methods'] = [test.__name__ for test in test_instance.runnable_test_methods()]
+            test_dict['failed_rerun'] = False
+            test_dict['timeout_rerun'] = False
 
             if test_dict['methods']:
                 self.test_queue.put(0, test_dict)
@@ -152,30 +147,59 @@ class TestRunnerServer(TestRunner):
             'methods' : set(test_dict['methods']),
             'failed_methods' : {},
             'passed_methods' : {},
-            'failed_rerun' : failed_rerun,
-            'timeout_rerun' : timeout_rerun,
+            'failed_rerun' : test_dict['failed_rerun'],
+            'timeout_rerun' : test_dict['timeout_rerun'],
             'timeout_time' : time.time() + self.RUNNER_TIMEOUT,
         }
 
+        self.timeout_class(runner, test_dict['class_path'])
+
     def check_in_class(self, runner, class_path, timed_out=False, finished=False):
-        if not timed_out and not finished:
+        if bool(timed_out) == bool(finished):
             raise ValueError("Must set either timed_out or finished")
 
+        if class_path not in self.checked_out:
+            raise ValueError("Class path %r not checked out." % class_path)
+        if self.checked_out[class_path]['runner'] != runner:
+            raise ValueError("Class path %r not checked out by runner %r." % (class_path, runner))
+
+        d = self.checked_out.pop(class_path)
+
         if finished:
-            if class_path not in self.checked_out:
-                raise ValueError("Class path %r not checked out." % class_path)
-            if self.checked_out[class_path]['runner'] != runner:
-                raise ValueError("Class path %r not checked out by runner %r." % (class_path, runner))
-
-            d = self.checked_out.pop(class_path)
-
             for result_dict in itertools.chain(d['passed_methods'].itervalues(), d['failed_methods'].itervalues()):
                 for reporter in self.test_reporters:
                     reporter.test_start(result_dict)
                     reporter.test_complete(result_dict)
+
+            #TODO requeue failed tests.
 
             if self.test_queue.empty() and len(self.checked_out) == 0:
                 # Can't immediately call stop, otherwise the current POST won't ever get a response.
                 self.test_queue.finalize()
                 iol = tornado.ioloop.IOLoop.instance()
                 iol.add_timeout(time.time()+1, iol.stop)
+        elif timed_out:
+            # Requeue timed-out tests.
+            test_dict = {
+                'class_path' : d['class_path'],
+                'methods' : list(d['methods']),
+                'failed_rerun' : d['failed_rerun'],
+                'timeout_rerun' : True,
+            }
+            self.test_queue.put(0, test_dict)
+
+
+    def timeout_class(self, runner, class_path):
+        """Check that it's actually time to rerun this class; if not, reset the timeout. Check the class in and rerun it."""
+        d = self.checked_out.get(class_path, None)
+
+        if not d:
+            return
+
+        if time.time() < d['timeout_time']:
+            # We're being called for the first time, or someone has updated timeout_time since the timeout was set (e.g. results came in)
+            tornado.ioloop.IOLoop.instance().add_timeout(d['timeout_time'], lambda: self.timeout_class(runner, class_path))
+            return
+
+        self.check_in_class(runner, class_path, timed_out=True)
+
