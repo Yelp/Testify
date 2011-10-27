@@ -60,6 +60,8 @@ class TestRunnerServer(TestRunner):
 
         self.test_queue = AsyncQueue()
         self.checked_out = {}
+        self.failed_rerun_methods = set()
+        self.timeout_rerun_methods = set()
 
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
@@ -121,8 +123,6 @@ class TestRunnerServer(TestRunner):
 
             test_dict['class_path'] = '%s %s' % (test_case_class.__module__, test_case_class.__name__)
             test_dict['methods'] = [test.__name__ for test in test_instance.runnable_test_methods()]
-            test_dict['failed_rerun'] = False
-            test_dict['timeout_rerun'] = False
 
             if test_dict['methods']:
                 self.test_queue.put(0, test_dict)
@@ -140,15 +140,13 @@ class TestRunnerServer(TestRunner):
         report = [reporter.report() for reporter in self.test_reporters]
         return all(report)
 
-    def check_out_class(self, runner, test_dict, timeout_rerun=False, failed_rerun=False):
+    def check_out_class(self, runner, test_dict):
         self.checked_out[test_dict['class_path']] = {
             'runner' : runner,
             'class_path' : test_dict['class_path'],
             'methods' : set(test_dict['methods']),
             'failed_methods' : {},
             'passed_methods' : {},
-            'failed_rerun' : test_dict['failed_rerun'],
-            'timeout_rerun' : test_dict['timeout_rerun'],
             'timeout_time' : time.time() + self.RUNNER_TIMEOUT,
         }
 
@@ -165,29 +163,41 @@ class TestRunnerServer(TestRunner):
 
         d = self.checked_out.pop(class_path)
 
+        # Report everything we know about for sure.
+        for result_dict in itertools.chain(d['passed_methods'].itervalues(), d['failed_methods'].itervalues()):
+            for reporter in self.test_reporters:
+                reporter.test_start(result_dict)
+                reporter.test_complete(result_dict)
+
+        #Requeue failed tests
+        requeue_dict = {
+            'class_path' : d['class_path'],
+            'methods' : [],
+        }
+
+        for method in d['failed_methods'].keys():
+            if method not in self.failed_rerun_methods:
+                requeue_dict['methods'].append(method)
+                self.failed_rerun_methods.add(method)
+
         if finished:
-            for result_dict in itertools.chain(d['passed_methods'].itervalues(), d['failed_methods'].itervalues()):
-                for reporter in self.test_reporters:
-                    reporter.test_start(result_dict)
-                    reporter.test_complete(result_dict)
-
-            #TODO requeue failed tests.
-
-            if self.test_queue.empty() and len(self.checked_out) == 0:
-                # Can't immediately call stop, otherwise the current POST won't ever get a response.
-                self.test_queue.finalize()
-                iol = tornado.ioloop.IOLoop.instance()
-                iol.add_timeout(time.time()+1, iol.stop)
-        elif timed_out:
+            if len(d['methods']) != 0:
+                raise ValueError("check_in_class called with finished=True but this class (%s) still has %d methods without results." % (class_path, len(d['methods'])))
+        if timed_out:
             # Requeue timed-out tests.
-            test_dict = {
-                'class_path' : d['class_path'],
-                'methods' : list(d['methods']),
-                'failed_rerun' : d['failed_rerun'],
-                'timeout_rerun' : True,
-            }
-            self.test_queue.put(0, test_dict)
+            for method in d['methods']:
+                if method not in self.timeout_rerun_methods:
+                    requeue_dict['methods'].append(method)
+                    self.timeout_rerun_methods.add(method)
 
+        if requeue_dict['methods']:
+            self.test_queue.put(0, requeue_dict)
+
+        if self.test_queue.empty() and len(self.checked_out) == 0:
+            # Can't immediately call stop, otherwise the current POST won't ever get a response.
+            self.test_queue.finalize()
+            iol = tornado.ioloop.IOLoop.instance()
+            iol.add_timeout(time.time()+1, iol.stop)
 
     def timeout_class(self, runner, class_path):
         """Check that it's actually time to rerun this class; if not, reset the timeout. Check the class in and rerun it."""
