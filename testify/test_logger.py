@@ -159,7 +159,10 @@ class TextTestLogger(TestLoggerBase):
     def report_test_result(self, result):
         if self.options.verbosity > VERBOSITY_SILENT:
             if result['success']:
-                status = "success"
+                if result['previous_run']:
+                    status = "flaky"
+                else:
+                    status = "success"
             elif result['failure']:
                 status = "fail"
             elif result['error']:
@@ -171,6 +174,7 @@ class TextTestLogger(TestLoggerBase):
 
             status_description, status_letter, color = {
                 "success" : ('ok', '.', self.GREEN),
+                "flaky" : ('flaky', '!', self.YELLOW),
                 "fail" : ('FAIL', 'F', self.RED),
                 "error" : ('ERROR', 'E', self.RED),
                 "interrupted" : ('INTERRUPTED', '-', self.YELLOW),
