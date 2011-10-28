@@ -43,8 +43,10 @@ class TestResult(object):
         self.run_time = self.start_time = self.end_time = None
         self.exception_info = None
         self.complete = False
+        self.previous_run = None
 
-    def start(self):
+    def start(self, previous_run=None):
+        self.previous_run = previous_run
         self.start_time = datetime.datetime.now()
 
     def _complete(self):
@@ -109,6 +111,7 @@ class TestResult(object):
 
     def to_dict(self):
         return {
+            'previous_run' : self.previous_run,
             'start_time' : time.mktime(self.start_time.timetuple()) if self.start_time else None,
             'end_time' : time.mktime(self.end_time.timetuple()) if self.end_time else None,
             'run_time' : (self.run_time.seconds + float(self.run_time.microseconds) / 1000000) if self.run_time else None,

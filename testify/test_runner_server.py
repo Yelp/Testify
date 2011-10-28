@@ -60,7 +60,7 @@ class TestRunnerServer(TestRunner):
 
         self.test_queue = AsyncQueue()
         self.checked_out = {}
-        self.failed_rerun_methods = set()
+        self.failed_rerun_methods = {} # Keyed on full method name (module class.method), values are results dicts.
         self.timeout_rerun_methods = set()
 
         super(TestRunnerServer, self).__init__(*args, **kwargs)
@@ -119,7 +119,8 @@ class TestRunnerServer(TestRunner):
             test_instance = test_case_class(
                 suites_include=self.suites_include,
                 suites_exclude=self.suites_exclude,
-                suites_require=self.suites_require)
+                suites_require=self.suites_require,
+                name_overrides=test_dict['methods'])
 
             test_dict['class_path'] = '%s %s' % (test_case_class.__module__, test_case_class.__name__)
             test_dict['methods'] = [test.__name__ for test in test_instance.runnable_test_methods()]
@@ -164,8 +165,12 @@ class TestRunnerServer(TestRunner):
         d = self.checked_out.pop(class_path)
 
         # Report everything we know about for sure.
-        for result_dict in itertools.chain(d['passed_methods'].itervalues(), d['failed_methods'].itervalues()):
+        for method, result_dict in itertools.chain(
+                    d['passed_methods'].iteritems(),
+                    ((method, result) for (method, result) in d['failed_methods'].iteritems() if method in self.failed_rerun_methods)
+                ):
             for reporter in self.test_reporters:
+                result_dict['previous_run'] = self.failed_rerun_methods.get(method, None)
                 reporter.test_start(result_dict)
                 reporter.test_complete(result_dict)
 
@@ -175,10 +180,10 @@ class TestRunnerServer(TestRunner):
             'methods' : [],
         }
 
-        for method in d['failed_methods'].keys():
+        for method, result_dict in d['failed_methods'].iteritems():
             if method not in self.failed_rerun_methods:
                 requeue_dict['methods'].append(method)
-                self.failed_rerun_methods.add(method)
+                self.failed_rerun_methods[method] = result_dict
 
         if finished:
             if len(d['methods']) != 0:
