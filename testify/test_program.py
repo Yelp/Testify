@@ -124,6 +124,8 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--serve', action="store", dest="serve_port", type="int", default=None)
     parser.add_option('--connect', action="store", dest="connect_addr", type="string", default=None)
 
+    parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None)
+
     # Add in any additional options
     for plugin in plugin_modules:
         if hasattr(plugin, 'add_command_line_options'):
@@ -159,6 +161,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
         'suites_include': options.suites_include,
         'suites_exclude': options.suites_exclude,
         'suites_require': options.suites_require,
+        'failure_limit' : options.failure_limit,
         'module_method_overrides': module_method_overrides,
         'test_reporters': reporters,            # Should be pushed into plugin
         'options': options,

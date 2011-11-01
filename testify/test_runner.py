@@ -45,6 +45,7 @@ class TestRunner(object):
                  test_reporters=None,
                  plugin_modules=None,
                  module_method_overrides=None,
+                 failure_limit=None
                  ):
         """After instantiating a TestRunner, call add_test_case() to add some tests, and run() to run them."""
 
@@ -63,6 +64,9 @@ class TestRunner(object):
         self.plugin_modules = plugin_modules or []
         self.test_reporters = test_reporters or []
         self.module_method_overrides = module_method_overrides if module_method_overrides is not None else {}
+
+        self.failure_limit = failure_limit
+        self.failure_count = 0
 
     @classmethod
     def get_test_method_name(cls, test_method):

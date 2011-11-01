@@ -59,13 +59,18 @@ class TestRunnerServer(TestRunner):
         self.serve_port = kwargs.pop('serve_port')
 
         self.test_queue = AsyncQueue()
-        self.checked_out = {}
+        self.checked_out = {} # Keyed on class path (module class).
         self.failed_rerun_methods = {} # Keyed on full method name (module class.method), values are results dicts.
-        self.timeout_rerun_methods = set()
-
+        self.timeout_rerun_methods = set() # The set of all full method names that have timed out once.
+        self.already_reported_methods = set() # The set of all full method names that we've reported already.
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
     def run(self):
+        class DebugHandler(tornado.web.RequestHandler):
+            def get(handler):
+                trs = self
+                import ipdb; ipdb.set_trace()
+
         class TestsHandler(tornado.web.RequestHandler):
             @tornado.web.asynchronous
             def get(handler):
@@ -95,16 +100,19 @@ class TestRunnerServer(TestRunner):
                 class_path = '%s %s' % (result['method']['module'], result['method']['class'])
                 d = self.checked_out.get(class_path)
 
-                if not d or d['runner'] != runner_id:
-                    return handler.send_error(409)
-
-                handler.finish("kthx")
-                handler.flush()
+                if not d:
+                    return handler.send_error(409, reason="Class %s not checked out." % class_path)
+                if d['runner'] != runner_id:
+                    return handler.send_error(409, reason="Class %s checked out by runner %s, not %s" % (class_path, d['runner'], runner_id))
 
                 if result['success']:
                     d['passed_methods'][result['method']['name']] = result
                 else:
                     d['failed_methods'][result['method']['name']] = result
+                    self.failure_count += 1
+                    if self.failure_limit and self.failure_count >= self.failure_limit:
+                        self.early_shutdown()
+                        return handler.finish("Too many failures, shutting down.")
 
                 d['timeout_time'] = time.time() + self.RUNNER_TIMEOUT
 
@@ -112,6 +120,14 @@ class TestRunnerServer(TestRunner):
                 if not d['methods']:
                     self.check_in_class(runner_id, class_path, finished=True)
 
+                return handler.finish("kthx")
+
+            def get_error_html(handler, status_code, **kwargs):
+                reason = kwargs.pop('reason', None)
+                if reason:
+                    return reason
+                else:
+                    return super(ResultsHandler, handler).get_error_html()
 
         # Enqueue all of our tests.
         for test_dict in self.discover():
@@ -132,6 +148,7 @@ class TestRunnerServer(TestRunner):
         application = tornado.web.Application([
             (r"/tests", TestsHandler),
             (r"/results", ResultsHandler),
+            (r"/debug", DebugHandler),
         ])
 
         server = tornado.httpserver.HTTPServer(application)
@@ -153,21 +170,20 @@ class TestRunnerServer(TestRunner):
 
         self.timeout_class(runner, test_dict['class_path'])
 
-    def check_in_class(self, runner, class_path, timed_out=False, finished=False):
-        if bool(timed_out) == bool(finished):
-            raise ValueError("Must set either timed_out or finished")
+    def check_in_class(self, runner, class_path, timed_out=False, finished=False, early_shutdown=False):
+        if 1 != len([opt for opt in (timed_out, finished, early_shutdown) if opt]):
+            raise ValueError("Must set exactly one of timed_out, finished, or early_shutdown.")
 
         if class_path not in self.checked_out:
             raise ValueError("Class path %r not checked out." % class_path)
-        if self.checked_out[class_path]['runner'] != runner:
+        if not early_shutdown and self.checked_out[class_path]['runner'] != runner:
             raise ValueError("Class path %r not checked out by runner %r." % (class_path, runner))
 
         d = self.checked_out.pop(class_path)
 
-        # Report everything we know about for sure.
         for method, result_dict in itertools.chain(
                     d['passed_methods'].iteritems(),
-                    ((method, result) for (method, result) in d['failed_methods'].iteritems() if method in self.failed_rerun_methods)
+                    ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown or method in self.failed_rerun_methods),
                 ):
             for reporter in self.test_reporters:
                 result_dict['previous_run'] = self.failed_rerun_methods.get(method, None)
@@ -188,7 +204,7 @@ class TestRunnerServer(TestRunner):
         if finished:
             if len(d['methods']) != 0:
                 raise ValueError("check_in_class called with finished=True but this class (%s) still has %d methods without results." % (class_path, len(d['methods'])))
-        if timed_out:
+        elif timed_out:
             # Requeue timed-out tests.
             for method in d['methods']:
                 if method not in self.timeout_rerun_methods:
@@ -199,10 +215,7 @@ class TestRunnerServer(TestRunner):
             self.test_queue.put(0, requeue_dict)
 
         if self.test_queue.empty() and len(self.checked_out) == 0:
-            # Can't immediately call stop, otherwise the current POST won't ever get a response.
-            self.test_queue.finalize()
-            iol = tornado.ioloop.IOLoop.instance()
-            iol.add_timeout(time.time()+1, iol.stop)
+            self.shutdown()
 
     def timeout_class(self, runner, class_path):
         """Check that it's actually time to rerun this class; if not, reset the timeout. Check the class in and rerun it."""
@@ -217,4 +230,15 @@ class TestRunnerServer(TestRunner):
             return
 
         self.check_in_class(runner, class_path, timed_out=True)
+
+    def early_shutdown(self):
+        for class_path in self.checked_out.keys():
+            self.check_in_class(None, class_path, early_shutdown=True)
+        self.shutdown()
+
+    def shutdown(self):
+        # Can't immediately call stop, otherwise the current POST won't ever get a response.
+        self.test_queue.finalize()
+        iol = tornado.ioloop.IOLoop.instance()
+        iol.add_timeout(time.time()+1, iol.stop)
 

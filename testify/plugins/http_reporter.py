@@ -20,8 +20,8 @@ class HTTPReporter(test_reporter.TestReporter):
 		try:
 			urllib2.urlopen('http://%s/results?runner=test' % self.connect_addr, json.dumps(result))
 		except (urllib2.URLError, httplib.BadStatusLine), e:
-			print repr(e)
-
+			# Retry once.
+			urllib2.urlopen('http://%s/results?runner=test' % self.connect_addr, json.dumps(result))
 
 def build_test_reporters(options):
 	if options.connect_addr:
