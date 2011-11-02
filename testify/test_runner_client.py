@@ -11,6 +11,7 @@ import time
 class TestRunnerClient(TestRunner):
     def __init__(self, *args, **kwargs):
         self.connect_addr = kwargs.pop('connect_addr')
+        self.runner_id = kwargs.pop('runner_id')
         super(TestRunnerClient, self).__init__(*args, **kwargs)
 
     def discover(self):
@@ -32,7 +33,7 @@ class TestRunnerClient(TestRunner):
 
     def get_next_tests(self):
         try:
-            response = urllib2.urlopen('http://%s/tests?runner=test' % self.connect_addr)
+            response = urllib2.urlopen('http://%s/tests?runner=%s' % (self.connect_addr, self.runner_id))
             d = json.load(response)
             return (d.get('class'), d.get('methods'), d['finished'])
         except urllib2.URLError, e:

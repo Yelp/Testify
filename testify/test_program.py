@@ -126,6 +126,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
 
     parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None)
     parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300)
+    parser.add_option('--runner-id', action="store", dest="runner_id", type="string", default=None)
 
     # Add in any additional options
     for plugin in plugin_modules:
@@ -135,6 +136,12 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error("Test path required")
+
+    if options.connect_addr and options.serve_port:
+        parser.error("--serve and --connect are mutually exclusive.")
+
+    if options.connect_addr and not options.runner_id:
+        parser.error("--runner-id is required when --connect address is specified.")
 
     test_path, module_method_overrides = _parse_test_runner_command_line_module_method_overrides(args)
 
@@ -215,6 +222,7 @@ class TestProgram(object):
             from test_runner_client import TestRunnerClient
             test_runner_class = TestRunnerClient
             test_runner_args['connect_addr'] = other_opts.connect_addr
+            test_runner_args['runner_id'] = other_opts.runner_id
         else:
             test_runner_class = TestRunner
 
