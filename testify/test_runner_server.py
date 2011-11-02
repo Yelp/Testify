@@ -53,10 +53,9 @@ class AsyncQueue(object):
             pass
 
 class TestRunnerServer(TestRunner):
-    RUNNER_TIMEOUT = 300
-
     def __init__(self, *args, **kwargs):
         self.serve_port = kwargs.pop('serve_port')
+        self.runner_timeout = kwargs['options'].runner_timeout
 
         self.test_queue = AsyncQueue()
         self.checked_out = {} # Keyed on class path (module class).
@@ -114,7 +113,7 @@ class TestRunnerServer(TestRunner):
                         self.early_shutdown()
                         return handler.finish("Too many failures, shutting down.")
 
-                d['timeout_time'] = time.time() + self.RUNNER_TIMEOUT
+                d['timeout_time'] = time.time() + self.runner_timeout
 
                 d['methods'].remove(result['method']['name'])
                 if not d['methods']:
@@ -165,7 +164,7 @@ class TestRunnerServer(TestRunner):
             'methods' : set(test_dict['methods']),
             'failed_methods' : {},
             'passed_methods' : {},
-            'timeout_time' : time.time() + self.RUNNER_TIMEOUT,
+            'timeout_time' : time.time() + self.runner_timeout,
         }
 
         self.timeout_class(runner, test_dict['class_path'])

@@ -125,6 +125,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--connect', action="store", dest="connect_addr", type="string", default=None)
 
     parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None)
+    parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300)
 
     # Add in any additional options
     for plugin in plugin_modules:

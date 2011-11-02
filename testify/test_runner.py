@@ -100,11 +100,15 @@ class TestRunner(object):
 
         try:
             for tests_dict in self.discover():
+                if self.failure_limit and self.failure_count >= self.failure_limit:
+                    break
                 test_case = tests_dict['class'](
                     suites_include=self.suites_include,
                     suites_exclude=self.suites_exclude,
                     suites_require=self.suites_require,
-                    name_overrides=tests_dict['methods'])
+                    name_overrides=tests_dict['methods'],
+                    failure_limit=(self.failure_limit - self.failure_count) if self.failure_limit else None,
+                )
 
                 # We allow our plugins to mutate the test case prior to execution
                 for plugin_mod in self.plugin_modules:
@@ -114,9 +118,15 @@ class TestRunner(object):
                 if not any(test_case.runnable_test_methods()):
                     continue
 
+                def failure_counter(result_dict):
+                    if not result_dict['success']:
+                        self.failure_count += 1
+
                 for reporter in self.test_reporters:
                     test_case.register_callback(test_case.EVENT_ON_RUN_TEST_METHOD, reporter.test_start)
                     test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, reporter.test_complete)
+
+                test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, failure_counter)
 
                 # Now we wrap our test case like an onion. Each plugin given the opportunity to wrap it.
                 runnable = test_case.run

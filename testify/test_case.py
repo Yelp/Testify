@@ -163,6 +163,9 @@ class TestCase(object):
             if name.startswith(('assert', 'fail')):
                 setattr(self, name, instancemethod(getattr(deprecated_assertions, name), self, self.__class__))
 
+        self.failure_limit = kwargs.pop('failure_limit', None)
+        self.failure_count = 0
+
     def __init_fixture_methods(self):
         """Initialize and populate the lists of fixture methods for this TestCase.
         Fixture methods are added by the MetaTestCase metaclass at runtime only to
@@ -332,6 +335,10 @@ class TestCase(object):
             finally:
                 for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_METHOD]:
                     callback(result.to_dict())
+                if not result.success:
+                    self.failure_count += 1
+                    if self.failure_limit and self.failure_count >= self.failure_limit:
+                        return
 
     def register_callback(self, event, callback):
         """Register a callback for an internal event, usually used for logging.
