@@ -140,7 +140,6 @@ class SQLReporter(test_reporter.TestReporter):
         # Most of the time, the Tests row will already exist for this test (it's been run before.)
         row = self.conn.execute(query).fetchone()
         if row:
-            print "Test %d found" % row[Tests.c.id]
             return row[Tests.c.id]
         else:
             # Not there (this test hasn't been run before); create it
@@ -157,19 +156,22 @@ class SQLReporter(test_reporter.TestReporter):
         if not exception_info:
             return None
         exc_hash = md5(''.join(exception_info))
-        self.conn.execute(Failures.insert({
-            'hash' : exc_hash,
-            'error' : exception_info[0],
-            'traceback': ''.join(exception_info),
-        }))
 
         query = SA.select(
             [Failures.c.id],
             Failures.c.hash == exc_hash,
         )
-        results = self.conn.execute(query)
+        row = self.conn.execute(query).fetchone()
+        if not row:
+            # We haven't inserted this row yet; insert it and re-query.
+            self.conn.execute(Failures.insert({
+                'hash' : exc_hash,
+                'error' : exception_info[-1].strip(),
+                'traceback': ''.join(exception_info),
+            }))
+            row = self.conn.execute(query).fetchone()
 
-        return results.fetchone()[Failures.c.id]
+        return row[Failures.c.id]
 
     def report(self):
         #TODO update end_time, duration.
