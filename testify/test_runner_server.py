@@ -126,7 +126,7 @@ class TestRunnerServer(TestRunner):
                 if reason:
                     return reason
                 else:
-                    return super(ResultsHandler, handler).get_error_html()
+                    return super(ResultsHandler, handler).get_error_html(status_code, **kwargs)
 
         # Enqueue all of our tests.
         for test_dict in self.discover():
