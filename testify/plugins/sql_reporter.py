@@ -67,8 +67,6 @@ TestResults = SA.Table('test_results', metadata,
     SA.Column('runner_id', SA.String(100), index=True, nullable=True),
     SA.Column('previous_run', SA.Integer, index=False, nullable=True),
 )
-SA.Index('ix_build_tests', TestResults.c.test, TestResults.c.build, unique=True)
-
 
 def md5(str):
     return hashlib.md5(str.encode('utf8')).hexdigest()
@@ -117,9 +115,8 @@ class SQLReporter(test_reporter.TestReporter):
             }
 
         if result['previous_run']:
-            query = TestResults.insert(create_row_to_insert(result['previous_run']), returning=TestResults.c.id)
-            results = self.conn.execute(query)
-            previous_run_id = results.fetchone()
+            results = self.conn.execute(TestResults.insert(create_row_to_insert(result['previous_run'])))
+            previous_run_id = results.lastrowid
         else:
             previous_run_id = None
 
