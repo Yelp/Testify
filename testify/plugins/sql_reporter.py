@@ -25,6 +25,7 @@ except ImportError:
     import json
 
 import yaml
+import time
 
 metadata = SA.MetaData()
 
@@ -81,6 +82,7 @@ class SQLReporter(test_reporter.TestReporter):
         metadata.create_all(engine)
 
         self.build_id = self.create_build_row(options.build_info)
+        self.start_time = time.time()
 
         super(SQLReporter, self).__init__(options, *args, **kwargs)
 
@@ -175,7 +177,15 @@ class SQLReporter(test_reporter.TestReporter):
 
 
     def report(self):
-        #TODO update end_time, duration.
+        self.end_time = time.time()
+        query = SA.update(Builds,
+            whereclause=(Builds.c.id == self.build_id),
+            values={
+                'end_time' : self.end_time,
+                'run_time' : self.end_time - self.start_time,
+            }
+        )
+        self.conn.execute(query)
         return True
 
 
