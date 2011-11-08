@@ -140,13 +140,13 @@ class SQLReporter(test_reporter.TestReporter):
             return row[Tests.c.id]
         else:
             # Not there (this test hasn't been run before); create it
-            self.conn.execute(Tests.insert({
+            results = self.conn.execute(Tests.insert({
                 'module' : module,
                 'class_name' : class_name,
                 'method_name' : method_name,
             }))
             # and then return it.
-            return self.conn.execute(query).fetchone()[Tests.c.id]
+            return results.lastrowid
 
     def get_failure_id(self, exception_info):
         """Get the ID of the failure row for the specified exception."""
@@ -159,16 +159,17 @@ class SQLReporter(test_reporter.TestReporter):
             Failures.c.hash == exc_hash,
         )
         row = self.conn.execute(query).fetchone()
-        if not row:
+        if row:
+            return row[Failures.c.id]
+        else:
             # We haven't inserted this row yet; insert it and re-query.
-            self.conn.execute(Failures.insert({
+            results = self.conn.execute(Failures.insert({
                 'hash' : exc_hash,
                 'error' : exception_info[-1].strip(),
                 'traceback': ''.join(exception_info),
             }))
-            row = self.conn.execute(query).fetchone()
+            return results.lastrowid
 
-        return row[Failures.c.id]
 
     def report(self):
         #TODO update end_time, duration.
