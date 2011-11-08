@@ -24,6 +24,8 @@ try:
 except ImportError:
     import json
 
+import yaml
+
 metadata = SA.MetaData()
 
 Tests = SA.Table('tests', metadata,
@@ -73,7 +75,8 @@ def md5(str):
 
 class SQLReporter(test_reporter.TestReporter):
     def __init__(self, options, *args, **kwargs):
-        engine = SA.create_engine(options.reporting_db, poolclass=SA.pool.NullPool, pool_recycle=3600)
+        dburl = SA.engine.url.URL(**yaml.safe_load(open(options.reporting_db_config)))
+        engine = SA.create_engine(dburl, poolclass=SA.pool.NullPool, pool_recycle=3600)
         self.conn = engine.connect()
         metadata.create_all(engine)
 
@@ -178,11 +181,11 @@ class SQLReporter(test_reporter.TestReporter):
 
 # Hooks for plugin system
 def add_command_line_options(parser):
-    parser.add_option("--reporting-db", action="store", dest="reporting_db", type="string", default=None, help="URL of SQL database to report into. In the form dialect://user:password@host/dbname[?key=value..]")
+    parser.add_option("--reporting-db-config", action="store", dest="reporting_db_config", type="string", default=None, help="Path to a yaml file describing the SQL database to report into.")
     parser.add_option("--build-info", action="store", dest="build_info", type="string", default=None, help="A JSON dictionary of information about this build, to store in the reporting database.")
 
 def build_test_reporters(options):
-    if options.reporting_db:
+    if options.reporting_db_config:
         return [SQLReporter(options)]
     else:
         return []

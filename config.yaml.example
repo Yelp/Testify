@@ -1,0 +1,9 @@
+# An example config file for testify's --reporting-db-config option.
+# Passed as kwargs into the sqlalchemy.engine.url.URL constructor.
+# See http://www.sqlalchemy.org/docs/05/reference/sqlalchemy/connections.html#sqlalchemy.engine.url.URL
+
+drivername: "mysql"
+host: "dbhost"
+username: "testify"
+password: "secret"
+database: "testify"
