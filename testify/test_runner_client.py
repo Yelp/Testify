@@ -29,7 +29,7 @@ class TestRunnerClient(TestRunner):
                         print "discovery(%s) failed: module %s has no attribute %r" % (module_path, module, part)
 
                 klass = getattr(module, class_name)
-                yield {'class': klass, 'methods': methods}
+                yield klass(name_overrides=methods)
 
     def get_next_tests(self):
         try:

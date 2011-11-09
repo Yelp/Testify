@@ -14,7 +14,6 @@
 
 import hashlib
 import sqlalchemy as SA
-from sqlalchemy.orm.exc import NoResultFound
 from testify import test_reporter
 
 try:
@@ -52,7 +51,7 @@ Builds = SA.Table('builds', metadata,
     SA.Column('revision', SA.String(40), index=True, nullable=False),
     SA.Column('end_time', SA.Integer, index=True, nullable=True),
     SA.Column('run_time', SA.Integer, nullable=True),
-    # SA.Column('errored', SA.Integer, nullable=False),
+    SA.Column('method_count', SA.Integer, nullable=True),
 )
 SA.Index('ix_individual_run', Builds.c.buildbot, Builds.c.buildnumber, Builds.c.revision, unique=True)
 
@@ -105,6 +104,15 @@ class SQLReporter(test_reporter.TestReporter):
             )
         ))
         return results.fetchone()[Builds.c.id]
+
+    def test_counts(self, test_case_count, test_method_count):
+        """Store the number of tests so we can determine progress."""
+        self.conn.execute(SA.update(Builds,
+            whereclause=(Builds.c.id == self.build_id),
+            values={
+                'method_count' : test_method_count,
+            }
+        ))
 
     def test_complete(self, result):
         """Create a TestResults row from a test result dict. Also inserts the previous_run row."""
@@ -199,5 +207,3 @@ def build_test_reporters(options):
         return [SQLReporter(options)]
     else:
         return []
-
-

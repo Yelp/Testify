@@ -26,6 +26,10 @@ class TestReporter(object):
         """
         self.options = options
 
+    def test_counts(self, test_case_count, test_method_count):
+        """Called after discovery finishes. May not be called by all test runners, e.g. TestRunnerClient."""
+        pass
+
     def test_start(self, result):
         """Called when a test method is being run. Gets passed a TestResult dict which should not be complete."""
         pass

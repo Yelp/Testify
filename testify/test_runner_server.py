@@ -13,6 +13,7 @@ import Queue
 import time
 import itertools
 
+
 class AsyncQueue(object):
     def __init__(self):
         self.data_queue = Queue.PriorityQueue()
@@ -103,6 +104,8 @@ class TestRunnerServer(TestRunner):
                     return handler.send_error(409, reason="Class %s not checked out." % class_path)
                 if d['runner'] != runner_id:
                     return handler.send_error(409, reason="Class %s checked out by runner %s, not %s" % (class_path, d['runner'], runner_id))
+                if result['method']['name'] not in d['methods']:
+                    return handler.send_error(409, reason="Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
                 if result['success']:
                     d['passed_methods'][result['method']['name']] = result
@@ -116,6 +119,7 @@ class TestRunnerServer(TestRunner):
                 d['timeout_time'] = time.time() + self.runner_timeout
 
                 d['methods'].remove(result['method']['name'])
+
                 if not d['methods']:
                     self.check_in_class(runner_id, class_path, finished=True)
 
@@ -129,16 +133,11 @@ class TestRunnerServer(TestRunner):
                     return super(ResultsHandler, handler).get_error_html(status_code, **kwargs)
 
         # Enqueue all of our tests.
-        for test_dict in self.discover():
-            test_case_class = test_dict['class']
-            test_instance = test_case_class(
-                suites_include=self.suites_include,
-                suites_exclude=self.suites_exclude,
-                suites_require=self.suites_require,
-                name_overrides=test_dict['methods'])
-
-            test_dict['class_path'] = '%s %s' % (test_case_class.__module__, test_case_class.__name__)
-            test_dict['methods'] = [test.__name__ for test in test_instance.runnable_test_methods()]
+        for test_instance in self.discover():
+            test_dict = {
+                'class_path' : '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
+                'methods' : [test.__name__ for test in test_instance.runnable_test_methods()],
+            }
 
             if test_dict['methods']:
                 self.test_queue.put(0, test_dict)
