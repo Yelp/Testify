@@ -55,10 +55,6 @@ Builds = SA.Table('builds', metadata,
 )
 SA.Index('ix_individual_run', Builds.c.buildbot, Builds.c.buildnumber, Builds.c.revision, unique=True)
 
-BUILD_NOT_ERRORED = 0
-BUILD_ERRORED = 1
-BUILD_IN_PROGRESS = 2
-
 TestResults = SA.Table('test_results', metadata,
     SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
     SA.Column('test', SA.Integer, index=True, nullable=False),
