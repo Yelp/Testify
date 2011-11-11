@@ -55,10 +55,16 @@ def discover(what):
                 import_error = e
                 _log.info('discover_inner: Failed to import %s: %s' % (locator, e))
                 if os.path.isfile(locator) or os.path.isfile(locator+'.py'):
-                    new_loc = os.path.relpath(os.path.normpath(locator))
+                    here = os.path.abspath(os.path.curdir) + os.path.sep
+                    new_loc = os.path.abspath(locator)
+                    if not new_loc.startswith(here):
+                        raise DiscoveryError('Can only load modules by path within the current directory')
+
+                    new_loc = new_loc[len(here):]
                     new_loc = new_loc.rsplit('.py',1)[0] #allows for .pyc and .pyo as well
                     new_loc = new_loc.replace(os.sep,'.')
                     try:
+                        print 'new_loc == %r' % (new_loc)
                         test_module = __import__(new_loc)
                         locator = new_loc
                         del new_loc
