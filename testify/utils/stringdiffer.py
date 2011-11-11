@@ -80,7 +80,25 @@ def highlight_regions(string, regions):
     return ''.join(string)
 
 
-HighlightedDiff = collections.namedtuple('HighlightedDiff', 'old new')
+# no namedtuple in Python 2.5; here is a simple imitation
+# HighlightedDiff = collections.namedtuple('HighlightedDiff', 'old new')
+class HighlightedDiff(tuple):
+
+    def __new__(cls, old, new):
+        return tuple.__new__(cls, (old, new))
+
+    __slots__ = ()  # no attributes allowed
+
+    @property
+    def old(self):
+        return self[0]
+
+    @property
+    def new(self):
+        return self[1]
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (self.__class__.__name__, self.old, self.new)
 
 
 def highlight(old, new):
