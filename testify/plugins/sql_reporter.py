@@ -65,6 +65,7 @@ TestResults = SA.Table('test_results', metadata,
     SA.Column('runner_id', SA.String(100), index=True, nullable=True),
     SA.Column('previous_run', SA.Integer, index=False, nullable=True),
 )
+SA.Index('ix_build_test_failure', TestResults.c.build, TestResults.c.test, TestResults.c.failure)
 
 def md5(str):
     return hashlib.md5(str.encode('utf8')).hexdigest()
