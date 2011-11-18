@@ -129,6 +129,8 @@ class TestCase(object):
     def __init__(self, *args, **kwargs):
         super(TestCase, self).__init__()
 
+        self._method_level = False
+
         # ascend the class hierarchy and discover fixture methods
         self.__init_fixture_methods()
 
@@ -300,6 +302,8 @@ class TestCase(object):
             result = TestResult(test_method)
 
             try:
+                self._method_level = True # Flag that we're currently running method-level stuff (rather than class-level)
+
                 # run "on-run" callbacks. eg/ print out the test method name
                 for callback in self.__callbacks[self.EVENT_ON_RUN_TEST_METHOD]:
                     callback(result.to_dict())
@@ -335,6 +339,9 @@ class TestCase(object):
             finally:
                 for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_METHOD]:
                     callback(result.to_dict())
+
+                self._method_level = False
+
                 if not result.success:
                     self.failure_count += 1
                     if self.failure_limit and self.failure_count >= self.failure_limit:
