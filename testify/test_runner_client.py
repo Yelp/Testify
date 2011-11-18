@@ -16,8 +16,10 @@ class TestRunnerClient(TestRunner):
 
     def discover(self):
         finished = False
+        first_connect = True
         while not finished:
-            class_path, methods, finished = self.get_next_tests()
+            class_path, methods, finished = self.get_next_tests(retry_limit=(60 if first_connect else 1))
+            first_connect = False
             if class_path and methods:
                 module_path, _, class_name = class_path.partition(' ')
 
@@ -31,11 +33,15 @@ class TestRunnerClient(TestRunner):
                 klass = getattr(module, class_name)
                 yield klass(name_overrides=methods)
 
-    def get_next_tests(self):
+    def get_next_tests(self, retry_delay=10, retry_limit=0):
         try:
             response = urllib2.urlopen('http://%s/tests?runner=%s' % (self.connect_addr, self.runner_id))
             d = json.load(response)
             return (d.get('class'), d.get('methods'), d['finished'])
         except urllib2.URLError, e:
             print repr(e)
-            return None, None, True # Stop trying if we can't connect to the server.
+            if retry_limit > 0:
+                time.sleep(retry_delay)
+                return self.get_next_tests(retry_limit=retry_limit-1)
+            else:
+                return None, None, True # Stop trying if we can't connect to the server.
