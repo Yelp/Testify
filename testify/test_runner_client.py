@@ -7,6 +7,7 @@ try:
 except ImportError:
     import json
 import time
+import logging
 
 class TestRunnerClient(TestRunner):
     def __init__(self, *args, **kwargs):
@@ -28,7 +29,7 @@ class TestRunnerClient(TestRunner):
                     try:
                         module = getattr(module, part)
                     except AttributeError:
-                        print "discovery(%s) failed: module %s has no attribute %r" % (module_path, module, part)
+                        logging.error("discovery(%s) failed: module %s has no attribute %r" % (module_path, module, part))
 
                 klass = getattr(module, class_name)
                 yield klass(name_overrides=methods)
@@ -39,8 +40,8 @@ class TestRunnerClient(TestRunner):
             d = json.load(response)
             return (d.get('class'), d.get('methods'), d['finished'])
         except urllib2.URLError, e:
-            print repr(e)
             if retry_limit > 0:
+                logging.warning("Got error %r when requesting tests, retrying %d more times." % (e, retry_limit))
                 time.sleep(retry_delay)
                 return self.get_next_tests(retry_limit=retry_limit-1)
             else:
