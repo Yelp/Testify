@@ -47,6 +47,7 @@ Builds = SA.Table('builds', metadata,
     SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
     SA.Column('buildbot', SA.Integer, nullable=False),
     SA.Column('buildnumber', SA.Integer, nullable=False),
+    SA.Column('buildname', SA.String(40), nullable=False),
     SA.Column('branch', SA.String(100), index=True, nullable=False),
     SA.Column('revision', SA.String(40), index=True, nullable=False),
     SA.Column('end_time', SA.Integer, index=True, nullable=True),
@@ -91,6 +92,7 @@ class SQLReporter(test_reporter.TestReporter):
             'buildnumber' : info_dict['buildnumber'],
             'branch' : info_dict['branch'],
             'revision' : info_dict['revision'],
+            'buildname' : info_dict.get('buildname', None),
         }))
         results = self.conn.execute(SA.select(
             [Builds.c.id],
