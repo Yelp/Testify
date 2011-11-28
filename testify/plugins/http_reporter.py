@@ -3,6 +3,7 @@ import urllib2
 import time
 from testify.utils import exception
 import httplib
+import logging
 
 try:
 	import simplejson as json
@@ -20,10 +21,14 @@ class HTTPReporter(test_reporter.TestReporter):
 
 	def test_complete(self, result):
 		try:
-			urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result))
-		except (urllib2.URLError, httplib.BadStatusLine), e:
-			# Retry once.
-			urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result))
+			try:
+				urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result))
+			except (urllib2.URLError, httplib.BadStatusLine), e:
+				# Retry once.
+				urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result))
+		except urllib2.HTTPError, e:
+			logging.error('Skipping returning results for test %s because of error: %s' % (result['method']['full_name'], e.read()))
+
 
 def build_test_reporters(options):
 	if options.connect_addr:
