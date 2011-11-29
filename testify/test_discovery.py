@@ -64,7 +64,6 @@ def discover(what):
                     new_loc = new_loc.rsplit('.py',1)[0] #allows for .pyc and .pyo as well
                     new_loc = new_loc.replace(os.sep,'.')
                     try:
-                        print 'new_loc == %r' % (new_loc)
                         test_module = __import__(new_loc)
                         locator = new_loc
                         del new_loc
