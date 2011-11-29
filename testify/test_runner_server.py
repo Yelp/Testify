@@ -163,6 +163,7 @@ class TestRunnerServer(TestRunner):
             'methods' : set(test_dict['methods']),
             'failed_methods' : {},
             'passed_methods' : {},
+            'start_time' : time.time(),
             'timeout_time' : time.time() + self.runner_timeout,
         }
 
@@ -208,6 +209,38 @@ class TestRunnerServer(TestRunner):
                 if method not in self.timeout_rerun_methods:
                     requeue_dict['methods'].append(method)
                     self.timeout_rerun_methods.add(method)
+                else:
+                    error_message = "The runner running this method (%s) didn't respond within %ss." % (runner, self.runner_timeout)
+                    module, _, classname = class_path.partition(' ')
+
+                    # Fake the results dict.
+                    result_dict = {
+                        'previous_run' : None,
+                        'start_time' : time.time()-self.runner_timeout,
+                        'end_time' : time.time(),
+                        'run_time' : self.runner_timeout,
+                        'normalized_run_time' : "%.2fs" % (self.runner_timeout),
+                        'complete': True, # We've tried running the test.
+                        'success' : False,
+                        'failure' : False,
+                        'error' : True,
+                        'interrupted' : False,
+                        'exception_info' : error_message,
+                        'exception_info_pretty' : error_message,
+                        'runner_id' : runner,
+                        'method' : {
+                            'module' : module,
+                            'class' : classname,
+                            'name' : method,
+                            'full_name' : "%s.%s" % (class_path, method),
+                            'fixture_type' : None,
+                        }
+                    }
+
+                    for reporter in self.test_reporters:
+                        reporter.test_start(result_dict)
+                        reporter.test_complete(result_dict)
+
 
         if requeue_dict['methods']:
             self.test_queue.put(0, requeue_dict)
