@@ -54,7 +54,7 @@ Builds = SA.Table('builds', metadata,
     SA.Column('run_time', SA.Integer, nullable=True),
     SA.Column('method_count', SA.Integer, nullable=True),
 )
-SA.Index('ix_individual_run', Builds.c.buildbot, Builds.c.buildnumber, Builds.c.revision, unique=True)
+SA.Index('ix_individual_run', Builds.c.buildbot, Builds.c.buildname, Builds.c.buildnumber, Builds.c.revision, unique=True)
 
 TestResults = SA.Table('test_results', metadata,
     SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
@@ -87,22 +87,14 @@ class SQLReporter(test_reporter.TestReporter):
         if not build_info:
             raise ValueError("Build info must be specified when reporting to a database.")
         info_dict = json.loads(build_info)
-        self.conn.execute(Builds.insert({
+        results = self.conn.execute(Builds.insert({
             'buildbot' : info_dict['buildbot'],
             'buildnumber' : info_dict['buildnumber'],
             'branch' : info_dict['branch'],
             'revision' : info_dict['revision'],
-            'buildname' : info_dict.get('buildname', None),
+            'buildname' : info_dict['buildname'],
         }))
-        results = self.conn.execute(SA.select(
-            [Builds.c.id],
-            SA.and_(
-                Builds.c.buildbot == info_dict['buildbot'],
-                Builds.c.buildnumber == info_dict['buildnumber'],
-                Builds.c.revision == info_dict['revision'],
-            )
-        ))
-        return results.fetchone()[Builds.c.id]
+        return results.lastrowid
 
     def test_counts(self, test_case_count, test_method_count):
         """Store the number of tests so we can determine progress."""
