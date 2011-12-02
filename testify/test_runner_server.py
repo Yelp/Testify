@@ -186,6 +186,7 @@ class TestRunnerServer(TestRunner):
                 ):
             for reporter in self.test_reporters:
                 result_dict['previous_run'] = self.failed_rerun_methods.get(method, None)
+                result_dict['runner_id'] = runner
                 reporter.test_start(result_dict)
                 reporter.test_complete(result_dict)
 
