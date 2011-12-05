@@ -20,6 +20,7 @@ class HTTPReporter(test_reporter.TestReporter):
 		super(HTTPReporter, self).__init__(options, *args, **kwargs)
 
 	def test_complete(self, result):
+		result['runner_id'] = self.runner_id
 		try:
 			try:
 				urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result))
