@@ -62,39 +62,23 @@ class JSONReporter(test_reporter.TestReporter):
 
     def test_complete(self, result):
         """Called when a test case is complete"""
-        out_result = {}
 
         if self.options.label:
-            out_result['label'] = self.options.label
+            result['label'] = self.options.label
         if self.options.extra_json_info:
             if not hasattr(self.options, 'parsed_extra_json_info'):
                 self.options.parsed_extra_json_info = json.loads(self.options.extra_json_info)
-            out_result.update(self.options.parsed_extra_json_info)
+            result.update(self.options.parsed_extra_json_info)
         if self.options.bucket is not None:
-            out_result['bucket'] = self.options.bucket
+            result['bucket'] = self.options.bucket
         if self.options.bucket_count is not None:
-            out_result['bucket_count'] = self.options.bucket_count
+            result['bucket_count'] = self.options.bucket_count
 
-        out_result['name'] = '%s %s.%s' % (result['method']['module'], result['method']['class'], result['method']['name'])
-        out_result['module'] = '%s' % result['method']['module']
-        out_result['start_time'] = result['start_time']
-        out_result['end_time'] = result['end_time']
-        out_result['run_time'] = result['run_time']
-
-        # Classify the test
-        if result['method']['fixture_type']:
-            out_result['type'] = 'fixture'
-        else:
-            out_result['type'] = 'test'
-
-        out_result['success'] = bool(result['success'])
         if not result['success']:
-            out_result['tb'] = result['exception_info']
-            out_result['error'] = str(out_result['tb'][-1]).strip()
             if self.log_hndl:
-                out_result['log'] = self.log_hndl.results()
+                result['log'] = self.log_hndl.results()
 
-        self.log_file.write(json.dumps(out_result))
+        self.log_file.write(json.dumps(result))
         self.log_file.write("\n")
 
         self._reset_logging()

@@ -128,6 +128,8 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300)
     parser.add_option('--runner-id', action="store", dest="runner_id", type="string", default=None)
 
+    parser.add_option('--replay-json', action="store", dest="replay_json", type="string", default=None)
+
     # Add in any additional options
     for plugin in plugin_modules:
         if hasattr(plugin, 'add_command_line_options'):
@@ -223,6 +225,10 @@ class TestProgram(object):
             test_runner_class = TestRunnerClient
             test_runner_args['connect_addr'] = other_opts.connect_addr
             test_runner_args['runner_id'] = other_opts.runner_id
+        elif other_opts.replay_json:
+            from test_runner_json_replay import TestRunnerJSONReplay
+            test_runner_class = TestRunnerJSONReplay
+            test_runner_args['replay_json'] = other_opts.replay_json
         else:
             test_runner_class = TestRunner
 

@@ -86,8 +86,8 @@ class JSONReporterTestCase(test_case.TestCase):
 
         result = json.loads(log_lines)
 
-        assert_equal('extended', result['module'])
-        assert_equal('extended ExtendedTestCase.test_method', result['name'])
+        assert_equal('extended', result['method']['module'])
+        assert_equal('extended ExtendedTestCase.test_method', result['method']['full_name'])
 
 
 if __name__ == '__main__':
