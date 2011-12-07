@@ -42,9 +42,8 @@ class TestRunnerJSONReplay(TestRunner):
                 reporter.test_start(result)
                 reporter.test_complete(result)
 
-
-        for reporter in self.test_reporters:
-            reporter.report()
+        report = [reporter.report() for reporter in self.test_reporters]
+        return all(report)
 
     def loadlines(self):
         lines = []
