@@ -66,11 +66,6 @@ class TestRunnerServer(TestRunner):
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
     def run(self):
-        class DebugHandler(tornado.web.RequestHandler):
-            def get(handler):
-                trs = self
-                import ipdb; ipdb.set_trace()
-
         class TestsHandler(tornado.web.RequestHandler):
             @tornado.web.asynchronous
             def get(handler):
@@ -146,7 +141,6 @@ class TestRunnerServer(TestRunner):
         application = tornado.web.Application([
             (r"/tests", TestsHandler),
             (r"/results", ResultsHandler),
-            (r"/debug", DebugHandler),
         ])
 
         server = tornado.httpserver.HTTPServer(application)
