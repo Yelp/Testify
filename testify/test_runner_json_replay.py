@@ -1,11 +1,20 @@
+try:
+    import simplejson as json
+    _hush_pyflakes = [json]
+    del _hush_pyflakes
+except ImportError:
+    import json
 
-import json
+import sys
+
+
 from test_runner import TestRunner
 
 class TestRunnerJSONReplay(TestRunner):
     """A fake test runner that loads a one-dict-per-line JSON file and sends each dict to the test reporters."""
     def __init__(self, *args, **kwargs):
         self.replay_json = kwargs.pop('replay_json')
+        self.replay_json_inline = kwargs.pop('replay_json_inline')
 
         self.results = self.loadlines()
 
@@ -38,18 +47,28 @@ class TestRunnerJSONReplay(TestRunner):
             reporter.report()
 
     def loadlines(self):
-        f = open(self.replay_json)
+        lines = []
+        if self.replay_json_inline:
+            lines.extend(self.replay_json_inline)
+
+        if self.replay_json:
+            f = open(self.replay_json)
+            lines.extend(f.readlines())
+        else:
+            lines.append("RUN COMPLETE")
+
+        assert lines, "No JSON data found."
+
         results = []
-        lines = f.readlines()
         for line in lines:
             if line.strip() == "RUN COMPLETE":
                 continue
             try:
                 results.append(json.loads(line.strip()))
             except:
-                print 'Skipping invalid line: %s' % line
+                sys.exit("Invalid JSON line: %r" % line.strip())
 
-        if lines and lines[-1].strip() != "RUN COMPLETE":
-            raise Exception("Incomplete run detected")
+        if lines[-1].strip() != "RUN COMPLETE":
+            sys.exit("Incomplete run detected")
 
         return results
