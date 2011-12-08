@@ -63,6 +63,9 @@ class TestRunnerServer(TestRunner):
         self.failed_rerun_methods = {} # Keyed on full method name (module class.method), values are results dicts.
         self.timeout_rerun_methods = set() # The set of all full method names that have timed out once.
         self.already_reported_methods = set() # The set of all full method names that we've reported already.
+
+        self.discovered_but_not_checked_in_methods = set()
+
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
     def run(self):
@@ -136,6 +139,7 @@ class TestRunnerServer(TestRunner):
 
             if test_dict['methods']:
                 self.test_queue.put(0, test_dict)
+                self.discovered_but_not_checked_in_methods.update(set(['%s.%s' % (test_dict['class_path'], method) for method in test_dict['methods']]))
 
         # Start an HTTP server.
         application = tornado.web.Application([
@@ -180,6 +184,7 @@ class TestRunnerServer(TestRunner):
                 ):
             for reporter in self.test_reporters:
                 result_dict['previous_run'] = self.failed_rerun_methods.get(method, None)
+                self.discovered_but_not_checked_in_methods.discard(result_dict['method']['full_name'])
                 reporter.test_start(result_dict)
                 reporter.test_complete(result_dict)
 
@@ -266,4 +271,5 @@ class TestRunnerServer(TestRunner):
         self.test_queue.finalize()
         iol = tornado.ioloop.IOLoop.instance()
         iol.add_timeout(time.time()+1, iol.stop)
+        print repr(self.discovered_but_not_checked_in_methods)
 
