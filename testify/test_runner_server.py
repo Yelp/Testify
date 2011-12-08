@@ -60,9 +60,8 @@ class TestRunnerServer(TestRunner):
 
         self.test_queue = AsyncQueue()
         self.checked_out = {} # Keyed on class path (module class).
-        self.failed_rerun_methods = {} # Keyed on full method name (module class.method), values are results dicts.
-        self.timeout_rerun_methods = set() # The set of all full method names that have timed out once.
-        self.already_reported_methods = set() # The set of all full method names that we've reported already.
+        self.failed_rerun_methods = {} # Keyed on tuple (class_path, method), values are results dicts.
+        self.timeout_rerun_methods = set() # The set of all (class_path, method) that have timed out once.
 
         self.discovered_but_not_checked_in_methods = set()
 
@@ -180,10 +179,10 @@ class TestRunnerServer(TestRunner):
 
         for method, result_dict in itertools.chain(
                     d['passed_methods'].iteritems(),
-                    ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown or method in self.failed_rerun_methods),
+                    ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown or (class_path, method) in self.failed_rerun_methods),
                 ):
             for reporter in self.test_reporters:
-                result_dict['previous_run'] = self.failed_rerun_methods.get(method, None)
+                result_dict['previous_run'] = self.failed_rerun_methods.get((class_path, method), None)
                 self.discovered_but_not_checked_in_methods.discard(result_dict['method']['full_name'])
                 reporter.test_start(result_dict)
                 reporter.test_complete(result_dict)
@@ -195,9 +194,9 @@ class TestRunnerServer(TestRunner):
         }
 
         for method, result_dict in d['failed_methods'].iteritems():
-            if method not in self.failed_rerun_methods:
+            if (class_path, method) not in self.failed_rerun_methods:
                 requeue_dict['methods'].append(method)
-                self.failed_rerun_methods[method] = result_dict
+                self.failed_rerun_methods[(class_path, method)] = result_dict
 
         if finished:
             if len(d['methods']) != 0:
@@ -205,9 +204,9 @@ class TestRunnerServer(TestRunner):
         elif timed_out:
             # Requeue timed-out tests.
             for method in d['methods']:
-                if method not in self.timeout_rerun_methods:
+                if (class_path, method) not in self.timeout_rerun_methods:
                     requeue_dict['methods'].append(method)
-                    self.timeout_rerun_methods.add(method)
+                    self.timeout_rerun_methods.add((class_path, method))
                 else:
                     error_message = "The runner running this method (%s) didn't respond within %ss." % (runner, self.runner_timeout)
                     module, _, classname = class_path.partition(' ')
