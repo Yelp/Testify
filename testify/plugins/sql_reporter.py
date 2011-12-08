@@ -30,9 +30,9 @@ metadata = SA.MetaData()
 
 Tests = SA.Table('tests', metadata,
     SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-    SA.Column('module', SA.String(100)),
-    SA.Column('class_name', SA.String(100)),
-    SA.Column('method_name', SA.String(100)),
+    SA.Column('module', SA.String(255)),
+    SA.Column('class_name', SA.String(255)),
+    SA.Column('method_name', SA.String(255)),
 )
 SA.Index('ix_individual_test', Tests.c.module, Tests.c.class_name, Tests.c.method_name, unique=True)
 
@@ -48,7 +48,7 @@ Builds = SA.Table('builds', metadata,
     SA.Column('buildbot', SA.Integer, nullable=False),
     SA.Column('buildnumber', SA.Integer, nullable=False),
     SA.Column('buildname', SA.String(40), nullable=False),
-    SA.Column('branch', SA.String(100), index=True, nullable=False),
+    SA.Column('branch', SA.String(255), index=True, nullable=False),
     SA.Column('revision', SA.String(40), index=True, nullable=False),
     SA.Column('end_time', SA.Integer, index=True, nullable=True),
     SA.Column('run_time', SA.Integer, nullable=True),
@@ -63,7 +63,7 @@ TestResults = SA.Table('test_results', metadata,
     SA.Column('build', SA.Integer, index=True, nullable=False),
     SA.Column('end_time', SA.Integer, index=True, nullable=False),
     SA.Column('run_time', SA.Integer, index=True, nullable=False),
-    SA.Column('runner_id', SA.String(100), index=True, nullable=True),
+    SA.Column('runner_id', SA.String(255), index=True, nullable=True),
     SA.Column('previous_run', SA.Integer, index=False, nullable=True),
 )
 SA.Index('ix_build_test_failure', TestResults.c.build, TestResults.c.test, TestResults.c.failure)
