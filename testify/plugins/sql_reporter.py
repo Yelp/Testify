@@ -51,7 +51,7 @@ Builds = SA.Table('builds', metadata,
     SA.Column('branch', SA.String(255), index=True, nullable=False),
     SA.Column('revision', SA.String(40), index=True, nullable=False),
     SA.Column('end_time', SA.Integer, index=True, nullable=True),
-    SA.Column('run_time', SA.Integer, nullable=True),
+    SA.Column('run_time', SA.Float, nullable=True),
     SA.Column('method_count', SA.Integer, nullable=True),
 )
 SA.Index('ix_individual_run', Builds.c.buildbot, Builds.c.buildname, Builds.c.buildnumber, Builds.c.revision, unique=True)
@@ -62,7 +62,7 @@ TestResults = SA.Table('test_results', metadata,
     SA.Column('failure', SA.Integer, index=True),
     SA.Column('build', SA.Integer, index=True, nullable=False),
     SA.Column('end_time', SA.Integer, index=True, nullable=False),
-    SA.Column('run_time', SA.Integer, index=True, nullable=False),
+    SA.Column('run_time', SA.Float, index=True, nullable=False),
     SA.Column('runner_id', SA.String(255), index=True, nullable=True),
     SA.Column('previous_run', SA.Integer, index=False, nullable=True),
 )
