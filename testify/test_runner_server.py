@@ -57,6 +57,7 @@ class TestRunnerServer(TestRunner):
     def __init__(self, *args, **kwargs):
         self.serve_port = kwargs.pop('serve_port')
         self.runner_timeout = kwargs['options'].runner_timeout
+        self.revision = kwargs['options'].revision
 
         self.test_queue = AsyncQueue()
         self.checked_out = {} # Keyed on class path (module class).
@@ -72,6 +73,8 @@ class TestRunnerServer(TestRunner):
             @tornado.web.asynchronous
             def get(handler):
                 runner_id = handler.get_argument('runner')
+                if self.revision and self.revision != handler.get_argument('revision'):
+                    return handler.send_error(409, reason="Incorrect revision %s -- server is running revision %s" % (handler.get_argument('revision'), self.revision))
 
                 def callback(test_dict):
                     if test_dict:
