@@ -41,7 +41,7 @@ class AsyncQueue(object):
         return self.data_queue.empty()
 
     def waiting(self):
-        return self.callback_queue.empty()
+        return not self.callback_queue.empty()
 
     def finalize(self):
         """Call all queued callbacks with None, and make sure any future calls to get() immediately call their callback with None."""
@@ -66,6 +66,8 @@ class TestRunnerServer(TestRunner):
 
         self.discovered_but_not_checked_in_methods = set()
 
+        self.runners = set() # The set of runner_ids who have asked for tests.
+
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
     def run(self):
@@ -76,15 +78,29 @@ class TestRunnerServer(TestRunner):
                 if self.revision and self.revision != handler.get_argument('revision'):
                     return handler.send_error(409, reason="Incorrect revision %s -- server is running revision %s" % (handler.get_argument('revision'), self.revision))
 
+                self.runners.add(runner_id)
+
                 def callback(test_dict):
                     if test_dict:
-                        self.check_out_class(runner_id, test_dict)
+                        if test_dict.get('last_runner', None) != runner_id or (self.test_queue.empty() and len(self.runners) <= 1):
+                            self.check_out_class(runner_id, test_dict)
 
-                        handler.finish(json.dumps({
-                            'class': test_dict['class_path'],
-                            'methods': test_dict['methods'],
-                            'finished': False,
-                        }))
+                            handler.finish(json.dumps({
+                                'class': test_dict['class_path'],
+                                'methods': test_dict['methods'],
+                                'finished': False,
+                            }))
+                        else:
+                            if self.test_queue.empty():
+                                # Put the test back in the queue, and queue ourselves to pick up the next test queued.
+                                self.test_queue.put(0, test_dict)
+                                self.test_queue.callback_queue.put((-1, callback))
+                            else:
+                                # Get the next test, process it, then place the old test back in the queue.
+                                def requeue_and_callback(test_dict2):
+                                    callback(test_dict2)
+                                    self.test_queue.put(0, test_dict)
+                                self.test_queue.get(0, requeue_and_callback)
                     else:
                         handler.finish(json.dumps({
                             'finished': True,
@@ -192,6 +208,7 @@ class TestRunnerServer(TestRunner):
 
         #Requeue failed tests
         requeue_dict = {
+            'last_runner' : runner,
             'class_path' : d['class_path'],
             'methods' : [],
         }
