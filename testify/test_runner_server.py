@@ -20,22 +20,22 @@ class AsyncQueue(object):
         self.callback_queue = Queue.PriorityQueue()
         self.finalized = False
 
-    def get(self, priority, callback):
+    def get(self, c_priority, callback):
         if self.finalized:
-            callback(None)
+            callback(None, None)
             return
         try:
-            _, data = self.data_queue.get_nowait()
-            callback(data)
+            d_priority, data = self.data_queue.get_nowait()
+            callback(d_priority, data)
         except Queue.Empty:
-            self.callback_queue.put((priority, callback,))
+            self.callback_queue.put((c_priority, callback,))
 
-    def put(self, priority, data):
+    def put(self, d_priority, data):
         try:
-            _, callback = self.callback_queue.get_nowait()
-            callback(data)
+            c_priority, callback = self.callback_queue.get_nowait()
+            callback(d_priority, data)
         except Queue.Empty:
-            self.data_queue.put((priority, data,))
+            self.data_queue.put((d_priority, data,))
 
     def empty(self):
         return self.data_queue.empty()
@@ -49,7 +49,7 @@ class AsyncQueue(object):
         try:
             while True:
                 _, callback = self.callback_queue.get_nowait()
-                callback(None)
+                callback(None, None)
         except Queue.Empty:
             pass
 
@@ -80,7 +80,7 @@ class TestRunnerServer(TestRunner):
 
                 self.runners.add(runner_id)
 
-                def callback(test_dict):
+                def callback(priority, test_dict):
                     if test_dict:
                         if test_dict.get('last_runner', None) != runner_id or (self.test_queue.empty() and len(self.runners) <= 1):
                             self.check_out_class(runner_id, test_dict)
@@ -93,14 +93,12 @@ class TestRunnerServer(TestRunner):
                         else:
                             if self.test_queue.empty():
                                 # Put the test back in the queue, and queue ourselves to pick up the next test queued.
-                                self.test_queue.put(0, test_dict)
+                                self.test_queue.put(priority, test_dict)
                                 self.test_queue.callback_queue.put((-1, callback))
                             else:
                                 # Get the next test, process it, then place the old test back in the queue.
-                                def requeue_and_callback(test_dict2):
-                                    callback(test_dict2)
-                                    self.test_queue.put(0, test_dict)
-                                self.test_queue.get(0, requeue_and_callback)
+                                self.test_queue.get(0, callback)
+                                self.test_queue.put(priority, test_dict)
                     else:
                         handler.finish(json.dumps({
                             'finished': True,
@@ -261,7 +259,7 @@ class TestRunnerServer(TestRunner):
 
 
         if requeue_dict['methods']:
-            self.test_queue.put(0, requeue_dict)
+            self.test_queue.put(-1, requeue_dict)
 
         if self.test_queue.empty() and len(self.checked_out) == 0:
             self.shutdown()
