@@ -3,7 +3,6 @@ Inter-line differ, for readable diffs in test assertion failure messages.
 
 Based around a differ borrowed from Review Board.
 """
-import collections
 from difflib import SequenceMatcher
 
 
