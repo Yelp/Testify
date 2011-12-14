@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import time
 
 try:
     import simplejson as json
@@ -22,7 +21,6 @@ except ImportError:
     import json
 
 from testify import test_reporter
-from testify.utils import exception
 
 class ResultLogHandler(logging.Handler):
     """Log Handler to collect log output during a test run"""
@@ -62,43 +60,25 @@ class JSONReporter(test_reporter.TestReporter):
             self.log_hndl.setFormatter(logging.Formatter('%(asctime)s\t%(name)-12s: %(levelname)-8s %(message)s'))
             root.addHandler(self.log_hndl)
 
-    def test_complete(self, test_case, result):
+    def test_complete(self, result):
         """Called when a test case is complete"""
-        out_result = {}
 
         if self.options.label:
-            out_result['label'] = self.options.label
+            result['label'] = self.options.label
         if self.options.extra_json_info:
             if not hasattr(self.options, 'parsed_extra_json_info'):
                 self.options.parsed_extra_json_info = json.loads(self.options.extra_json_info)
-            out_result.update(self.options.parsed_extra_json_info)
+            result.update(self.options.parsed_extra_json_info)
         if self.options.bucket is not None:
-            out_result['bucket'] = self.options.bucket
+            result['bucket'] = self.options.bucket
         if self.options.bucket_count is not None:
-            out_result['bucket_count'] = self.options.bucket_count
+            result['bucket_count'] = self.options.bucket_count
 
-        out_result['name'] = '%s %s.%s' % (result.test_method.im_class.__module__, result.test_method.im_class.__name__, result.test_method.__name__)
-        out_result['module'] = '%s' % result.test_method.im_class.__module__
-        out_result['start_time'] = time.mktime(result.start_time.timetuple())
-        out_result['end_time'] = time.mktime(result.end_time.timetuple())
-        out_result['run_time'] = result.run_time.seconds + float(result.run_time.microseconds) / 1000000
-
-        # Classify the test
-        if test_case.is_fixture_method(result.test_method):
-            out_result['type'] = 'fixture'
-        elif test_case.method_excluded(result.test_method):
-            out_result['type'] = 'excluded'
-        else:
-            out_result['type'] = 'test'
-
-        out_result['success'] = bool(result.success)
-        if not result.success:
-            out_result['tb'] = exception.format_exception_info(result.exception_info)
-            out_result['error'] = str(out_result['tb'][-1]).strip()
+        if not result['success']:
             if self.log_hndl:
-                out_result['log'] = self.log_hndl.results()
+                result['log'] = self.log_hndl.results()
 
-        self.log_file.write(json.dumps(out_result))
+        self.log_file.write(json.dumps(result))
         self.log_file.write("\n")
 
         self._reset_logging()

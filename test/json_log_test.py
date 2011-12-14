@@ -33,11 +33,11 @@ class JSONReporterTestCase(test_case.TestCase):
     extended_test_case = ExtendedTestCase()
 
     json_reporter_options = turtle.Turtle(json_results_logging=True,
-                                          json_results=None, 
+                                          json_results=None,
                                           label=None,
-                                          extra_json_info=None, 
+                                          extra_json_info=None,
                                           bucket=None,
-                                          bucket_count=None, 
+                                          bucket_count=None,
                                           verbosity=0)
 
     @setup
@@ -69,14 +69,15 @@ class JSONReporterTestCase(test_case.TestCase):
 
         Regression test for GitHub #13.
         """
-        self.json_reporter.test_start(self.extended_test_case,
-                                      self.extended_test_case.test_method)
 
         result = test_result.TestResult(self.extended_test_case.test_method)
+
+        self.json_reporter.test_start(result.to_dict())
+
         result.start()
         result.end_in_success()
 
-        self.json_reporter.test_complete(self.extended_test_case, result)
+        self.json_reporter.test_complete(result.to_dict())
         assert_equal(True, self.json_reporter.report())
 
         log_lines = ''.join(line for line in
@@ -85,8 +86,8 @@ class JSONReporterTestCase(test_case.TestCase):
 
         result = json.loads(log_lines)
 
-        assert_equal('extended', result['module'])
-        assert_equal('extended ExtendedTestCase.test_method', result['name'])
+        assert_equal('extended', result['method']['module'])
+        assert_equal('extended ExtendedTestCase.test_method', result['method']['full_name'])
 
 
 if __name__ == '__main__':
