@@ -1,3 +1,16 @@
+python-testify (0.2.0a) unstable; urgency=low
+
+  * Client/server mode (with --serve and --connect). This automatically reruns failed tests.
+  * Direct-to-SQL reporting mode (--reporting-db-config)
+  * JSON replaying: load the output of the JSON log and send each result to the test reporters. (--replay-json or --replay-json-inline). Useful for using the direct-to-SQL reporting plugin with other test frameworks.
+  * Ability to stop running tests after a configurable number of failures (--failure-limit)
+  * Test reporting plugins are now passed pickleable dictionaries (from TestResult.to_dict()).
+  * JSON log is now just the JSON dump of the test result dictionary.
+  * TestRunner.discover is now a generator.
+  * Many other minor changes
+
+ -- James Brown <jbrown@yelp.com>  Tue, 13 Dec 2011 19:36:51 -0800
+
 python-testify (0.1.12) unstable; urgency=low
 
   * Add support for test specification via file paths
