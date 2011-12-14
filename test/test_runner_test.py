@@ -45,8 +45,7 @@ class PluginTestCase(test_case.TestCase):
         self.dummy_test_class = DummyTestCase
 
     def test_plugin_run(self):
-        runner = test_runner.TestRunner(plugin_modules=[self.our_module])
-        runner.add_test_case(self.dummy_test_class)
+        runner = test_runner.TestRunner(self.dummy_test_class, plugin_modules=[self.our_module])
 
         assert runner.run()
         assert self.ran_test

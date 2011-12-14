@@ -115,16 +115,21 @@ class TestCase(object):
     __metaclass__ = MetaTestCase
     __test__ = False
 
-    STAGE_CLASS_SETUP = 1
-    STAGE_SETUP = 2
-    STAGE_TEST_METHOD = 3
-    STAGE_TEARDOWN = 4
-    STAGE_CLASS_TEARDOWN = 5
+    EVENT_ON_RUN_TEST_METHOD = 1
+    EVENT_ON_COMPLETE_TEST_METHOD = 2
+    EVENT_ON_RUN_CLASS_SETUP_METHOD = 3
+    EVENT_ON_COMPLETE_CLASS_SETUP_METHOD = 4
+    EVENT_ON_RUN_CLASS_TEARDOWN_METHOD = 5
+    EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD = 6
+    EVENT_ON_RUN_FIXTURE_METHOD = 7
+    EVENT_ON_COMPLETE_FIXTURE_METHOD = 8
 
     log = class_logger.ClassLogger()
 
     def __init__(self, *args, **kwargs):
         super(TestCase, self).__init__()
+
+        self._method_level = False
 
         # ascend the class hierarchy and discover fixture methods
         self.__init_fixture_methods()
@@ -144,8 +149,7 @@ class TestCase(object):
                         setattr(self, member_name, suited_function)
 
         # callbacks for various stages of execution, used for stuff like logging
-        self.__on_run_test_method_callbacks = []
-        self.__on_complete_test_method_callbacks = []
+        self.__callbacks = defaultdict(list)
 
         # one of these will later be populated with exception info if there's an
         # exception in the class_setup/class_teardown stage
@@ -160,6 +164,9 @@ class TestCase(object):
         for name in dir(deprecated_assertions):
             if name.startswith(('assert', 'fail')):
                 setattr(self, name, instancemethod(getattr(deprecated_assertions, name), self, self.__class__))
+
+        self.failure_limit = kwargs.pop('failure_limit', None)
+        self.failure_count = 0
 
     def __init_fixture_methods(self):
         """Initialize and populate the lists of fixture methods for this TestCase.
@@ -202,19 +209,25 @@ class TestCase(object):
         limit itself to test methods in those suites.
         """
         for member_name in dir(self):
-            if member_name.startswith("test"):
-                member = getattr(self, member_name)
-                if inspect.ismethod(member):
-                    member_suites = set(getattr(member, '_suites', set()))
-                    # if there are any exclude suites, exclude methods under them
-                    if (not self.__suites_exclude) or (not self.__suites_exclude & member_suites):
-                        # if there are any include suites, only run methods in them
-                        if not self.__suites_include or (self.__suites_include & member_suites):
-                            # if there are any require suites, only run methods in *all* of those suites
-                            if not self.__suites_require or ((self.__suites_require & member_suites) == self.__suites_require):
-                                # if there are any name overrides, only run the named methods
-                                if self.__name_overrides is None or member.__name__ in self.__name_overrides:
-                                    yield member
+            if not member_name.startswith("test"):
+                continue
+            member = getattr(self, member_name)
+            if not inspect.ismethod(member):
+                continue
+            member_suites = set(getattr(member, '_suites', set()))
+            # if there are any exclude suites, exclude methods under them
+            if self.__suites_exclude and self.__suites_exclude & member_suites:
+                continue
+            # if there are any include suites, only run methods in them
+            if self.__suites_include and not (self.__suites_include & member_suites):
+                continue
+            # if there are any require suites, only run methods in *all* of those suites
+            if self.__suites_require and not ((self.__suites_require & member_suites) == self.__suites_require):
+                continue
+
+            # if there are any name overrides, only run the named methods
+            if self.__name_overrides is None or member.__name__ in self.__name_overrides:
+                yield member
 
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance"""
@@ -224,54 +237,40 @@ class TestCase(object):
 
     def __run_class_setup_fixtures(self):
         """Running the class's class_setup method chain."""
-        self._stage = self.STAGE_CLASS_SETUP
-
-        for fixture_method in self.class_setup_fixtures:
-            result = TestResult(fixture_method)
-
-            try:
-                for callback in self.__on_run_test_method_callbacks:
-                    callback(self, fixture_method)
-
-                result.start()
-
-                if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
-                    result.end_in_success()
-            except (KeyboardInterrupt, SystemExit):
-                result.end_in_incomplete(sys.exc_info())
-                for callback in self.__on_complete_test_method_callbacks:
-                    callback(self, result)
-                raise
-            else:
-                for callback in self.__on_complete_test_method_callbacks:
-                    callback(self, result)
-
-        self.__run_deprecated_fixture_method('classSetUp')
+        self.__run_class_fixtures(
+            self.class_setup_fixtures + [ self.classSetUp ],
+            self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
+            self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
+        )
 
     def __run_class_teardown_fixtures(self):
         """End the process of running tests.  Run the class's class_teardown methods"""
-        self._stage = self.STAGE_CLASS_TEARDOWN
+        self.__run_class_fixtures(
+            [ self.classTearDown ] + self.class_teardown_fixtures,
+            self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
+            self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
+        )
 
-        self.__run_deprecated_fixture_method('classTearDown')
+    def __run_class_fixtures(self, fixtures, callback_on_run_event, callback_on_complete_event):
+        """Run a set of fixtures, calling callbacks before and after each."""
 
-        for fixture_method in self.class_teardown_fixtures:
+        for fixture_method in fixtures:
             result = TestResult(fixture_method)
+
             try:
-                for callback in self.__on_run_test_method_callbacks:
-                    callback(self, fixture_method)
+                for callback in self.__callbacks[callback_on_run_event]:
+                    callback(result.to_dict())
 
                 result.start()
 
                 if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
                     result.end_in_success()
             except (KeyboardInterrupt, SystemExit):
-                result.end_in_incomplete(sys.exc_info())
-                for callback in self.__on_complete_test_method_callbacks:
-                    callback(self, result)
+                result.end_in_interruption(sys.exc_info())
                 raise
-            else:
-                for callback in self.__on_complete_test_method_callbacks:
-                    callback(self, result)
+            finally:
+                for callback in self.__callbacks[callback_on_complete_event]:
+                    callback(result.to_dict())
 
     @classmethod
     def in_suite(cls, method, suite_name):
@@ -301,12 +300,13 @@ class TestCase(object):
         for test_method in self.runnable_test_methods():
 
             result = TestResult(test_method)
-            test_method.im_self.test_result = result
 
             try:
+                self._method_level = True # Flag that we're currently running method-level stuff (rather than class-level)
+
                 # run "on-run" callbacks. eg/ print out the test method name
-                for callback in self.__on_run_test_method_callbacks:
-                    callback(self, test_method)
+                for callback in self.__callbacks[self.EVENT_ON_RUN_TEST_METHOD]:
+                    callback(result.to_dict())
                 result.start()
 
                 if self.__class_level_failure:
@@ -315,23 +315,18 @@ class TestCase(object):
                     result.end_in_error(self.__class_level_error)
                 else:
                     # first, run setup fixtures
-                    self._stage = self.STAGE_SETUP
                     def _setup_block():
-                        for fixture_method in self.setup_fixtures:
+                        for fixture_method in self.setup_fixtures + [ self.setUp ]:
                             fixture_method()
-                        self.__run_deprecated_fixture_method('setUp')
                     self.__execute_block_recording_exceptions(_setup_block, result)
 
                     # then run the test method itself, assuming setup was successful
-                    self._stage = self.STAGE_TEST_METHOD
                     if not result.complete:
                         self.__execute_block_recording_exceptions(test_method, result)
 
                     # finally, run the teardown phase
-                    self._stage = self.STAGE_TEARDOWN
                     def _teardown_block():
-                        self.__run_deprecated_fixture_method('tearDown')
-                        for fixture_method in self.teardown_fixtures:
+                        for fixture_method in [ self.tearDown ] + self.teardown_fixtures:
                             fixture_method()
                     self.__execute_block_recording_exceptions(_teardown_block, result)
 
@@ -339,16 +334,18 @@ class TestCase(object):
                 if not result.complete:
                     result.end_in_success()
             except (KeyboardInterrupt, SystemExit):
-                result.end_in_incomplete(sys.exc_info())
-                for callback in self.__on_complete_test_method_callbacks:
-                    callback(self, result)
+                result.end_in_interruption(sys.exc_info())
                 raise
-            else:
-                for callback in self.__on_complete_test_method_callbacks:
-                    callback(self, result)
+            finally:
+                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_METHOD]:
+                    callback(result.to_dict())
 
-    EVENT_ON_RUN_TEST_METHOD = 1
-    EVENT_ON_COMPLETE_TEST_METHOD = 2
+                self._method_level = False
+
+                if not result.success:
+                    self.failure_count += 1
+                    if self.failure_limit and self.failure_count >= self.failure_limit:
+                        return
 
     def register_callback(self, event, callback):
         """Register a callback for an internal event, usually used for logging.
@@ -357,12 +354,7 @@ class TestCase(object):
 
         Fixture objects can be distinguished by the running them through self.is_fixture_method().
         """
-        if event == self.EVENT_ON_RUN_TEST_METHOD:
-            self.__on_run_test_method_callbacks.append(callback)
-        elif event == self.EVENT_ON_COMPLETE_TEST_METHOD:
-            self.__on_complete_test_method_callbacks.append(callback)
-        else:
-            raise ValueError("Invalid callback event: %s" % event)
+        self.__callbacks[event].append(callback)
 
     def __execute_block_recording_exceptions(self, block_fxn, result, is_class_level=False):
         """Excerpted code for executing a block of code that might except and cause us to update a result object.
@@ -414,31 +406,6 @@ class TestCase(object):
                 return True if (getattr(method, '_fixture_type') == fixture_type) else False
             else:
                 return True
-
-    def __run_deprecated_fixture_method(self, fixture_name):
-        """This runs an old-style (eg/ 'def setUp') fixture method."""
-        if hasattr(self, fixture_name):
-            deprecated_method = getattr(self, fixture_name)
-
-            if fixture_name.startswith('class'):
-                result = TestResult(deprecated_method)
-                try:
-                    for callback in self.__on_run_test_method_callbacks:
-                        callback(self, deprecated_method)
-
-                    result.start()
-                    if self.__execute_block_recording_exceptions(deprecated_method, result, is_class_level=True):
-                        result.end_in_success()
-                except (KeyboardInterrupt, SystemExit):
-                    result.end_in_incomplete(sys.exc_info())
-                    for callback in self.__on_complete_test_method_callbacks:
-                        callback(self, result)
-                    raise
-                else:
-                    for callback in self.__on_complete_test_method_callbacks:
-                        callback(self, result)
-            else:
-                deprecated_method()
 
 def suite(*args, **kwargs):
     """Decorator to conditionally assign suites to individual test methods.

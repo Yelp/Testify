@@ -24,7 +24,6 @@ import imp
 import testify
 from testify import test_logger
 from testify.test_runner import TestRunner
-from testify import test_discovery
 
 ACTION_RUN_TESTS = 0
 ACTION_LIST_SUITES = 1
@@ -122,6 +121,17 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option("--log-level", action="store", dest="log_level", type="string", default="INFO")
     parser.add_option('--print-log', action="append", dest="print_loggers", type="string", default=[], help="Direct logging output for these loggers to the console")
 
+    parser.add_option('--serve', action="store", dest="serve_port", type="int", default=None)
+    parser.add_option('--connect', action="store", dest="connect_addr", type="string", default=None)
+    parser.add_option('--revision', action="store", dest="revision", type="string", default=None)
+
+    parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None)
+    parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300)
+    parser.add_option('--runner-id', action="store", dest="runner_id", type="string", default=None)
+
+    parser.add_option('--replay-json', action="store", dest="replay_json", type="string", default=None)
+    parser.add_option('--replay-json-inline', action="append", dest="replay_json_inline", type="string")
+
     # Add in any additional options
     for plugin in plugin_modules:
         if hasattr(plugin, 'add_command_line_options'):
@@ -130,6 +140,12 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     (options, args) = parser.parse_args(args)
     if len(args) < 1:
         parser.error("Test path required")
+
+    if options.connect_addr and options.serve_port:
+        parser.error("--serve and --connect are mutually exclusive.")
+
+    if options.connect_addr and not options.runner_id:
+        parser.error("--runner-id is required when --connect address is specified.")
 
     test_path, module_method_overrides = _parse_test_runner_command_line_module_method_overrides(args)
 
@@ -157,6 +173,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
         'suites_include': options.suites_include,
         'suites_exclude': options.suites_exclude,
         'suites_require': options.suites_require,
+        'failure_limit' : options.failure_limit,
         'module_method_overrides': module_method_overrides,
         'test_reporters': reporters,            # Should be pushed into plugin
         'options': options,
@@ -197,17 +214,35 @@ class TestProgram(object):
 
         self.setup_logging(other_opts)
 
-        runner = TestRunner(**test_runner_args)
-
         bucket_overrides = {}
         if other_opts.bucket_overrides_file:
             bucket_overrides = get_bucket_overrides(other_opts.bucket_overrides_file)
 
-        try:
-            runner.discover(test_path, bucket=other_opts.bucket, bucket_count=other_opts.bucket_count, bucket_overrides=bucket_overrides, bucket_salt=other_opts.bucket_salt)
-        except test_discovery.DiscoveryError, e:
-            log.error("Failure loading tests: %s", e)
-            sys.exit(1)
+        if other_opts.serve_port:
+            from test_runner_server import TestRunnerServer
+            test_runner_class = TestRunnerServer
+            test_runner_args['serve_port'] = other_opts.serve_port
+        elif other_opts.connect_addr:
+            from test_runner_client import TestRunnerClient
+            test_runner_class = TestRunnerClient
+            test_runner_args['connect_addr'] = other_opts.connect_addr
+            test_runner_args['runner_id'] = other_opts.runner_id
+        elif other_opts.replay_json or other_opts.replay_json_inline:
+            from test_runner_json_replay import TestRunnerJSONReplay
+            test_runner_class = TestRunnerJSONReplay
+            test_runner_args['replay_json'] = other_opts.replay_json
+            test_runner_args['replay_json_inline'] = other_opts.replay_json_inline
+        else:
+            test_runner_class = TestRunner
+
+        runner = test_runner_class(
+            test_path,
+            bucket_overrides=bucket_overrides,
+            bucket_count=other_opts.bucket_count,
+            bucket_salt=other_opts.bucket_salt,
+            bucket=other_opts.bucket,
+            **test_runner_args
+        )
 
         if runner_action == ACTION_LIST_SUITES:
             runner.list_suites()
