@@ -115,6 +115,12 @@ class TestCase(object):
     __metaclass__ = MetaTestCase
     __test__ = False
 
+    STAGE_CLASS_SETUP = 1
+    STAGE_SETUP = 2
+    STAGE_TEST_METHOD = 3
+    STAGE_TEARDOWN = 4
+    STAGE_CLASS_TEARDOWN = 5
+
     EVENT_ON_RUN_TEST_METHOD = 1
     EVENT_ON_COMPLETE_TEST_METHOD = 2
     EVENT_ON_RUN_CLASS_SETUP_METHOD = 3
@@ -238,6 +244,7 @@ class TestCase(object):
     def __run_class_setup_fixtures(self):
         """Running the class's class_setup method chain."""
         self.__run_class_fixtures(
+            self.STAGE_CLASS_SETUP,
             self.class_setup_fixtures + [ self.classSetUp ],
             self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
             self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
@@ -246,13 +253,15 @@ class TestCase(object):
     def __run_class_teardown_fixtures(self):
         """End the process of running tests.  Run the class's class_teardown methods"""
         self.__run_class_fixtures(
+            self.STAGE_CLASS_TEARDOWN,
             [ self.classTearDown ] + self.class_teardown_fixtures,
             self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
             self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
         )
 
-    def __run_class_fixtures(self, fixtures, callback_on_run_event, callback_on_complete_event):
-        """Run a set of fixtures, calling callbacks before and after each."""
+    def __run_class_fixtures(self, stage, fixtures, callback_on_run_event, callback_on_complete_event):
+        """Set the current _stage, run a set of fixtures, calling callbacks before and after each."""
+        self._stage = stage
 
         for fixture_method in fixtures:
             result = TestResult(fixture_method)
@@ -315,16 +324,19 @@ class TestCase(object):
                     result.end_in_error(self.__class_level_error)
                 else:
                     # first, run setup fixtures
+                    self._stage = self.STAGE_SETUP
                     def _setup_block():
                         for fixture_method in self.setup_fixtures + [ self.setUp ]:
                             fixture_method()
                     self.__execute_block_recording_exceptions(_setup_block, result)
 
                     # then run the test method itself, assuming setup was successful
+                    self._stage = self.STAGE_TEST_METHOD
                     if not result.complete:
                         self.__execute_block_recording_exceptions(test_method, result)
 
                     # finally, run the teardown phase
+                    self._stage = self.STAGE_TEARDOWN
                     def _teardown_block():
                         for fixture_method in [ self.tearDown ] + self.teardown_fixtures:
                             fixture_method()
