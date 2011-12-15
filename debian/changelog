@@ -1,3 +1,9 @@
+python-testify (0.2.0b) unstable; urgency=low
+
+  * Make testify backwards-compatible with code that accesses TestCase._stage
+
+ -- James Brown <jbrown@yelp.com>  Wed, 14 Dec 2011 21:32:02 -0800
+
 python-testify (0.2.0a) unstable; urgency=low
 
   * Client/server mode (with --serve and --connect). This automatically reruns failed tests.
