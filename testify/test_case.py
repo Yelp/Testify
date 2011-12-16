@@ -309,6 +309,7 @@ class TestCase(object):
         for test_method in self.runnable_test_methods():
 
             result = TestResult(test_method)
+            test_method.im_self.test_result = result
 
             try:
                 self._method_level = True # Flag that we're currently running method-level stuff (rather than class-level)
