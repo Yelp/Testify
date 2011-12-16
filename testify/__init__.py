@@ -1,4 +1,4 @@
-# Copyright 2009 Yelp
+# Copyright 2009-2011 Yelp
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ The basic components of this system are:
         to kindly execute themselves.
 """
 __testify = 1
-__version__ = "0.2.0b"
+__version__ = "0.2.0c"
 
 import sys
 
