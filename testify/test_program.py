@@ -132,6 +132,8 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--replay-json', action="store", dest="replay_json", type="string", default=None)
     parser.add_option('--replay-json-inline', action="append", dest="replay_json_inline", type="string")
 
+    parser.add_option('--rerun-test-file', action="store", dest="rerun_test_file", type="string", default=None)
+
     # Add in any additional options
     for plugin in plugin_modules:
         if hasattr(plugin, 'add_command_line_options'):
@@ -232,6 +234,10 @@ class TestProgram(object):
             test_runner_class = TestRunnerJSONReplay
             test_runner_args['replay_json'] = other_opts.replay_json
             test_runner_args['replay_json_inline'] = other_opts.replay_json_inline
+        elif other_opts.rerun_test_file:
+            from test_rerunner import TestRerunner
+            test_runner_class = TestRerunner
+            test_runner_args['rerun_test_file'] = other_opts.rerun_test_file
         else:
             test_runner_class = TestRunner
 
