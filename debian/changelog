@@ -1,3 +1,9 @@
+python-testify (0.2.1) unstable; urgency=low
+
+  * Lets you rerun a list of tests in order (krall)
+
+ -- James Brown <jbrown@yelp.com>  Mon, 19 Dec 2011 16:20:17 -0800
+
 python-testify (0.2.0c) unstable; urgency=low
 
   * Make testify even more backwards-compatible
