@@ -1,7 +1,5 @@
 from testify import test_reporter
 import urllib2
-import time
-from testify.utils import exception
 import httplib
 import logging
 
