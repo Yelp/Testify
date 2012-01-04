@@ -14,13 +14,21 @@ class TestRunnerClient(TestRunner):
         self.connect_addr = kwargs.pop('connect_addr')
         self.runner_id = kwargs.pop('runner_id')
         self.revision = kwargs['options'].revision
+
+        self.retry_limit = kwargs['options'].retry_limit
+        self.retry_interval = kwargs['options'].retry_interval
+        self.reconnect_retry_limit = kwargs['options'].reconnect_retry_limit
+
         super(TestRunnerClient, self).__init__(*args, **kwargs)
 
     def discover(self):
         finished = False
         first_connect = True
         while not finished:
-            class_path, methods, finished = self.get_next_tests(retry_limit=(60 if first_connect else 1))
+            class_path, methods, finished = self.get_next_tests(
+                retry_limit=(self.retry_limit if first_connect else self.reconnect_retry_limit),
+                retry_interval=self.retry_interval,
+            )
             first_connect = False
             if class_path and methods:
                 module_path, _, class_name = class_path.partition(' ')
@@ -35,7 +43,7 @@ class TestRunnerClient(TestRunner):
                 klass = getattr(module, class_name)
                 yield klass(name_overrides=methods)
 
-    def get_next_tests(self, retry_delay=10, retry_limit=0):
+    def get_next_tests(self, retry_interval=2, retry_limit=0):
         try:
             if self.revision:
                 url = 'http://%s/tests?runner=%s&revision=%s' % (self.connect_addr, self.runner_id, self.revision)
@@ -50,7 +58,7 @@ class TestRunnerClient(TestRunner):
         except urllib2.URLError, e:
             if retry_limit > 0:
                 logging.warning("Got error %r when requesting tests, retrying %d more times." % (e, retry_limit))
-                time.sleep(retry_delay)
-                return self.get_next_tests(retry_limit=retry_limit-1)
+                time.sleep(retry_interval)
+                return self.get_next_tests(retry_limit=retry_limit-1, retry_interval=retry_interval)
             else:
                 return None, None, True # Stop trying if we can't connect to the server.
