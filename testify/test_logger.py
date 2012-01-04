@@ -133,12 +133,12 @@ class TextTestLogger(TestLoggerBase):
 
     def write(self, message):
         """Write a message to the output stream, no trailing newline"""
-        self.stream.write(message)
+        self.stream.write(message.encode('utf8') if isinstance(message, unicode) else message)
         self.stream.flush()
 
     def writeln(self, message):
         """Write a message and append a newline"""
-        self.stream.write("%s\n" % message)
+        self.stream.write("%s\n" % (message.encode('utf8') if isinstance(message, unicode) else message))
         self.stream.flush()
 
     BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(30, 38)
@@ -250,7 +250,7 @@ class HTMLTestLogger(TextTestLogger):
 
     def writeln(self, message):
         """Write a message and append a newline"""
-        self.stream.write("%s<br />" % message)
+        self.stream.write("%s<br />" % (message.encode('utf8') if isinstance(message, unicode) else message))
         self.stream.flush()
 
     BLACK   = "#000"

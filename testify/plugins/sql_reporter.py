@@ -69,7 +69,7 @@ TestResults = SA.Table('test_results', metadata,
 SA.Index('ix_build_test_failure', TestResults.c.build, TestResults.c.test, TestResults.c.failure)
 
 def md5(s):
-    return hashlib.md5(s).hexdigest()
+    return hashlib.md5(s.encode('utf8') if isinstance(s, unicode) else s).hexdigest()
 
 class SQLReporter(test_reporter.TestReporter):
     def __init__(self, options, *args, **kwargs):
