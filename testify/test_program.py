@@ -130,6 +130,8 @@ def parse_test_runner_command_line_args(plugin_modules, args):
 
     parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None)
     parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300)
+    parser.add_option('--server-timeout', action="store", dest="server_timeout", type="int", default=300)
+
     parser.add_option('--runner-id', action="store", dest="runner_id", type="string", default=None)
 
     parser.add_option('--replay-json', action="store", dest="replay_json", type="string", default=None)
