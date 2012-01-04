@@ -58,6 +58,7 @@ class TestRunnerServer(TestRunner):
         self.serve_port = kwargs.pop('serve_port')
         self.runner_timeout = kwargs['options'].runner_timeout
         self.revision = kwargs['options'].revision
+        self.server_timeout = kwargs['options'].server_timeout
 
         self.test_queue = AsyncQueue()
         self.checked_out = {} # Keyed on class path (module class).
@@ -162,12 +163,27 @@ class TestRunnerServer(TestRunner):
 
         server = tornado.httpserver.HTTPServer(application)
         server.listen(self.serve_port)
+
+        def timeout_server():
+            if time.time() > self.last_activity_time + self.server_timeout:
+                self.shutdown()
+            else:
+                tornado.ioloop.IOLoop.instance().add_timeout(self.last_activity_time + self.server_timeout, timeout_server)
+        self.activity()
+        timeout_server() # Set the first callback.
+
         tornado.ioloop.IOLoop.instance().start()
 
         report = [reporter.report() for reporter in self.test_reporters]
         return all(report)
 
+
+    def activity(self):
+        self.last_activity_time = time.time()
+
     def check_out_class(self, runner, test_dict):
+        self.activity()
+
         self.checked_out[test_dict['class_path']] = {
             'runner' : runner,
             'class_path' : test_dict['class_path'],
@@ -181,6 +197,9 @@ class TestRunnerServer(TestRunner):
         self.timeout_class(runner, test_dict['class_path'])
 
     def check_in_class(self, runner, class_path, timed_out=False, finished=False, early_shutdown=False):
+        if not timed_out:
+            self.activity()
+
         if 1 != len([opt for opt in (timed_out, finished, early_shutdown) if opt]):
             raise ValueError("Must set exactly one of timed_out, finished, or early_shutdown.")
 
