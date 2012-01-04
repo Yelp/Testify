@@ -124,6 +124,9 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--serve', action="store", dest="serve_port", type="int", default=None)
     parser.add_option('--connect', action="store", dest="connect_addr", type="string", default=None)
     parser.add_option('--revision', action="store", dest="revision", type="string", default=None)
+    parser.add_option('--retry-limit', action="store", dest="retry_limit", type="int", default=60, help="Number of times to try connecting to the server before exiting.")
+    parser.add_option('--retry-interval', action="store", dest="retry_interval", type="int", default=2, help="Interval, in seconds, between trying to connect to the server.")
+    parser.add_option('--reconnect-retry-limit', action="store", dest="reconnect_retry_limit", type="int", default=5, help="Number of times to try reconnecting to the server before exiting if we have previously connected.")
 
     parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None)
     parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300)
