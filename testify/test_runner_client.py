@@ -1,3 +1,8 @@
+"""
+Client-server setup for evenly distributing tests across multiple processes.
+See the test_runner_server module.
+"""
+
 from test_runner import TestRunner
 import urllib2
 try:
