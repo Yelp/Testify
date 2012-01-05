@@ -21,3 +21,4 @@ Description: Testify is a replacement for Python's unittest module.
     - support for collecting and running tests by 'tagging' modules, classes or methods.
     - A decorator-based approach to temporarily disabling certain tests, which strongly encourages documentation and eventual fixing of bugs.
     - Pretty test runner output (color!)
+    - Client-server support

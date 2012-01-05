@@ -5,7 +5,7 @@ except ImportError:
 
 setup(
     name="testify",
-    version="0.2.1",
+    version="0.2.2",
     provides=["testify"],
     author="Yelp",
     author_email="yelplabs@yelp.com",
@@ -35,5 +35,6 @@ will run under testify with a minimum of adjustments, but it has features above 
   - Support for splitting up tests into buckets to support multi-processing
   - Extensible plugin system for adding additional functionality around reporting
   - Comes complete with other handy testing utilities: Mocking (turtle), code coverage integration and profiling.
+  - Client-server support
 """
 )

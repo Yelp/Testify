@@ -1,6 +1,15 @@
+python-testify (0.2.2) unstable; urgency=low
+
+  * Support for --seed, which will seed the random number generator for
+    deterministic "random" tests (eskilolsen)
+  * Basic docstrings for client-server mode (slingamn)
+  * Time out the server after 300s of inactivity (EvanKrall)
+
+ -- James Brown <jbrown@yelp.com>  Thu, 05 Jan 2012 12:23:30 -0800
+
 python-testify (0.2.1) unstable; urgency=low
 
-  * Lets you rerun a list of tests in order (krall)
+  * Lets you rerun a list of tests in order (EvanKrall)
 
  -- James Brown <jbrown@yelp.com>  Mon, 19 Dec 2011 16:20:17 -0800
 
