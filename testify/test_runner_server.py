@@ -1,3 +1,11 @@
+"""
+Client-server setup to evenly distribute tests across multiple processes. The server
+discovers all test classes and enqueues them, then clients connect to the server,
+receive tests to run, and send back their results.
+
+The server keeps track of the overall status of the run and manages timeouts and retries.
+"""
+
 from test_runner import TestRunner
 import tornado.httpserver
 import tornado.ioloop
