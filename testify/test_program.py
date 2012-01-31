@@ -145,8 +145,8 @@ def parse_test_runner_command_line_args(plugin_modules, args):
             plugin.add_command_line_options(parser)
 
     (options, args) = parser.parse_args(args)
-    if len(args) < 1:
-        parser.error("Test path required")
+    if len(args) < 1 and not options.connect_addr:
+        parser.error("Test path required unless --connect specified.")
 
     if options.connect_addr and options.serve_port:
         parser.error("--serve and --connect are mutually exclusive.")
@@ -194,7 +194,7 @@ def _parse_test_runner_command_line_module_method_overrides(args):
     eg/ > python some_module_test.py SomeTestClass.some_test_method
     """
 
-    test_path = args[0]
+    test_path = args[0] if args else None
 
     module_method_overrides = defaultdict(set)
     for arg in args[1:]:
