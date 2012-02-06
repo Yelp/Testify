@@ -17,6 +17,7 @@ from collections import defaultdict
 from optparse import OptionParser
 import os
 import pwd
+import socket
 import sys
 import logging
 import imp
@@ -132,7 +133,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300)
     parser.add_option('--server-timeout', action="store", dest="server_timeout", type="int", default=300)
 
-    parser.add_option('--runner-id', action="store", dest="runner_id", type="string", default=None)
+    parser.add_option('--runner-id', action="store", dest="runner_id", type="string", default="%s-%d" % (socket.gethostname(), os.getpid()))
 
     parser.add_option('--replay-json', action="store", dest="replay_json", type="string", default=None)
     parser.add_option('--replay-json-inline', action="append", dest="replay_json_inline", type="string")
@@ -150,9 +151,6 @@ def parse_test_runner_command_line_args(plugin_modules, args):
 
     if options.connect_addr and options.serve_port:
         parser.error("--serve and --connect are mutually exclusive.")
-
-    if options.connect_addr and not options.runner_id:
-        parser.error("--runner-id is required when --connect address is specified.")
 
     test_path, module_method_overrides = _parse_test_runner_command_line_module_method_overrides(args)
 
