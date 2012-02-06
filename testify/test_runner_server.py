@@ -10,12 +10,14 @@ from test_runner import TestRunner
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
+
 try:
     import simplejson as json
     _hush_pyflakes = [json]
     del _hush_pyflakes
 except ImportError:
     import json
+import logging
 
 import Queue
 import time
@@ -134,6 +136,7 @@ class TestRunnerServer(TestRunner):
                     d['failed_methods'][result['method']['name']] = result
                     self.failure_count += 1
                     if self.failure_limit and self.failure_count >= self.failure_limit:
+                        logging.error('Too many failures, shutting down.')
                         self.early_shutdown()
                         return handler.finish("Too many failures, shutting down.")
 
@@ -174,6 +177,7 @@ class TestRunnerServer(TestRunner):
 
         def timeout_server():
             if time.time() > self.last_activity_time + self.server_timeout:
+                logging.error('No client activity for %ss, shutting down.' % self.server_timeout)
                 self.shutdown()
             else:
                 tornado.ioloop.IOLoop.instance().add_timeout(self.last_activity_time + self.server_timeout, timeout_server)
