@@ -226,6 +226,8 @@ class TextTestLogger(TestLoggerBase):
             if successful:
                 status_string = self._colorize("PASSED", self.GREEN)
             else:
+                if test_method_count == 0:
+                    self.writeln("No tests were discovered (no methods starting with 'test'?).")
                 status_string = self._colorize("ERROR", self.MAGENTA)
         else:
             status_string = self._colorize("FAILED", self.RED)
