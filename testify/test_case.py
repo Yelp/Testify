@@ -25,6 +25,7 @@ import inspect
 from new import instancemethod
 import sys
 import types
+import unittest
 
 from test_result import TestResult
 import deprecated_assertions
@@ -174,6 +175,7 @@ class TestCase(object):
         self.failure_limit = kwargs.pop('failure_limit', None)
         self.failure_count = 0
 
+
     def __init_fixture_methods(self):
         """Initialize and populate the lists of fixture methods for this TestCase.
         Fixture methods are added by the MetaTestCase metaclass at runtime only to
@@ -189,6 +191,7 @@ class TestCase(object):
         # for setup methods, we want oldest class first.  for teardowns, we want newest class first
         hierarchy = list(reversed(type(self).mro()))
         for cls in hierarchy[1:]:
+            print '#' * 5, cls
             # mixins on TestCase instances that derive from, say, object, won't be set up properly
             if hasattr(cls, '_fixture_methods'):
                 # the metaclass stored the class's fixtures in a _fixture_methods instance variable
@@ -419,6 +422,36 @@ class TestCase(object):
                 return True if (getattr(method, '_fixture_type') == fixture_type) else False
             else:
                 return True
+
+class TestifiedUnitTest(TestCase, unittest.TestCase):
+#class TestifiedUnitTest(unittest.TestCase, TestCase):
+    __metaclass__ = MetaTestCase
+
+    def __init__(self, *args, **kwargs):
+        unittest.TestCase.__init__(self)
+        TestCase.__init__(self, *args, **kwargs)
+
+    def runTest(self): pass
+
+    @classmethod
+    def from_unittest_case(cls, unittest_class):
+
+        if unittest_class == unittest.TestCase:
+            return TestifiedUnitTest
+
+        unittest_dict = dict(unittest_class.__dict__)
+        unittest_dict.update(dict(TestCase.__dict__))
+
+        bases = [unittest_class] # so super() still works
+
+        for base_class in unittest_class.__bases__:
+            if issubclass(base_class, unittest.TestCase):
+                base_class = cls.from_unittest_case(base_class)
+            bases.append(base_class)
+
+        new_name = 'Testified' + unittest_class.__name__
+        return MetaTestCase(new_name, tuple(bases), unittest_dict)
+
 
 def suite(*args, **kwargs):
     """Decorator to conditionally assign suites to individual test methods.
