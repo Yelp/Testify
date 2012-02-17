@@ -1,3 +1,5 @@
+import unittest
+
 from testify import run, class_teardown, class_setup, setup, teardown, TestCase
 
 
@@ -253,6 +255,103 @@ class TestFixtureMixinOrder(TestCase, FixtureMixin, NewerFixtureMixin):
     def make_sure_i_ran(self):
         assert self.foo_ran
         assert self.bar_ran
+
+
+class UnitTest(unittest.TestCase):
+    # a compact way to record each step's completion
+    status = [False] * 6
+
+    def classSetUp(self):
+        self.status[0] = True
+
+    def setUp(self):
+        self.status[1] = True
+
+    def test_i_ran(self):
+        self.status[2] = True
+
+    def tearDown(self):
+        self.status[3] = True
+
+    def classTearDown(self):
+        self.status[4] = True
+
+    @teardown
+    def no_really_i_tore_down(self):
+        """Fixture mixins should still work as expected."""
+        self.status[5] = True
+
+
+class UnitTestTestYoDawg(TestCase):
+    """Make sure we actually detect and run all steps in unittest.TestCases."""
+    def test_unit_test_status(self):
+        assert UnitTest.status == [True] * 6, UnitTest.status
+
+
+# The following 5 cases test unittest.TestCase inheritance and fixtures
+
+class BaseUnitTest(unittest.TestCase):
+    done = False
+
+    def __init__(self):
+        super(BaseUnitTest, self).__init__()
+        self.init = True
+
+    def setUp(self):
+        assert self.init
+        assert not self.done
+        self.foo = True
+
+    def tearDown(self):
+        assert self.init
+        assert not self.done
+        self.done = True
+
+
+class DerivedUnitTestMixinWithFixture(BaseUnitTest):
+    @setup
+    def set_bar(self):
+        assert self.foo # setUp runs first
+        self.bar = True
+
+    @teardown
+    def not_done(self): # tearDown runs last
+        assert not self.done
+
+    @class_teardown
+    def i_ran(cls):
+        cls.i_ran = True
+
+
+class DerivedUnitTestWithFixturesAndTests(DerivedUnitTestMixinWithFixture):
+    def test_foo_bar(self):
+        assert self.foo
+        assert self.bar
+        assert not self.done
+
+
+class DerivedUnitTestWithAdditionalFixturesAndTests(DerivedUnitTestMixinWithFixture):
+    @setup
+    def set_baz(self):
+        assert self.foo
+        assert self.bar
+        self.baz = True
+
+    @teardown
+    def clear_foo(self):
+        self.foo = False
+
+    def test_foo_bar_baz(self):
+        assert self.foo
+        assert self.bar
+        assert self.baz
+
+
+class TestDerivedUnitTestsRan(TestCase):
+    def test_unit_tests_ran(self):
+        assert DerivedUnitTestMixinWithFixture.i_ran
+        assert DerivedUnitTestWithFixturesAndTests.i_ran
+        assert DerivedUnitTestWithAdditionalFixturesAndTests.i_ran
 
 
 if __name__ == '__main__':
