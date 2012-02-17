@@ -52,7 +52,7 @@ class MetaTestCase(type):
     fixture methods are defined.
     """
     __test__ = False
-    _fixture_accumulator = defaultdict(list)
+
     def __init__(cls, name, bases, dct):
 
         for member_name, member in dct.iteritems():
@@ -61,10 +61,6 @@ class MetaTestCase(type):
                     member._suites = set()
 
         super(MetaTestCase, cls).__init__(name, bases, dct)
-
-        # grab the collected fixtures and then re-init the accumulator
-        cls._fixture_methods = MetaTestCase._fixture_accumulator
-        MetaTestCase._fixture_accumulator = defaultdict(list)
 
     @classmethod
     def _cmp_str(cls, instance):
@@ -178,32 +174,44 @@ class TestCase(object):
 
     def __init_fixture_methods(self):
         """Initialize and populate the lists of fixture methods for this TestCase.
-        Fixture methods are added by the MetaTestCase metaclass at runtime only to
-        the class on which they are initially defined.  This means in order to figure
-        out all the fixtures this particular TestCase will need, we have to ascend
-        its class hierarchy and collect all the fixture methods defined on earlier
-        classes.
+
+        Fixture methods are identified by the fixture_decorator_factory when the
+        methods are created. This means in order to figure out all the fixtures
+        this particular TestCase will need, we have to test all of its attributes
+        for 'fixture-ness'.
+
+        See __fixture_decorator_factory for more info.
         """
         # init our self.(class_setup|setup|teardown|class_teardown)_fixtures lists
         for fixture_type in fixture_types:
             setattr(self, "%s_fixtures" % fixture_type, [])
 
-        # for setup methods, we want oldest class first.  for teardowns, we want newest class first
-        hierarchy = list(reversed(type(self).mro()))
-        for cls in hierarchy[1:]:
-            print '#' * 5, cls
-            # mixins on TestCase instances that derive from, say, object, won't be set up properly
-            if hasattr(cls, '_fixture_methods'):
-                # the metaclass stored the class's fixtures in a _fixture_methods instance variable
-                for fixture_type, fixture_methods in cls._fixture_methods.iteritems():
-                    bound_fixture_methods = [instancemethod(func, self, self.__class__) for func in fixture_methods]
-                    if fixture_type.endswith('setup'):
-                        # for setup methods, we want methods defined further back in the
-                        # class hierarchy to execute first
-                        getattr(self, "%s_fixtures" % fixture_type).extend(bound_fixture_methods)
-                    else:
-                        # for teardown methods though, we want the opposite
-                        setattr(self, "%s_fixtures" % fixture_type, bound_fixture_methods + getattr(self, "%s_fixtures" % fixture_type))
+
+        # discover which fixures are on this class, including mixed-in ones
+        self._fixture_methods = defaultdict(list)
+
+        for attr_name in dir(self):
+            func = getattr(self, attr_name, None)
+            # _fixture_id indicates this method was tagged by us as a fixture,
+            # and the instancemethod check ensures we don't tag turtles
+            if hasattr(func, '_fixture_id') and type(func) == instancemethod:
+                self._fixture_methods[func._fixture_type].append(func)
+
+        # arrange our fixture buckets appropriately
+        for fixture_type, fixture_methods in self._fixture_methods.iteritems():
+            # sort our fixtures in order of oldest (smaller id) to newest
+            fixture_methods.sort(key=lambda x: x._fixture_id)
+
+            fixture_list = "%s_fixtures" % fixture_type
+            existing_fixtures_of_this_type = getattr(self, fixture_list)
+
+            if fixture_type.endswith('setup'):
+                # for setup methods, we want methods defined further back in the
+                # class hierarchy to execute first
+                existing_fixtures_of_this_type.extend(fixture_methods)
+            else:
+                # for teardown methods though, we want the opposite
+                setattr(self, fixture_list, fixture_methods + existing_fixtures_of_this_type)
 
     def _generate_test_method(self, method_name, function):
         """Allow tests to define new test methods in their __init__'s and have appropriate suites applied."""
@@ -477,15 +485,37 @@ def suite(*args, **kwargs):
 
     return mark_test_with_suites
 
+
+# unique id for fixtures
+__fixture_id = [0]
+
 def __fixture_decorator_factory(fixture_type):
-    """Decorator generator for the fixture decorators"""
-    def fixture_method(func):
-        MetaTestCase._fixture_accumulator[fixture_type].append(func)
+    """Decorator generator for the fixture decorators.
+
+    Tagging a class/instancemethod as 'setup', etc, will mark the method with a
+    _fixture_id. Smaller fixture ids correspond to functions higher on the
+    class hierarchy, since base classes are created before their children.
+
+    When our test cases are instantiated, they use this _fixture_id to sort
+    methods into the appropriate _fixture_methods bucket. Note that this
+    sorting cannot be done here, because this decorator does not recieve
+    instancemethods -- which would be aware of their class -- because the class
+    they belong to has not yet been created.
+    """
+
+    def fixture_decorator(func):
+        # record the fixture type and id for this method
         func._fixture_type = fixture_type
+        func._fixture_id = __fixture_id[0]
+
+        __fixture_id[0] += 1
+
         return func
-    return fixture_method
+
+    return fixture_decorator
 
 class_setup = __fixture_decorator_factory('class_setup')
 setup = __fixture_decorator_factory('setup')
 teardown = __fixture_decorator_factory('teardown')
 class_teardown = __fixture_decorator_factory('class_teardown')
+
