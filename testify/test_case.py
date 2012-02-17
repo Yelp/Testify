@@ -39,12 +39,14 @@ deprecated_fixture_type_map = {
     'tearDown': 'teardown',
     'classTearDown': 'class_teardown'}
 
+
 class TwistedFailureError(Exception):
     """Exception that indicates the value is an instance of twisted.python.failure.Failure
 
     This is part of the magic that's required to get a proper stack trace out of twisted applications
     """
     pass
+
 
 class MetaTestCase(type):
     """This base metaclass is used to collect each TestCase's decorated fixture methods at
@@ -159,10 +161,6 @@ class TestCase(object):
         self.__class_level_failure = None
         self.__class_level_error = None
 
-        # for now, we still support the use of unittest-style fixture methods
-        for deprecated_fixture_type in ['classSetUp', 'setUp', 'tearDown', 'classTearDown']:
-            getattr(self, deprecated_fixture_type).im_func._fixture_type = deprecated_fixture_type_map[deprecated_fixture_type]
-
         # for now, we still support the use of unittest-style assertions defined on the TestCase instance
         for name in dir(deprecated_assertions):
             if name.startswith(('assert', 'fail')):
@@ -186,16 +184,21 @@ class TestCase(object):
         for fixture_type in fixture_types:
             setattr(self, "%s_fixtures" % fixture_type, [])
 
-
         # discover which fixures are on this class, including mixed-in ones
         self._fixture_methods = defaultdict(list)
 
         for attr_name in dir(self):
-            func = getattr(self, attr_name, None)
-            # _fixture_id indicates this method was tagged by us as a fixture,
-            # and the instancemethod check ensures we don't tag turtles
-            if hasattr(func, '_fixture_id') and type(func) == instancemethod:
-                self._fixture_methods[func._fixture_type].append(func)
+            method = getattr(self, attr_name)
+
+            # if this is an old setUp/tearDown/etc, tag it as a fixture
+            if attr_name in deprecated_fixture_type_map:
+                fixture_type = deprecated_fixture_type_map[attr_name]
+                fixture_decorator = globals()[fixture_type]
+                method = instancemethod(fixture_decorator(method.im_func), self)
+
+            # collect all of our fixtures in appropriate buckets
+            if self.is_fixture_method(method):
+                self._fixture_methods[method._fixture_type].append(method)
 
         # arrange our fixture buckets appropriately
         for fixture_type, fixture_methods in self._fixture_methods.iteritems():
@@ -208,7 +211,7 @@ class TestCase(object):
             if fixture_type.endswith('setup'):
                 # for setup methods, we want methods defined further back in the
                 # class hierarchy to execute first
-                existing_fixtures_of_this_type.extend(fixture_methods)
+                setattr(self, fixture_list, existing_fixtures_of_this_type + fixture_methods)
             else:
                 # for teardown methods though, we want the opposite
                 setattr(self, fixture_list, fixture_methods + existing_fixtures_of_this_type)
@@ -256,7 +259,7 @@ class TestCase(object):
         """Running the class's class_setup method chain."""
         self.__run_class_fixtures(
             self.STAGE_CLASS_SETUP,
-            self.class_setup_fixtures + [ self.classSetUp ],
+            self.class_setup_fixtures,
             self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
             self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
         )
@@ -265,7 +268,7 @@ class TestCase(object):
         """End the process of running tests.  Run the class's class_teardown methods"""
         self.__run_class_fixtures(
             self.STAGE_CLASS_TEARDOWN,
-            [ self.classTearDown ] + self.class_teardown_fixtures,
+            self.class_teardown_fixtures,
             self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
             self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
         )
@@ -338,7 +341,7 @@ class TestCase(object):
                     # first, run setup fixtures
                     self._stage = self.STAGE_SETUP
                     def _setup_block():
-                        for fixture_method in self.setup_fixtures + [ self.setUp ]:
+                        for fixture_method in self.setup_fixtures:
                             fixture_method()
                     self.__execute_block_recording_exceptions(_setup_block, result)
 
@@ -350,7 +353,7 @@ class TestCase(object):
                     # finally, run the teardown phase
                     self._stage = self.STAGE_TEARDOWN
                     def _teardown_block():
-                        for fixture_method in [ self.tearDown ] + self.teardown_fixtures:
+                        for fixture_method in self.teardown_fixtures:
                             fixture_method()
                     self.__execute_block_recording_exceptions(_teardown_block, result)
 
@@ -423,41 +426,65 @@ class TestCase(object):
     def setUp(self): pass
     def tearDown(self): pass
     def classTearDown(self): pass
+    def runTest(self): pass
 
-    def is_fixture_method(self, method, fixture_type = None):
-        if hasattr(method, '_fixture_type'):
+    def is_fixture_method(self, method, fixture_type=None):
+        # _fixture_id indicates this method was tagged by us as a fixture,
+        # and the MethodType check ensures we don't tag turtles (who are all types)
+        if hasattr(method, '_fixture_type') and isinstance(method, types.MethodType):
             if fixture_type:
                 return True if (getattr(method, '_fixture_type') == fixture_type) else False
             else:
                 return True
 
+
 class TestifiedUnitTest(TestCase, unittest.TestCase):
-#class TestifiedUnitTest(unittest.TestCase, TestCase):
-    __metaclass__ = MetaTestCase
-
-    def __init__(self, *args, **kwargs):
-        unittest.TestCase.__init__(self)
-        TestCase.__init__(self, *args, **kwargs)
-
-    def runTest(self): pass
 
     @classmethod
     def from_unittest_case(cls, unittest_class):
+        """"Constructs a new testify.TestCase from a unittest.TestCase class.
 
+        This operates recursively on the TestCase's class hierarchy by
+        converting each parent unittest.TestCase into a TestifiedTestCase.
+        """
+
+        # our base case: once we get to the parent TestCase, replace it with our
+        # own parent class that will just handle inheritance for super()
         if unittest_class == unittest.TestCase:
             return TestifiedUnitTest
 
+        # we're going to update our class dict with some testify defaults to
+        # make things Just Work
         unittest_dict = dict(unittest_class.__dict__)
-        unittest_dict.update(dict(TestCase.__dict__))
+        default_test_case_dict = dict(TestCase.__dict__)
 
-        bases = [unittest_class] # so super() still works
+        # testify.TestCase defines its own deprecated fixtures; don't let them
+        # overwrite unittest's fixtures
+        for deprecated_fixture_name in deprecated_fixture_type_map:
+            del default_test_case_dict[deprecated_fixture_name]
+
+        # set testify defaults on the unittest class
+        for member_name, member in default_test_case_dict.iteritems():
+            unittest_dict.setdefault(member_name, member)
+
+        # use an __init__ smart enough to figure out our inheritance
+        unittest_dict['__init__'] = cls.__init__
+
+        # traverse our class hierarchy and 'testify' parent unittest.TestCases
+        bases = []
 
         for base_class in unittest_class.__bases__:
             if issubclass(base_class, unittest.TestCase):
                 base_class = cls.from_unittest_case(base_class)
             bases.append(base_class)
 
+        # include our original unittest class so existing super() calls still
+        # work; this is our last base class to prevent infinite recursion in
+        # those super calls
+        bases.append(unittest_class)
+
         new_name = 'Testified' + unittest_class.__name__
+
         return MetaTestCase(new_name, tuple(bases), unittest_dict)
 
 
@@ -487,30 +514,49 @@ def suite(*args, **kwargs):
 
 
 # unique id for fixtures
-__fixture_id = [0]
+_fixture_id = [0]
 
 def __fixture_decorator_factory(fixture_type):
     """Decorator generator for the fixture decorators.
 
     Tagging a class/instancemethod as 'setup', etc, will mark the method with a
     _fixture_id. Smaller fixture ids correspond to functions higher on the
-    class hierarchy, since base classes are created before their children.
+    class hierarchy, since base classes (and their methods!) are created before
+    their children.
 
     When our test cases are instantiated, they use this _fixture_id to sort
     methods into the appropriate _fixture_methods bucket. Note that this
     sorting cannot be done here, because this decorator does not recieve
     instancemethods -- which would be aware of their class -- because the class
     they belong to has not yet been created.
+
+    **NOTE**: This means fixtures of the same type on a class will be executed
+    in the order that they are defined, before/after fixtures execute on the
+    parent class execute setups/teardowns, respectively.
     """
 
-    def fixture_decorator(func):
-        # record the fixture type and id for this method
-        func._fixture_type = fixture_type
-        func._fixture_id = __fixture_id[0]
+    def fixture_decorator(function):
+        # record the fixture type and id for this function
+        function._fixture_type = fixture_type
 
-        __fixture_id[0] += 1
+        if function.__name__ in deprecated_fixture_type_map:
+            # we push deprecated setUps/tearDowns to the beginning or end of
+            # our fixture lists, respectively. this is the best we can do,
+            # because these methods are generated in the order their classes
+            # are created, so we can't assign a fair fixture_id to them.
+            function._fixture_id = 0 if fixture_type.endswith('setup') else float('inf')
 
-        return func
+        else:
+            # however, if we've tagged a fixture with our decorators then we
+            # effectively register their place on the class hierarchy by this
+            # fixture_id.
+            function._fixture_id = _fixture_id[0]
+
+        _fixture_id[0] += 1
+
+        return function
+
+    fixture_decorator.__name__ = fixture_type
 
     return fixture_decorator
 
