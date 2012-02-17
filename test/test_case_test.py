@@ -1,5 +1,6 @@
 from testify import run, class_teardown, class_setup, setup, teardown, TestCase
 
+
 class TestMethodsGetRun(TestCase):
     def test_method_1(self):
         self.test_1_run = True
@@ -12,6 +13,7 @@ class TestMethodsGetRun(TestCase):
         assert self.test_1_run
         assert self.test_2_run
 
+
 class DeprecatedClassSetupFixturesGetRun(TestCase):
     def classSetUp(self):
         self.test_var = True
@@ -19,12 +21,14 @@ class DeprecatedClassSetupFixturesGetRun(TestCase):
     def test_test_var(self):
         assert self.test_var
 
+
 class DeprecatedSetupFixturesGetRun(TestCase):
     def setUp(self):
         self.test_var = True
 
     def test_test_var(self):
         assert self.test_var
+
 
 class DeprecatedTeardownFixturesGetRun(TestCase):
     COUNTER = 0
@@ -42,6 +46,7 @@ class DeprecatedTeardownFixturesGetRun(TestCase):
         if self.COUNTER > 1:
             assert self.test_var
 
+
 class DeprecatedClassTeardownFixturesGetRun(TestCase):
     def test_placeholder(self):
         pass
@@ -53,6 +58,7 @@ class DeprecatedClassTeardownFixturesGetRun(TestCase):
     def test_test_var(self):
         assert self.test_var
 
+
 class ClassSetupFixturesGetRun(TestCase):
     @class_setup
     def set_test_var(self):
@@ -61,6 +67,7 @@ class ClassSetupFixturesGetRun(TestCase):
     def test_test_var(self):
         assert self.test_var
 
+
 class SetupFixturesGetRun(TestCase):
     @setup
     def set_test_var(self):
@@ -68,6 +75,7 @@ class SetupFixturesGetRun(TestCase):
 
     def test_test_var(self):
         assert self.test_var
+
 
 class TeardownFixturesGetRun(TestCase):
     COUNTER = 0
@@ -86,6 +94,7 @@ class TeardownFixturesGetRun(TestCase):
         if self.COUNTER > 1:
             assert self.test_var
 
+
 class TestRegisterFixtureMethodsParentClass(TestCase):
     """A parent class to test the ability to register fixture methods"""
 
@@ -98,6 +107,7 @@ class TestRegisterFixtureMethodsParentClass(TestCase):
     def __parent_setup_2(self):
         """Set an instance variable to test that this method gets called"""
         self.parent_setup_exists += 1
+
 
 class TestRegisterFixtureMethodsChildClass(TestRegisterFixtureMethodsParentClass):
     """A child class to test the ability to register fixture methods"""
@@ -115,6 +125,7 @@ class TestRegisterFixtureMethodsChildClass(TestRegisterFixtureMethodsParentClass
         self.failUnless(self.parent_setup_exists == 2)
         assert self.child_setup_exists == 3
         assert self.child_setup_2_exists == 4
+
 
 class FixtureMethodRegistrationOrderTest(TestCase):
     """Test that registered fixtures execute in the expected order"""
@@ -185,18 +196,64 @@ class FixtureMethodRegistrationOrderTest(TestCase):
     def __class_teardown_postrun_2(self):
         assert self.counter == 12
 
+
 class OverrideTest(TestCase):
     def test_method_1(self):
         pass
 
     def test_method_2(self):
         pass
-# class ExceptionsInClassSetup(TestCase):
-#   def classSetUp(self):
-#       raise Exception, "oh snap"
-#
-#   def test_something(self):
-#       pass
+
+
+@class_setup
+def test_incorrectly_defined_fixture():
+    """Not a true test, but declarations like this shouldn't crash."""
+    pass
+
+
+class FixtureMixin(object):
+    @class_setup
+    def set_attr(cls):
+        cls.foo = True
+
+    def test_foo(self):
+        self.foo_ran = self.foo
+
+
+class TestFixtureMixinsGetRun(TestCase, FixtureMixin):
+    # define the teardown here in case the mixin doesn't properly apply it
+    @class_teardown
+    def make_sure_i_ran(self):
+        assert self.foo_ran
+
+
+class TestSubclassedCasesWithFeatureMixinsGetRun(TestFixtureMixinsGetRun):
+    pass
+
+
+class TestOtherCasesWithSameFixtureMixinsGetRun(TestCase, FixtureMixin):
+    @teardown
+    def make_sure_i_ran(self):
+        assert self.foo_ran
+
+
+class NewerFixtureMixin(object):
+    @class_setup
+    def set_another_attr(cls):
+        # this setup should run after FixtureMixin's
+        assert cls.foo
+        cls.bar = True
+
+    def test_bar(self):
+        self.bar_ran = self.bar
+
+
+class TestFixtureMixinOrder(TestCase, FixtureMixin, NewerFixtureMixin):
+    @class_teardown
+    def make_sure_i_ran(self):
+        assert self.foo_ran
+        assert self.bar_ran
+
 
 if __name__ == '__main__':
     run()
