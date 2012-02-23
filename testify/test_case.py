@@ -188,7 +188,8 @@ class TestCase(object):
         self._fixture_methods = defaultdict(list)
 
         for attr_name in dir(self):
-            method = getattr(self, attr_name)
+            # @properties that depend on @setup will fail here, hence the None
+            method = getattr(self, attr_name, None)
 
             # if this is an old setUp/tearDown/etc, tag it as a fixture
             if attr_name in deprecated_fixture_type_map:

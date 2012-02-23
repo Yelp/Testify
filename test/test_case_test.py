@@ -218,8 +218,14 @@ class FixtureMixin(object):
     def set_attr(cls):
         cls.foo = True
 
+    @property
+    def get_foo(self):
+        # properties dependent on setup shouldn't crash our dir() loop when
+        # determining fixures on a class
+        return self.foo
+
     def test_foo(self):
-        self.foo_ran = self.foo
+        self.foo_ran = self.get_foo
 
 
 class TestFixtureMixinsGetRun(TestCase, FixtureMixin):
