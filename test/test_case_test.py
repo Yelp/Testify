@@ -288,7 +288,7 @@ class UnitTestTestYoDawg(TestCase):
         assert UnitTest.status == [True] * 6, UnitTest.status
 
 
-# The following 5 cases test unittest.TestCase inheritance and fixtures
+# The following 5 cases test unittest.TestCase inheritance, fixtures and mixins
 
 class BaseUnitTest(unittest.TestCase):
     done = False
@@ -308,6 +308,10 @@ class BaseUnitTest(unittest.TestCase):
         self.done = True
 
 
+class DoNothingMixin(object):
+    pass
+
+
 class DerivedUnitTestMixinWithFixture(BaseUnitTest):
     @setup
     def set_bar(self):
@@ -323,7 +327,7 @@ class DerivedUnitTestMixinWithFixture(BaseUnitTest):
         cls.i_ran = True
 
 
-class DerivedUnitTestWithFixturesAndTests(DerivedUnitTestMixinWithFixture):
+class DerivedUnitTestWithFixturesAndTests(DerivedUnitTestMixinWithFixture, DoNothingMixin):
     def test_foo_bar(self):
         assert self.foo
         assert self.bar

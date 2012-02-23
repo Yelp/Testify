@@ -481,7 +481,7 @@ class TestifiedUnitTest(TestCase, unittest.TestCase):
         # include our original unittest class so existing super() calls still
         # work; this is our last base class to prevent infinite recursion in
         # those super calls
-        bases.append(unittest_class)
+        bases.insert(1, unittest_class)
 
         new_name = 'Testified' + unittest_class.__name__
 
