@@ -282,13 +282,19 @@ class UnitTest(unittest.TestCase):
         self.status[5] = True
 
 
+class UnitTestUntested(UnitTest):
+    __test__ = False
+    status = [False] * 6
+
+
 class UnitTestTestYoDawg(TestCase):
     """Make sure we actually detect and run all steps in unittest.TestCases."""
     def test_unit_test_status(self):
         assert UnitTest.status == [True] * 6, UnitTest.status
+        assert UnitTestUntested.status == [False] * 6, UnitTestUntested.status
 
 
-# The following 5 cases test unittest.TestCase inheritance, fixtures and mixins
+# The following cases test unittest.TestCase inheritance, fixtures and mixins
 
 class BaseUnitTest(unittest.TestCase):
     done = False
