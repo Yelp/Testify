@@ -72,9 +72,9 @@ class TestRunnerServer(TestRunner):
 
         self.test_queue = AsyncQueue()
         self.checked_out = {} # Keyed on class path (module class).
-        self.failed_rerun_methods = {} # Keyed on tuple (class_path, method), values are results dicts.
-        self.timeout_rerun_methods = set() # The set of all (class_path, method) that have timed out once.
-
+        self.failed_rerun_methods = set() # Set of (class_path, method) who have failed.
+        self.timeout_rerun_methods = set() # Set of (class_path, method) who were sent to a client but results never came.
+        self.previous_run_results = {} # Keyed on (class_path, method), values are result dictionaries.
         self.runners = set() # The set of runner_ids who have asked for tests.
 
         super(TestRunnerServer, self).__init__(*args, **kwargs)
@@ -227,7 +227,7 @@ class TestRunnerServer(TestRunner):
                     ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown or (class_path, method) in self.failed_rerun_methods),
                 ):
             for reporter in self.test_reporters:
-                result_dict['previous_run'] = self.failed_rerun_methods.get((class_path, method), None)
+                result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
                 reporter.test_start(result_dict)
                 reporter.test_complete(result_dict)
 
@@ -241,49 +241,52 @@ class TestRunnerServer(TestRunner):
         for method, result_dict in d['failed_methods'].iteritems():
             if (class_path, method) not in self.failed_rerun_methods:
                 requeue_dict['methods'].append(method)
-                self.failed_rerun_methods[(class_path, method)] = result_dict
+                self.failed_rerun_methods.add((class_path, method))
+                result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
+                self.previous_run_results[(class_path, method)] = result_dict
 
         if finished:
             if len(d['methods']) != 0:
                 raise ValueError("check_in_class called with finished=True but this class (%s) still has %d methods without results." % (class_path, len(d['methods'])))
         elif timed_out:
-            # Requeue timed-out tests.
+            # Requeue or report timed-out tests.
+
             for method in d['methods']:
+                # Fake the results dict.
+                error_message = "The runner running this method (%s) didn't respond within %ss.\n" % (runner, self.runner_timeout)
+                module, _, classname = class_path.partition(' ')
+
+                result_dict = {
+                    'previous_run' : self.previous_run_results.get((class_path, method), None),
+                    'start_time' : time.time()-self.runner_timeout,
+                    'end_time' : time.time(),
+                    'run_time' : self.runner_timeout,
+                    'normalized_run_time' : "%.2fs" % (self.runner_timeout),
+                    'complete': True, # We've tried running the test.
+                    'success' : False,
+                    'failure' : False,
+                    'error' : True,
+                    'interrupted' : False,
+                    'exception_info' : [error_message],
+                    'exception_info_pretty' : [error_message],
+                    'runner_id' : runner,
+                    'method' : {
+                        'module' : module,
+                        'class' : classname,
+                        'name' : method,
+                        'full_name' : "%s.%s" % (class_path, method),
+                        'fixture_type' : None,
+                    }
+                }
+
                 if (class_path, method) not in self.timeout_rerun_methods:
                     requeue_dict['methods'].append(method)
                     self.timeout_rerun_methods.add((class_path, method))
+                    self.previous_run_results[(class_path, method)] = result_dict
                 else:
-                    error_message = "The runner running this method (%s) didn't respond within %ss." % (runner, self.runner_timeout)
-                    module, _, classname = class_path.partition(' ')
-
-                    # Fake the results dict.
-                    result_dict = {
-                        'previous_run' : None,
-                        'start_time' : time.time()-self.runner_timeout,
-                        'end_time' : time.time(),
-                        'run_time' : self.runner_timeout,
-                        'normalized_run_time' : "%.2fs" % (self.runner_timeout),
-                        'complete': True, # We've tried running the test.
-                        'success' : False,
-                        'failure' : False,
-                        'error' : True,
-                        'interrupted' : False,
-                        'exception_info' : error_message,
-                        'exception_info_pretty' : error_message,
-                        'runner_id' : runner,
-                        'method' : {
-                            'module' : module,
-                            'class' : classname,
-                            'name' : method,
-                            'full_name' : "%s.%s" % (class_path, method),
-                            'fixture_type' : None,
-                        }
-                    }
-
                     for reporter in self.test_reporters:
                         reporter.test_start(result_dict)
                         reporter.test_complete(result_dict)
-
 
         if requeue_dict['methods']:
             self.test_queue.put(-1, requeue_dict)
