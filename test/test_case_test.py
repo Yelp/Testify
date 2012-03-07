@@ -1,6 +1,12 @@
 import unittest
 
-from testify import run, class_teardown, class_setup, setup, teardown, TestCase
+from testify import class_setup
+from testify import class_teardown
+from testify import run
+from testify import setup
+from testify import teardown
+from testify import TestCase
+from testify import test_runner
 
 
 class TestMethodsGetRun(TestCase):
@@ -296,7 +302,12 @@ class UnitTestUntested(UnitTest):
 class UnitTestTestYoDawg(TestCase):
     """Make sure we actually detect and run all steps in unittest.TestCases."""
     def test_unit_test_status(self):
+        runner = test_runner.TestRunner(UnitTest)
+        assert runner.run()
         assert UnitTest.status == [True] * 6, UnitTest.status
+
+        runner = test_runner.TestRunner(UnitTestUntested)
+        assert runner.run()
         assert UnitTestUntested.status == [False] * 6, UnitTestUntested.status
 
 
