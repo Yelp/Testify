@@ -33,7 +33,7 @@ class TestRunner(object):
     """
 
     def __init__(self,
-                 test_path,
+                 test_path_or_test_case,
                  bucket=None,
                  bucket_count=None,
                  bucket_overrides=None,
@@ -47,9 +47,9 @@ class TestRunner(object):
                  module_method_overrides=None,
                  failure_limit=None
                  ):
-        """After instantiating a TestRunner, call add_test_case() to add some tests, and run() to run them."""
+        """After instantiating a TestRunner, call run() to run them."""
 
-        self.test_path = test_path
+        self.test_path_or_test_case = test_path_or_test_case
         self.bucket = bucket
         self.bucket_count = bucket_count
         self.bucket_overrides = bucket_overrides if bucket_overrides is not None else {}
@@ -74,11 +74,11 @@ class TestRunner(object):
 
     def discover(self):
         def discover_inner():
-            if isinstance(self.test_path, (TestCase, MetaTestCase)):
+            if isinstance(self.test_path_or_test_case, (TestCase, MetaTestCase)):
                 # For testing purposes only.
-                yield self.test_path()
+                yield self.test_path_or_test_case()
                 return
-            for test_case_class in test_discovery.discover(self.test_path):
+            for test_case_class in test_discovery.discover(self.test_path_or_test_case):
                 override_bucket = self.bucket_overrides.get(MetaTestCase._cmp_str(test_case_class))
                 if (self.bucket is None
                     or (override_bucket is None and test_case_class.bucket(self.bucket_count, self.bucket_salt) == self.bucket)
