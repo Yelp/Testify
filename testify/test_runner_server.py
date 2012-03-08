@@ -31,6 +31,8 @@ class AsyncQueue(object):
         self.finalized = False
 
     def get(self, c_priority, callback):
+        """If the queue is not empty, call callback immediately with the next item. Otherwise, put callback in a callback priority queue, to be called when data is put().
+        If finalize() is called before data arrives for callback, callback(None, None) is called."""
         if self.finalized:
             callback(None, None)
             return
@@ -41,6 +43,7 @@ class AsyncQueue(object):
             self.callback_queue.put((c_priority, callback,))
 
     def put(self, d_priority, data):
+        """If a get callback is waiting, call it immediately with this data. Otherwise, put data in a priority queue, to be retrieved at a future date."""
         try:
             c_priority, callback = self.callback_queue.get_nowait()
             callback(d_priority, data)
@@ -79,6 +82,30 @@ class TestRunnerServer(TestRunner):
 
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
+    def get_next_test(self, runner_id, on_test_callback, on_empty_callback):
+        """Enqueue a callback (which should take one argument, a test_dict) to be called when the next test is available."""
+
+        self.runners.add(runner_id)
+
+        def callback(priority, test_dict):
+            if not test_dict:
+                return on_empty_callback()
+
+            if test_dict.get('last_runner', None) != runner_id or (self.test_queue.empty() and len(self.runners) <= 1):
+                self.check_out_class(runner_id, test_dict)
+                on_test_callback(test_dict)
+            else:
+                if self.test_queue.empty():
+                    # Put the test back in the queue, and queue ourselves to pick up the next test queued.
+                    self.test_queue.put(priority, test_dict)
+                    self.test_queue.callback_queue.put((-1, callback))
+                else:
+                    # Get the next test, process it, then place the old test back in the queue.
+                    self.test_queue.get(0, callback)
+                    self.test_queue.put(priority, test_dict)
+
+        self.test_queue.get(0, callback)
+
     def run(self):
         class TestsHandler(tornado.web.RequestHandler):
             @tornado.web.asynchronous
@@ -87,33 +114,18 @@ class TestRunnerServer(TestRunner):
                 if self.revision and self.revision != handler.get_argument('revision'):
                     return handler.send_error(409, reason="Incorrect revision %s -- server is running revision %s" % (handler.get_argument('revision'), self.revision))
 
-                self.runners.add(runner_id)
+                def callback(test_dict):
+                    handler.finish(json.dumps({
+                        'class': test_dict['class_path'],
+                        'methods': test_dict['methods'],
+                        'finished': False,
+                    }))
+                def empty_callback():
+                    handler.finish(json.dumps({
+                        'finished': True,
+                    }))
 
-                def callback(priority, test_dict):
-                    if test_dict:
-                        if test_dict.get('last_runner', None) != runner_id or (self.test_queue.empty() and len(self.runners) <= 1):
-                            self.check_out_class(runner_id, test_dict)
-
-                            handler.finish(json.dumps({
-                                'class': test_dict['class_path'],
-                                'methods': test_dict['methods'],
-                                'finished': False,
-                            }))
-                        else:
-                            if self.test_queue.empty():
-                                # Put the test back in the queue, and queue ourselves to pick up the next test queued.
-                                self.test_queue.put(priority, test_dict)
-                                self.test_queue.callback_queue.put((-1, callback))
-                            else:
-                                # Get the next test, process it, then place the old test back in the queue.
-                                self.test_queue.get(0, callback)
-                                self.test_queue.put(priority, test_dict)
-                    else:
-                        handler.finish(json.dumps({
-                            'finished': True,
-                        }))
-
-                self.test_queue.get(0, callback)
+                self.get_next_test(runner_id, callback, empty_callback)
 
         class ResultsHandler(tornado.web.RequestHandler):
             def post(handler):
@@ -314,7 +326,7 @@ class TestRunnerServer(TestRunner):
         self.shutdown()
 
     def shutdown(self):
-        # Can't immediately call stop, otherwise the current POST won't ever get a response.
+        # Can't immediately call stop, otherwise the runner currently POSTing its results will get a Connection Refused when it tries to ask for the next test.
         self.test_queue.finalize()
         iol = tornado.ioloop.IOLoop.instance()
         iol.add_timeout(time.time()+1, iol.stop)
