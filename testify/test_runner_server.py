@@ -113,6 +113,34 @@ class TestRunnerServer(TestRunner):
 
         self.test_queue.get(0, callback)
 
+    def report_result(self, runner_id, result):
+        class_path = '%s %s' % (result['method']['module'], result['method']['class'])
+        d = self.checked_out.get(class_path)
+
+        if not d:
+            raise ValueError("Class %s not checked out." % class_path)
+        if d['runner'] != runner_id:
+            raise ValueError("Class %s checked out by runner %s, not %s" % (class_path, d['runner'], runner_id))
+        if result['method']['name'] not in d['methods']:
+            raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
+
+        if result['success']:
+            d['passed_methods'][result['method']['name']] = result
+        else:
+            d['failed_methods'][result['method']['name']] = result
+            self.failure_count += 1
+            if self.failure_limit and self.failure_count >= self.failure_limit:
+                logging.error('Too many failures, shutting down.')
+                return self.early_shutdown()
+
+        d['timeout_time'] = time.time() + self.runner_timeout
+
+        d['methods'].remove(result['method']['name'])
+
+        if not d['methods']:
+            self.check_in_class(runner_id, class_path, finished=True)
+
+
     def run(self):
         class TestsHandler(tornado.web.RequestHandler):
             @tornado.web.asynchronous
@@ -159,32 +187,10 @@ class TestRunnerServer(TestRunner):
                 self.runners_outstanding.add(runner_id)
                 result = json.loads(handler.request.body)
 
-                class_path = '%s %s' % (result['method']['module'], result['method']['class'])
-                d = self.checked_out.get(class_path)
-
-                if not d:
-                    return handler.send_error(409, reason="Class %s not checked out." % class_path)
-                if d['runner'] != runner_id:
-                    return handler.send_error(409, reason="Class %s checked out by runner %s, not %s" % (class_path, d['runner'], runner_id))
-                if result['method']['name'] not in d['methods']:
-                    return handler.send_error(409, reason="Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
-
-                if result['success']:
-                    d['passed_methods'][result['method']['name']] = result
-                else:
-                    d['failed_methods'][result['method']['name']] = result
-                    self.failure_count += 1
-                    if self.failure_limit and self.failure_count >= self.failure_limit:
-                        logging.error('Too many failures, shutting down.')
-                        self.early_shutdown()
-                        return handler.finish("Too many failures, shutting down.")
-
-                d['timeout_time'] = time.time() + self.runner_timeout
-
-                d['methods'].remove(result['method']['name'])
-
-                if not d['methods']:
-                    self.check_in_class(runner_id, class_path, finished=True)
+                try:
+                    self.report_result(runner_id, result)
+                except ValueError, e:
+                    return handler.send_error(409, reason=str(e))
 
                 return handler.finish("kthx")
 
