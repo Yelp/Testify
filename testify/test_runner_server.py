@@ -351,7 +351,11 @@ class TestRunnerServer(TestRunner):
             tornado.ioloop.IOLoop.instance().add_timeout(d['timeout_time'], lambda: self.timeout_class(runner, class_path))
             return
 
-        self.check_in_class(runner, class_path, timed_out=True)
+        try:
+            self.check_in_class(runner, class_path, timed_out=True)
+        except ValueError:
+            # If another builder has checked out the same class in the mean time, don't throw an error.
+            pass
 
     def early_shutdown(self):
         for class_path in self.checked_out.keys():
@@ -359,6 +363,10 @@ class TestRunnerServer(TestRunner):
         self.shutdown()
 
     def shutdown(self):
+        if self.shutting_down:
+            # Try not to shut down twice.
+            return
+
         self.shutting_down = True
         self.test_queue.finalize()
         iol = tornado.ioloop.IOLoop.instance()

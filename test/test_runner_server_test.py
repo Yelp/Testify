@@ -1,4 +1,5 @@
 import threading
+import tornado.ioloop
 
 from testify import test_case, test_runner_server, setup, class_setup, assert_equal, test_result
 
@@ -43,8 +44,12 @@ class TestRunnerServerTestCase(test_case.TestCase):
     @class_setup
     def build_test_case(self):
         class DummyTestCase(test_case.TestCase):
+            def __init__(self_, *args, **kwargs):
+                super(DummyTestCase, self_).__init__(*args, **kwargs)
+                self_.should_pass = kwargs.pop('should_pass', True)
             def test(self_):
-                pass
+                assert self_.should_pass
+
         self.dummy_test_case = DummyTestCase
 
     @setup
@@ -61,6 +66,14 @@ class TestRunnerServerTestCase(test_case.TestCase):
             plugin_modules=[],
         );
 
+    def run_test(self, runner_id, should_pass=True):
+        test_instance = self.dummy_test_case(should_pass=should_pass)
+        test_instance.register_callback(
+            test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
+            lambda result: self.server.report_result(runner_id, result)
+        )
+        test_instance.run()
+
     def test_passing_tests_run_only_once(self):
         """Start a server with one test case to run. Make sure it hands out that test, report it as success, then make sure it gives us nothing else."""
         with ThreadContext(self.server.run, self.server.shutdown):
@@ -69,16 +82,27 @@ class TestRunnerServerTestCase(test_case.TestCase):
             assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
             assert_equal(first_test['methods'], ['test'])
 
-            # Have to instantiate the test case before TestResult will be happy.
-            test_instance = self.dummy_test_case()
-            result = test_result.TestResult(test_instance.test, runner_id='runner1')
-            result.start()
-            result.end_in_success()
-
-            self.server.report_result('runner1', result.to_dict())
+            self.run_test('runner1')
 
             second_test = get_test(self.server, 'runner1')
             assert_equal(second_test, None)
+
+    def test_requeue_on_failure(self):
+        """Start a server with one test case to run. Make sure it hands out that test, report it as failure, then make sure it gives us the same one, then nothing else."""
+        with ThreadContext(self.server.run, self.server.shutdown):
+            first_test = get_test(self.server, 'runner1')
+            assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
+            assert_equal(first_test['methods'], ['test'])
+
+            self.run_test('runner1', should_pass=False)
+
+            second_test = get_test(self.server, 'runner2')
+            assert_equal(second_test['class_path'], 'test.test_runner_server_test DummyTestCase')
+            assert_equal(second_test['methods'], ['test'])
+
+            self.run_test('runner2', should_pass=False)
+
+            assert_equal(get_test(self.server, 'runner3'), None)
 
     def test_requeue_on_timeout(self):
         """Start a server with one test case to run. Make sure it hands out the same test twice, then nothing else."""
@@ -97,3 +121,42 @@ class TestRunnerServerTestCase(test_case.TestCase):
             assert_equal(first_test['methods'], second_test['methods'])
             assert_equal(third_test, None)
 
+    def test_fail_then_timeout_twice(self):
+        """Fail, then time out, then time out again, then time out again.
+        The first three fetches should give the same test; the last one should be None."""
+        with ThreadContext(self.server.run, self.server.shutdown):
+            first_test = get_test(self.server, 'runner1')
+            self.run_test('runner1', should_pass=False)
+
+            second_test = get_test(self.server, 'runner2')
+            # Don't run it.
+
+            third_test = get_test(self.server, 'runner3')
+            self.run_test('runner3', should_pass=False)
+
+            assert_equal(first_test['class_path'], second_test['class_path'])
+            assert_equal(first_test['methods'], second_test['methods'])
+
+            assert_equal(first_test['class_path'], third_test['class_path'])
+            assert_equal(first_test['methods'], third_test['methods'])
+
+            # Check that it didn't requeue again.
+            assert_equal(get_test(self.server, 'runner4'), None)
+
+    def test_timeout_then_fail_twice(self):
+        """Time out once, then fail, then fail again.
+        The first three fetches should give the same test; the last one should be None."""
+        with ThreadContext(self.server.run, self.server.shutdown):
+            first_test = get_test(self.server, 'runner1')
+            # Don't run it.
+            second_test = get_test(self.server, 'runner2')
+            self.run_test('runner2', should_pass=False)
+            third_test = get_test(self.server, 'runner3')
+            self.run_test('runner3', should_pass=False)
+            assert_equal(first_test['class_path'], second_test['class_path'])
+            assert_equal(first_test['methods'], second_test['methods'])
+            assert_equal(first_test['class_path'], third_test['class_path'])
+            assert_equal(first_test['methods'], third_test['methods'])
+
+            # Check that it didn't requeue again.
+            assert_equal(get_test(self.server, 'runner4'), None)
