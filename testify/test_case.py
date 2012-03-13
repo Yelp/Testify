@@ -145,15 +145,6 @@ class TestCase(object):
         self.__suites_require = kwargs.get('suites_require', set())
         self.__name_overrides = kwargs.get('name_overrides', None)
 
-        # if the class has any suites applied to it, copy them down into its test methods
-        if hasattr(self, '_suites'):
-            for member_name in dir(self):
-                if member_name.startswith('test'):
-                    member = getattr(self, member_name)
-                    if isinstance(member, types.MethodType):
-                        suited_function = suite(*getattr(self, '_suites'))(member)
-                        setattr(self, member_name, suited_function)
-
         # callbacks for various stages of execution, used for stuff like logging
         self.__callbacks = defaultdict(list)
 
@@ -220,7 +211,7 @@ class TestCase(object):
             member = getattr(self, member_name)
             if not inspect.ismethod(member):
                 continue
-            member_suites = set(getattr(member, '_suites', set()))
+            member_suites = getattr(member, '_suites', set()) | set(getattr(self, '_suites', []))
             # if there are any exclude suites, exclude methods under them
             if self.__suites_exclude and self.__suites_exclude & member_suites:
                 continue
