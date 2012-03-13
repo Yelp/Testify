@@ -1,3 +1,11 @@
+python-testify (0.2.3) unstable; urgency=low
+
+  * Fix erroneous suite propagation among methods of subclasses of TestCase
+  * Improvements for client/server mode
+  * More descriptive error message if no tests are discovered
+
+ -- Amber Yust <ayust@yelp.com>  Tue, 13 Mar 2012 16:00:44 -0700
+
 python-testify (0.2.2) unstable; urgency=low
 
   * Support for --seed, which will seed the random number generator for
