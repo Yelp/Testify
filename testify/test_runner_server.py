@@ -35,24 +35,29 @@ class AsyncQueue(object):
     def get(self, c_priority, callback):
         """If the queue is not empty, call callback immediately with the next item. Otherwise, put callback in a callback priority queue, to be called when data is put().
         If finalize() is called before data arrives for callback, callback(None, None) is called."""
-        with self.lock:
-            if self.finalized:
-                callback(None, None)
-                return
-            try:
-                d_priority, data = self.data_queue.get_nowait()
-                callback(d_priority, data)
-            except Queue.Empty:
-                self.callback_queue.put((c_priority, callback,))
+
+        if self.finalized:
+            callback(None, None)
+            return
+        try:
+            self.lock.acquire()
+            d_priority, data = self.data_queue.get_nowait()
+            self.lock.release() # Gets skipped if get_nowait raises Empty
+            callback(d_priority, data)
+        except Queue.Empty:
+            self.callback_queue.put((c_priority, callback,))
+            self.lock.release()
 
     def put(self, d_priority, data):
-        with self.lock:
-            """If a get callback is waiting, call it immediately with this data. Otherwise, put data in a priority queue, to be retrieved at a future date."""
-            try:
-                c_priority, callback = self.callback_queue.get_nowait()
-                callback(d_priority, data)
-            except Queue.Empty:
-                self.data_queue.put((d_priority, data,))
+        """If a get callback is waiting, call it immediately with this data. Otherwise, put data in a priority queue, to be retrieved at a future date."""
+        try:
+            self.lock.acquire()
+            c_priority, callback = self.callback_queue.get_nowait()
+            self.lock.release() # Gets skipped if get_nowait raises Empty
+            callback(d_priority, data)
+        except Queue.Empty:
+            self.data_queue.put((d_priority, data,))
+            self.lock.release()
 
     def empty(self):
         return self.data_queue.empty()
@@ -62,14 +67,14 @@ class AsyncQueue(object):
 
     def finalize(self):
         """Call all queued callbacks with None, and make sure any future calls to get() immediately call their callback with None."""
-        with self.lock:
-            self.finalized = True
-            try:
-                while True:
+        self.finalized = True
+        try:
+            while True:
+                with self.lock:
                     _, callback = self.callback_queue.get_nowait()
-                    callback(None, None)
-            except Queue.Empty:
-                pass
+                callback(None, None)
+        except Queue.Empty:
+            pass
 
 class TestRunnerServer(TestRunner):
     def __init__(self, *args, **kwargs):
