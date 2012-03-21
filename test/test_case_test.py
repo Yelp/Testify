@@ -1,4 +1,4 @@
-from testify import run, class_teardown, class_setup, setup, teardown, TestCase
+from testify import run, class_teardown, class_setup, setup, teardown, setup_teardown, class_setup_teardown, TestCase, assert_equal
 
 class TestMethodsGetRun(TestCase):
     def test_method_1(self):
@@ -117,73 +117,117 @@ class TestRegisterFixtureMethodsChildClass(TestRegisterFixtureMethodsParentClass
         assert self.child_setup_2_exists == 4
 
 class FixtureMethodRegistrationOrderTest(TestCase):
-    """Test that registered fixtures execute in the expected order"""
+    """Test that registered fixtures execute in the expected order, which is:
+     - class_setup
+     - enter class_setup_teardown
+     - setup
+     - enter setup_teardown
+
+     - test
+
+     - exit setup_teardown, in Reverse of definition
+     - teardown
+     - exit class_setup_teardown in Reverse order of definition
+     - class_teardown
+    """
     def __init__(self, *args, **kwargs):
         super(FixtureMethodRegistrationOrderTest, self).__init__(*args, **kwargs)
         self.counter = 0
 
     @class_setup
     def __class_setup_prerun_1(self):
-        assert self.counter == 0
+        assert_equal(self.counter, 0)
         self.counter += 1
 
     @class_setup
     def __class_setup_prerun_2(self):
-        assert self.counter == 1
+        assert_equal(self.counter, 1)
         self.counter += 1
 
     @class_setup
     def third_setup(self):
-        assert self.counter == 2
+        assert_equal(self.counter, 2)
+        self.counter += 1
+
+    @class_setup_teardown
+    def __class_context_manager_1(self):
+        assert_equal(self.counter, 3)
+        self.counter += 1
+        yield
+        assert_equal(self.counter, 17)
+        self.counter += 1
+
+    @class_setup_teardown
+    def __class_context_manager_2(self):
+        assert_equal(self.counter, 4)
+        self.counter += 1
+        yield
+        assert_equal(self.counter, 16)
         self.counter += 1
 
     @setup
     def __setup_prerun_1(self):
-        assert self.counter == 3
+        assert_equal(self.counter, 5)
         self.counter += 1
 
     @setup
     def __setup_prerun_2(self):
-        assert self.counter == 4
+        assert_equal(self.counter, 6)
         self.counter += 1
 
     @setup
     def real_setup(self):
-        assert self.counter == 5
+        assert_equal(self.counter, 7)
+        self.counter += 1
+
+    @setup_teardown
+    def __context_manager_1(self):
+        assert_equal(self.counter, 8)
+        self.counter += 1
+        yield
+        assert_equal(self.counter, 12)
+        self.counter += 1
+
+    @setup_teardown
+    def __context_manager_2(self):
+        assert_equal(self.counter, 9)
+        self.counter += 1
+        yield
+        assert_equal(self.counter, 11)
         self.counter += 1
 
     def test_fixture_registration_order(self):
-        assert self.counter == 6
+        assert_equal(self.counter, 10)
         self.counter += 1
 
     @teardown
     def do_some_teardown(self):
-        assert self.counter == 7
+        assert_equal(self.counter, 13)
         self.counter += 1
 
     @teardown
     def __zteardown_postrun_1(self):
-        assert self.counter == 8
+        assert_equal(self.counter, 14)
         self.counter += 1
 
     @teardown
     def __teardown_postrun_2(self):
-        assert self.counter == 9
+        assert_equal(self.counter, 15)
         self.counter += 1
 
     @class_teardown
     def jsut_class_teardown(self):
-        assert self.counter == 10
+        assert_equal(self.counter, 18)
         self.counter += 1
 
     @class_teardown
     def __class_teardown_postrun_1(self):
-        assert self.counter == 11
+        assert_equal(self.counter, 19)
         self.counter += 1
 
     @class_teardown
     def __class_teardown_postrun_2(self):
-        assert self.counter == 12
+        assert_equal(self.counter, 20)
 
 class OverrideTest(TestCase):
     def test_method_1(self):

@@ -21,6 +21,7 @@ __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 
 from collections import defaultdict
+from contextlib import contextmanager
 import inspect
 from new import instancemethod
 import sys
@@ -31,7 +32,7 @@ import deprecated_assertions
 from testify.utils import class_logger
 
 # just a useful list to have
-fixture_types = ['class_setup', 'setup', 'teardown', 'class_teardown']
+fixture_types = ['class_setup', 'setup', 'teardown', 'class_teardown', 'setup_teardown', 'class_setup_teardown']
 deprecated_fixture_type_map = {
     'classSetUp': 'class_setup',
     'setUp': 'setup',
@@ -228,8 +229,9 @@ class TestCase(object):
 
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance"""
+
         self.__run_class_setup_fixtures()
-        self.__run_test_methods()
+        self.__enter_context_managers(self.class_setup_teardown_fixtures, self.__run_test_methods)
         self.__run_class_teardown_fixtures()
 
     def __run_class_setup_fixtures(self):
@@ -286,6 +288,14 @@ class TestCase(object):
         method_suites = set(getattr(method, '_suites', set()))
         return (self.__suites_exclude & method_suites)
 
+    def __enter_context_managers(self, fixture_methods, callback):
+        """Transform each fixture_method into a context manager with contextlib.contextmanager, enter them recursively, and call callback"""
+        if fixture_methods:
+            with contextmanager(fixture_methods[0])():
+                self.__enter_context_managers(fixture_methods[1:], callback)
+        else:
+            callback()
+
     def __run_test_methods(self):
         """Run this class's setup fixtures / test methods / teardown fixtures.
 
@@ -322,10 +332,18 @@ class TestCase(object):
                             fixture_method()
                     self.__execute_block_recording_exceptions(_setup_block, result)
 
-                    # then run the test method itself, assuming setup was successful
-                    self._stage = self.STAGE_TEST_METHOD
+                    def _run_test_block():
+                        # then run the test method itself, assuming setup was successful
+                        self._stage = self.STAGE_TEST_METHOD
+                        if not result.complete:
+                            self.__execute_block_recording_exceptions(test_method, result)
+
+                    def _setup_teardown_block():
+                        self.__enter_context_managers(self.setup_teardown_fixtures, _run_test_block)
+
+                    # then run any setup_teardown fixtures, assuming setup was successful.
                     if not result.complete:
-                        self.__execute_block_recording_exceptions(test_method, result)
+                        self.__execute_block_recording_exceptions(_setup_teardown_block, result)
 
                     # finally, run the teardown phase
                     self._stage = self.STAGE_TEARDOWN
@@ -447,3 +465,6 @@ class_setup = __fixture_decorator_factory('class_setup')
 setup = __fixture_decorator_factory('setup')
 teardown = __fixture_decorator_factory('teardown')
 class_teardown = __fixture_decorator_factory('class_teardown')
+
+setup_teardown = __fixture_decorator_factory('setup_teardown')
+class_setup_teardown = __fixture_decorator_factory('class_setup_teardown')
