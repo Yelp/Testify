@@ -40,6 +40,8 @@ from test_case import (
                         setup,
                         teardown,
                         class_teardown,
+                        setup_teardown,
+                        class_setup_teardown,
                         suite)
 
 from utils import turtle
