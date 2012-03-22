@@ -122,23 +122,23 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option("--log-level", action="store", dest="log_level", type="string", default="INFO")
     parser.add_option('--print-log', action="append", dest="print_loggers", type="string", default=[], help="Direct logging output for these loggers to the console")
 
-    parser.add_option('--serve', action="store", dest="serve_port", type="int", default=None)
-    parser.add_option('--connect', action="store", dest="connect_addr", type="string", default=None)
-    parser.add_option('--revision', action="store", dest="revision", type="string", default=None)
+    parser.add_option('--serve', action="store", dest="serve_port", type="int", default=None, help="Run in server mode, listening on this port for testify clients.")
+    parser.add_option('--connect', action="store", dest="connect_addr", type="string", default=None, metavar="HOST:PORT", help="Connect to a testify server (testify --serve) at this HOST:PORT")
+    parser.add_option('--revision', action="store", dest="revision", type="string", default=None, help="With --serve, refuses clients that identify with a different or no revision. In client mode, sends the revision number to the server for verification.")
     parser.add_option('--retry-limit', action="store", dest="retry_limit", type="int", default=60, help="Number of times to try connecting to the server before exiting.")
     parser.add_option('--retry-interval', action="store", dest="retry_interval", type="int", default=2, help="Interval, in seconds, between trying to connect to the server.")
     parser.add_option('--reconnect-retry-limit', action="store", dest="reconnect_retry_limit", type="int", default=5, help="Number of times to try reconnecting to the server before exiting if we have previously connected.")
 
-    parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None)
-    parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300)
-    parser.add_option('--server-timeout', action="store", dest="server_timeout", type="int", default=300)
+    parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None, help="Quit after this many test failures.")
+    parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300, help="How long to wait to wait for activity from a test runner before requeuing the tests it has checked out.")
+    parser.add_option('--server-timeout', action="store", dest="server_timeout", type="int", default=300, help="How long to wait after the last activity from any test runner before shutting down.")
 
-    parser.add_option('--runner-id', action="store", dest="runner_id", type="string", default="%s-%d" % (socket.gethostname(), os.getpid()))
+    parser.add_option('--runner-id', action="store", dest="runner_id", type="string", default="%s-%d" % (socket.gethostname(), os.getpid()), help="With --connect, an identity passed to the server on each request. Passed to the server's test reporters. Defaults to <HOST>-<PID>.")
 
-    parser.add_option('--replay-json', action="store", dest="replay_json", type="string", default=None)
-    parser.add_option('--replay-json-inline', action="append", dest="replay_json_inline", type="string")
+    parser.add_option('--replay-json', action="store", dest="replay_json", type="string", default=None, help="Instead of discovering and running tests, read a file with one JSON-encoded test result dictionary per line, and report each line to test reporters as if we had just run that test.")
+    parser.add_option('--replay-json-inline', action="append", dest="replay_json_inline", type="string", metavar="JSON_OBJECT", help="Similar to --replay-json, but allows result objects to be passed on the command line. May be passed multiple times. If combined with --replay-json, inline results get reported first.")
 
-    parser.add_option('--rerun-test-file', action="store", dest="rerun_test_file", type="string", default=None)
+    parser.add_option('--rerun-test-file', action="store", dest="rerun_test_file", type="string", default=None, help="Rerun tests listed in FILE in order. One test per line, in the format 'path.to.class ClassName.test_method_name'. Consecutive tests in the same class will be run on the same test class instance.")
 
     # Add in any additional options
     for plugin in plugin_modules:
