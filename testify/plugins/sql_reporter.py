@@ -81,6 +81,12 @@ class SQLReporter(test_reporter.TestReporter):
         self.build_id = self.create_build_row(options.build_info)
         self.start_time = time.time()
 
+        # Cache of (module,class_name,method_name) => test id
+        self.test_id_cache = dict(
+                ((row[Tests.c.module], row[Tests.c.class_name], row[Tests.c.method_name]), row[Tests.c.id])
+                for row in self.conn.execute(Tests.select())
+            )
+
         super(SQLReporter, self).__init__(options, *args, **kwargs)
 
     def create_build_row(self, build_info):
@@ -128,6 +134,10 @@ class SQLReporter(test_reporter.TestReporter):
 
     def get_test_id(self, module, class_name, method_name):
         """Get the ID of the Tests row that corresponds to this test. If the row doesn't exist, insert one"""
+
+        cached_result = self.test_id_cache.get((module, class_name, method_name), None)
+        if cached_result is not None:
+            return cached_result
 
         query = SA.select(
             [Tests.c.id],
