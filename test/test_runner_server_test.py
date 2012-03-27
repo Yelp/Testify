@@ -44,8 +44,8 @@ class TestRunnerServerTestCase(test_case.TestCase):
         self.server = test_runner_server.TestRunnerServer(
             self.dummy_test_case,
             options=Struct(
-                runner_timeout=0.01,
-                server_timeout=1,
+                runner_timeout=1,
+                server_timeout=10,
                 revision=None,
             ),
             serve_port=0,
@@ -61,7 +61,9 @@ class TestRunnerServerTestCase(test_case.TestCase):
         self.server.shutdown()
         thread.join()
 
-
+    def timeout_class(self, runner, test):
+        assert test
+        tornado.ioloop.IOLoop.instance().add_callback(lambda: self.server.check_in_class(runner, test['class_path'], timed_out=True))
 
     def run_test(self, runner_id, should_pass=True):
         test_instance = self.dummy_test_case(should_pass=should_pass)
@@ -103,9 +105,13 @@ class TestRunnerServerTestCase(test_case.TestCase):
         """Start a server with one test case to run. Make sure it hands out the same test twice, then nothing else."""
 
         first_test = get_test(self.server, 'runner1')
-        # Now just ask for a second test. This will wait 0.01 seconds (the timeout) before giving us the same test again.
+        self.timeout_class('runner1', first_test)
+
+        # Now just ask for a second test. This should give us the same test again.
         second_test = get_test(self.server, 'runner2')
-        # Ask for a third test. This again will wait 0.01 seconds before giving us None.
+        self.timeout_class('runner2', second_test)
+
+        # Ask for a third test. This should give us None.
         third_test = get_test(self.server, 'runner3')
 
         assert first_test
@@ -122,10 +128,11 @@ class TestRunnerServerTestCase(test_case.TestCase):
         self.run_test('runner1', should_pass=False)
 
         second_test = get_test(self.server, 'runner2')
-        # Don't run it.
+        self.timeout_class('runner2', second_test)
 
         third_test = get_test(self.server, 'runner3')
-        self.run_test('runner3', should_pass=False)
+        self.timeout_class('runner3', third_test)
+
 
         assert_equal(first_test['class_path'], second_test['class_path'])
         assert_equal(first_test['methods'], second_test['methods'])
@@ -140,6 +147,8 @@ class TestRunnerServerTestCase(test_case.TestCase):
         """Time out once, then fail, then fail again.
         The first three fetches should give the same test; the last one should be None."""
         first_test = get_test(self.server, 'runner1')
+        self.timeout_class('runner1', first_test)
+
         # Don't run it.
         second_test = get_test(self.server, 'runner2')
         self.run_test('runner2', should_pass=False)
