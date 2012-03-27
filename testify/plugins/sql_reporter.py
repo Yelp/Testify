@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import hashlib
+import logging
 import sqlalchemy as SA
 from testify import test_reporter
 
