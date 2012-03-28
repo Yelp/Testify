@@ -20,6 +20,8 @@
 __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 
+from __future__ import with_statement
+
 from collections import defaultdict
 from contextlib import contextmanager
 import inspect

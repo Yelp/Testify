@@ -6,6 +6,8 @@ receive tests to run, and send back their results.
 The server keeps track of the overall status of the run and manages timeouts and retries.
 """
 
+from __future__ import with_statement
+
 from test_runner import TestRunner
 import tornado.httpserver
 import tornado.ioloop
