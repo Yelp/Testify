@@ -1,3 +1,10 @@
+python-testify (0.2.4) unstable; urgency=low
+
+  * Use asynchronous reporting of results on both client and server for better performance
+  * Add setup_teardown and class_setup_teardown fixtures
+
+ -- Amber Yust <ayust@yelp.com>  Wed, 28 Mar 2012 14:14:57 -0700
+
 python-testify (0.2.3) unstable; urgency=low
 
   * Fix erroneous suite propagation among methods of subclasses of TestCase
