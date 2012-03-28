@@ -17,10 +17,10 @@
 
 ### TODO: finish doing the retry stuff for the inner clauses
 
+from __future__ import with_statement
+
 __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
-
-from __future__ import with_statement
 
 from collections import defaultdict
 from contextlib import contextmanager
