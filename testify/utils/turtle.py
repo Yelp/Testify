@@ -45,6 +45,7 @@ class Turtle(object):
     def __init__(self, *args, **kwargs):
         self.__dict__.update(kwargs)
         self.calls = []
+        self.returns = []
 
     def __getattr__(self, name):
         self.__dict__[name] = Turtle()
@@ -52,4 +53,6 @@ class Turtle(object):
     
     def __call__(self, *args, **kwargs):
         self.calls.append((args, kwargs))
-        return Turtle()
+        new_turtle = type(self)()
+        self.returns.append(new_turtle)
+        return new_turtle

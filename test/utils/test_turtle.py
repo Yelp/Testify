@@ -22,7 +22,11 @@ class TurtleTestCase(TestCase):
 
     def test_call(self):
         """Just call a turtle"""
-        assert self.leonardo()
+        ret = self.leonardo()
+        assert ret
+        assert_length(self.leonardo.returns, 1)
+        assert_call(self.leonardo, 0)
+        assert_equal(ret, self.leonardo.returns[0])
 
     def test_attribute(self):
         """Check our attribute access"""
@@ -31,8 +35,10 @@ class TurtleTestCase(TestCase):
     def test_call_record(self):
         """Check that calls are recorded"""
         self.leonardo(1, 2, 3, quatro=4)
-        assert_equal(len(self.leonardo.calls), 1)
-        assert_equal(self.leonardo.calls, [((1,2,3), {"quatro": 4})])
+        assert_length(self.leonardo.calls, 1)
+        assert_call(self.leonardo, 0, 1, 2, 3, quatro=4)
+        self.leonardo(5, six=6)
+        assert_call(self.leonardo, 1, 5, six=6)
     
     def test_attribute_setting(self):
         """Check that we can set attributes and pull them back out"""
@@ -44,4 +50,3 @@ class TurtleTestCase(TestCase):
         weapon = self.leonardo.weapon
         assert_equal(weapon, self.leonardo.weapon)
         assert weapon is self.leonardo.weapon
-        
