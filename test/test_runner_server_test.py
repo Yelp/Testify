@@ -47,7 +47,7 @@ class TestRunnerServerTestCase(test_case.TestCase):
                 runner_timeout=1,
                 server_timeout=10,
                 revision=None,
-                shutdown_delay_for_connection_close=1,
+                shutdown_delay_for_connection_close=0.001,
                 shutdown_delay_for_outstanding_runners=1,
             ),
             serve_port=0,

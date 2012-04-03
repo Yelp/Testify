@@ -386,4 +386,4 @@ class TestRunnerServer(TestRunner):
             iol.add_timeout(time.time()+self.shutdown_delay_for_outstanding_runners, iol.stop)
         else:
             # Give tornado enough time to finish writing to all the clients, then shut down.
-            iol.add_timeout(time.time()+self.shutdown_delay_for_connection_close/1000.0, iol.stop)
+            iol.add_timeout(time.time()+self.shutdown_delay_for_connection_close, iol.stop)
