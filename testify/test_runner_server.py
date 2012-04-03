@@ -84,6 +84,8 @@ class TestRunnerServer(TestRunner):
         self.runner_timeout = kwargs['options'].runner_timeout
         self.revision = kwargs['options'].revision
         self.server_timeout = kwargs['options'].server_timeout
+        self.shutdown_delay_for_connection_close = kwargs['options'].shutdown_delay_for_connection_close
+        self.shutdown_delay_for_outstanding_runners = kwargs['options'].shutdown_delay_for_outstanding_runners
 
         self.test_queue = AsyncQueue()
         self.checked_out = {} # Keyed on class path (module class).
@@ -381,6 +383,7 @@ class TestRunnerServer(TestRunner):
 
         if self.runners_outstanding:
             # Stop in 5 seconds if all the runners_outstanding don't come back by then.
-            iol.add_timeout(time.time()+5, iol.stop)
+            iol.add_timeout(time.time()+self.shutdown_delay_for_outstanding_runners, iol.stop)
         else:
-            iol.stop()
+            # Give tornado enough time to finish writing to all the clients, then shut down.
+            iol.add_timeout(time.time()+self.shutdown_delay_for_connection_close/1000.0, iol.stop)
