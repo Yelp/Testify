@@ -130,7 +130,7 @@ class SQLReporter(test_reporter.TestReporter):
         def create_row_to_insert(result, previous_run_id=None):
             return {
                 'test' : get_test_id(result['method']['module'], result['method']['class'], result['method']['name']),
-                'failure' : self.get_failure_id(result['exception_info']),
+                'failure' : get_failure_id(result['exception_info']),
                 'build' : self.build_id,
                 'end_time' : result['end_time'],
                 'run_time' : result['run_time'],
@@ -168,6 +168,29 @@ class SQLReporter(test_reporter.TestReporter):
                 # and then return it.
                 return results.lastrowid
 
+        def get_failure_id(exception_info):
+            """Get the ID of the failure row for the specified exception."""
+            if not exception_info:
+                return None
+            exc_hash = md5(''.join(exception_info))
+
+            query = SA.select(
+                [Failures.c.id],
+                Failures.c.hash == exc_hash,
+            )
+            row = conn.execute(query).fetchone()
+            if row:
+                return row[Failures.c.id]
+            else:
+                # We haven't inserted this row yet; insert it and re-query.
+                results = conn.execute(Failures.insert({
+                    'hash' : exc_hash,
+                    'error' : exception_info[-1].strip(),
+                    'traceback': ''.join(exception_info),
+                }))
+                return results.lastrowid
+
+
         conn = self.engine.connect()
 
         while True:
@@ -187,28 +210,6 @@ class SQLReporter(test_reporter.TestReporter):
                 # Don't hang at report() time if we get errors.
                 self.result_queue.task_done()
 
-
-    def get_failure_id(self, exception_info):
-        """Get the ID of the failure row for the specified exception."""
-        if not exception_info:
-            return None
-        exc_hash = md5(''.join(exception_info))
-
-        query = SA.select(
-            [Failures.c.id],
-            Failures.c.hash == exc_hash,
-        )
-        row = self.conn.execute(query).fetchone()
-        if row:
-            return row[Failures.c.id]
-        else:
-            # We haven't inserted this row yet; insert it and re-query.
-            results = self.conn.execute(Failures.insert({
-                'hash' : exc_hash,
-                'error' : exception_info[-1].strip(),
-                'traceback': ''.join(exception_info),
-            }))
-            return results.lastrowid
 
 
     def report(self):
