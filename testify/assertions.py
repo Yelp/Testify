@@ -24,9 +24,9 @@ def assert_raises(expected_exception_class, callable_obj, *args, **kwargs):
     """Returns true only if the callable raises expected_exception_class"""
     try:
         callable_obj(*args, **kwargs)
-    except expected_exception_class, exception:
+    except expected_exception_class:
         # we got the expected exception
-        return exception
+        return True
     assert_not_reached("No exception was raised (expected %s)" % expected_exception_class)
 
 def _diff_message(lhs, rhs):
