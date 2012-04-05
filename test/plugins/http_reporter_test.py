@@ -39,7 +39,7 @@ class HTTPReporterTestCase(TestCase):
 		app = tornado.web.Application([(r"/results", ResultsHandler)])
 		srv = tornado.httpserver.HTTPServer(app)
 		srv.listen(0)
-		portnum = srv._socket.getsockname()[1]
+		portnum = self.get_port_number(srv)
 
 		iol = tornado.ioloop.IOLoop.instance()
 		thread = threading.Thread(target=iol.start)
@@ -52,6 +52,13 @@ class HTTPReporterTestCase(TestCase):
 
 		iol.stop()
 		thread.join()
+
+	def get_port_number(self, server):
+		if hasattr(server, "_sockets"): # tornado > 2.0
+			_socket = server._sockets.values()[0]
+		else: # tornado 1.2 or earlier
+			_socket = server._socket
+		return _socket.getsockname()[1]
 
 	def test_http_reporter_reports(self):
 		"""A simple test to make sure the HTTPReporter actually reports things."""
@@ -75,3 +82,4 @@ class HTTPReporterTestCase(TestCase):
 
 		assert_equal(first['runner_id'], 'tries_twice')
 		assert_equal(first, second)
+
