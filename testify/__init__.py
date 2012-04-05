@@ -25,7 +25,7 @@ The basic components of this system are:
         to kindly execute themselves.
 """
 __testify = 1
-__version__ = "0.2.2"
+__version__ = "0.2.4"
 
 import sys
 
@@ -40,6 +40,8 @@ from test_case import (
                         setup,
                         teardown,
                         class_teardown,
+                        setup_teardown,
+                        class_setup_teardown,
                         suite)
 
 from utils import turtle

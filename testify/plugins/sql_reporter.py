@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import hashlib
+import logging
 import sqlalchemy as SA
 from testify import test_reporter
 
@@ -25,6 +26,8 @@ except ImportError:
 
 import yaml
 import time
+import threading
+import Queue
 
 metadata = SA.MetaData()
 
@@ -74,12 +77,24 @@ def md5(s):
 class SQLReporter(test_reporter.TestReporter):
     def __init__(self, options, *args, **kwargs):
         dburl = SA.engine.url.URL(**yaml.safe_load(open(options.reporting_db_config)))
-        engine = SA.create_engine(dburl, poolclass=SA.pool.NullPool, pool_recycle=3600)
-        self.conn = engine.connect()
-        metadata.create_all(engine)
+        self.engine = SA.create_engine(dburl, poolclass=SA.pool.NullPool, pool_recycle=3600)
+        self.conn = self.engine.connect()
+        metadata.create_all(self.engine)
 
         self.build_id = self.create_build_row(options.build_info)
         self.start_time = time.time()
+
+        # Cache of (module,class_name,method_name) => test id
+        self.test_id_cache = dict(
+                ((row[Tests.c.module], row[Tests.c.class_name], row[Tests.c.method_name]), row[Tests.c.id])
+                for row in self.conn.execute(Tests.select())
+            )
+
+        self.result_queue = Queue.Queue()
+        self.ok = True
+        self.reporting_thread = threading.Thread(target=self.report_results)
+        self.reporting_thread.daemon = True
+        self.reporting_thread.start()
 
         super(SQLReporter, self).__init__(options, *args, **kwargs)
 
@@ -106,10 +121,15 @@ class SQLReporter(test_reporter.TestReporter):
         ))
 
     def test_complete(self, result):
-        """Create a TestResults row from a test result dict. Also inserts the previous_run row."""
+        """Insert a result into the queue that report_results pulls from."""
+        self.result_queue.put(result)
+
+    def report_results(self):
+        """A worker func that runs in another thread and reports results to the database.
+        Create a TestResults row from a test result dict. Also inserts the previous_run row."""
         def create_row_to_insert(result, previous_run_id=None):
             return {
-                'test' : self.get_test_id(result['method']['module'], result['method']['class'], result['method']['name']),
+                'test' : get_test_id(result['method']['module'], result['method']['class'], result['method']['name']),
                 'failure' : self.get_failure_id(result['exception_info']),
                 'build' : self.build_id,
                 'end_time' : result['end_time'],
@@ -118,39 +138,55 @@ class SQLReporter(test_reporter.TestReporter):
                 'previous_run' : previous_run_id,
             }
 
-        if result['previous_run']:
-            results = self.conn.execute(TestResults.insert(create_row_to_insert(result['previous_run'])))
-            previous_run_id = results.lastrowid
-        else:
-            previous_run_id = None
+        def get_test_id(module, class_name, method_name):
+            """Get the ID of the Tests row that corresponds to this test. If the row doesn't exist, insert one"""
 
-        self.conn.execute(TestResults.insert(create_row_to_insert(result, previous_run_id)))
+            cached_result = self.test_id_cache.get((module, class_name, method_name), None)
+            if cached_result is not None:
+                return cached_result
 
-    def get_test_id(self, module, class_name, method_name):
-        """Get the ID of the Tests row that corresponds to this test. If the row doesn't exist, insert one"""
-
-        query = SA.select(
-            [Tests.c.id],
-            SA.and_(
-                Tests.c.module == module,
-                Tests.c.class_name == class_name,
-                Tests.c.method_name == method_name,
+            query = SA.select(
+                [Tests.c.id],
+                SA.and_(
+                    Tests.c.module == module,
+                    Tests.c.class_name == class_name,
+                    Tests.c.method_name == method_name,
+                )
             )
-        )
 
-        # Most of the time, the Tests row will already exist for this test (it's been run before.)
-        row = self.conn.execute(query).fetchone()
-        if row:
-            return row[Tests.c.id]
-        else:
-            # Not there (this test hasn't been run before); create it
-            results = self.conn.execute(Tests.insert({
-                'module' : module,
-                'class_name' : class_name,
-                'method_name' : method_name,
-            }))
-            # and then return it.
-            return results.lastrowid
+            # Most of the time, the Tests row will already exist for this test (it's been run before.)
+            row = self.conn.execute(query).fetchone()
+            if row:
+                return row[Tests.c.id]
+            else:
+                # Not there (this test hasn't been run before); create it
+                results = self.conn.execute(Tests.insert({
+                    'module' : module,
+                    'class_name' : class_name,
+                    'method_name' : method_name,
+                }))
+                # and then return it.
+                return results.lastrowid
+
+        conn = self.engine.connect()
+
+        while True:
+            result = self.result_queue.get()
+            try:
+                if result['previous_run']:
+                    results = conn.execute(TestResults.insert(create_row_to_insert(result['previous_run'])))
+                    previous_run_id = results.lastrowid
+                else:
+                    previous_run_id = None
+
+                conn.execute(TestResults.insert(create_row_to_insert(result, previous_run_id)))
+            except Exception, e:
+                logging.error("Exception while reporting results: " + repr(e))
+                self.ok = False
+            finally:
+                # Don't hang at report() time if we get errors.
+                self.result_queue.task_done()
+
 
     def get_failure_id(self, exception_info):
         """Get the ID of the failure row for the specified exception."""
@@ -185,7 +221,8 @@ class SQLReporter(test_reporter.TestReporter):
             }
         )
         self.conn.execute(query)
-        return True
+        self.result_queue.join()
+        return self.ok
 
 
 # Hooks for plugin system
