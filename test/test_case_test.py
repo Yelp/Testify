@@ -1,5 +1,6 @@
 import unittest
 
+from testify import assert_equal
 from testify import class_setup
 from testify import class_teardown
 from testify import run
