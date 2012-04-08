@@ -6,12 +6,12 @@ from testify import assert_equal
 
 class DiffMessageTestCase(TestCase):
 
-    def test_it_shows_string_diffs(self):
+    def test_shows_string_diffs(self):
         expected = 'Diff:\nl: abc<>\nr: abc<def>'
         diff_message = assertions._diff_message('abc', 'abcdef')
         assert_equal(expected, diff_message)
 
-    def test_it_shows_repr_diffs(self):
+    def test_shows_repr_diffs(self):
         class AbcRepr(object):
             __repr__ = lambda self: 'abc'
 
@@ -25,7 +25,7 @@ class DiffMessageTestCase(TestCase):
 
 class AssertEqualTestCase(TestCase):
 
-    def test_it_shows_pretty_diff_output(self):
+    def test_shows_pretty_diff_output(self):
         expected = \
             'assertion failed: l == r\n' \
             "l: 'that reviewboard differ is awesome'\n" \
