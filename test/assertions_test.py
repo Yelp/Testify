@@ -39,7 +39,7 @@ class AssertEqualTestCase(TestCase):
                          'dat reviewboard differ is ozsom')
         except AssertionError, e:
             assert_equal(expected, e.args[0])
-        except:
+        else:
             assert False, 'Expected `AssertionError`.'
 
 
