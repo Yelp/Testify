@@ -133,6 +133,9 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300, help="How long to wait to wait for activity from a test runner before requeuing the tests it has checked out.")
     parser.add_option('--server-timeout', action="store", dest="server_timeout", type="int", default=300, help="How long to wait after the last activity from any test runner before shutting down.")
 
+    parser.add_option('--server-shutdown-delay', action='store', dest='shutdown_delay_for_connection_close', type="float", default=0.01, help="How long to wait (in seconds) for data to finish writing to sockets before shutting down the server.")
+    parser.add_option('--server-shutdown-delay-outstanding-runners', action='store', dest='shutdown_delay_for_outstanding_runners', type='int', default=5, help="How long to wait (in seconds) for all clients to check for new tests before shutting down the server.")
+
     parser.add_option('--runner-id', action="store", dest="runner_id", type="string", default="%s-%d" % (socket.gethostname(), os.getpid()), help="With --connect, an identity passed to the server on each request. Passed to the server's test reporters. Defaults to <HOST>-<PID>.")
 
     parser.add_option('--replay-json', action="store", dest="replay_json", type="string", default=None, help="Instead of discovering and running tests, read a file with one JSON-encoded test result dictionary per line, and report each line to test reporters as if we had just run that test.")
