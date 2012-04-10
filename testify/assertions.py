@@ -126,3 +126,15 @@ def assert_rows_equal(rows1, rows2):
         return tuple(sorted(norm_row(row) for row in rows))
 
     assert_equal(norm_rows(rows1), norm_rows(rows2))
+
+def assert_length(sequence, expected, message=None):
+    """Assert a sequence or iterable has an expected length."""
+    message = message or "%(sequence)s has length %(length)s expected %(expected)s"
+    length = len(list(sequence))
+    assert length == expected, message % locals()
+
+def assert_call(turtle, call_idx, *args, **kwargs):
+    """Assert that a function was called on turtle with the correct args."""
+    actual = turtle.calls[call_idx] if turtle.calls else None
+    msg = "Call %s expected %s, was %s" % (call_idx, (args, kwargs), actual)
+    assert actual == (args, kwargs), msg
