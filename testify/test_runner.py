@@ -25,6 +25,11 @@ import pprint
 from test_case import MetaTestCase, TestCase
 import test_discovery
 
+
+class TestRunnerException(Exception):
+    pass
+
+
 class TestRunner(object):
     """TestRunner is the controller class of the testify suite.
 
@@ -45,7 +50,8 @@ class TestRunner(object):
                  test_reporters=None,
                  plugin_modules=None,
                  module_method_overrides=None,
-                 failure_limit=None
+                 failure_limit=None,
+                 failures_filename=None
                  ):
         """After instantiating a TestRunner, call run() to run them."""
 
@@ -67,6 +73,8 @@ class TestRunner(object):
 
         self.failure_limit = failure_limit
         self.failure_count = 0
+        self.failure_names = []
+        self.failures_filename = failures_filename
 
     @classmethod
     def get_test_method_name(cls, test_method):
@@ -126,15 +134,16 @@ class TestRunner(object):
                 if not any(test_case.runnable_test_methods()):
                     continue
 
-                def failure_counter(result_dict):
+                def failure_tracker(result_dict):
                     if not result_dict['success']:
                         self.failure_count += 1
+                        self.failure_names.append(result_dict['method']['full_name'])
 
                 for reporter in self.test_reporters:
                     test_case.register_callback(test_case.EVENT_ON_RUN_TEST_METHOD, reporter.test_start)
                     test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, reporter.test_complete)
 
-                test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, failure_counter)
+                test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, failure_tracker)
 
                 # Now we wrap our test case like an onion. Each plugin given the opportunity to wrap it.
                 runnable = test_case.run
@@ -150,6 +159,7 @@ class TestRunner(object):
             # but still get a testing summary.
             pass
 
+        self.write_failures_file()
         report = [reporter.report() for reporter in self.test_reporters]
         return all(report)
 
@@ -175,3 +185,12 @@ class TestRunner(object):
 
         pp = pprint.PrettyPrinter(indent=2)
         print(pp.pformat([self.get_test_method_name(test) for test in test_list]))
+
+    def write_failures_file(self):
+        if not self.failures_filename:
+            return
+        try:
+            with open(self.failures_filename, 'w') as fh:
+                fh.write('\n'.join(self.failure_names))
+        except OSError, e:
+            pass

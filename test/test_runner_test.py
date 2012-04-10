@@ -51,5 +51,3 @@ class PluginTestCase(test_case.TestCase):
         assert self.ran_test
         assert not running
         assert prepared
-
-
