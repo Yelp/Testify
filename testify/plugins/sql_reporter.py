@@ -76,8 +76,14 @@ def md5(s):
 
 class SQLReporter(test_reporter.TestReporter):
     def __init__(self, options, *args, **kwargs):
-        dburl = SA.engine.url.URL(**yaml.safe_load(open(options.reporting_db_config)))
-        self.engine = SA.create_engine(dburl, poolclass=SA.pool.NullPool, pool_recycle=3600)
+        dburl = options.reporting_db_url or SA.engine.url.URL(**yaml.safe_load(open(options.reporting_db_config)))
+
+        create_engine_opts = kwargs.pop('create_engine_opts', {
+            'poolclass' : kwargs.pop('poolclass', SA.pool.NullPool),
+            'pool_recycle' : 3600,
+        })
+
+        self.engine = SA.create_engine(dburl, **create_engine_opts)
         self.conn = self.engine.connect()
         metadata.create_all(self.engine)
 
@@ -92,6 +98,10 @@ class SQLReporter(test_reporter.TestReporter):
 
         self.result_queue = Queue.Queue()
         self.ok = True
+
+        self.reporting_frequency = options.sql_reporting_frequency
+        self.batch_size = options.sql_batch_size
+
         self.reporting_thread = threading.Thread(target=self.report_results)
         self.reporting_thread.daemon = True
         self.reporting_thread.start()
@@ -155,12 +165,12 @@ class SQLReporter(test_reporter.TestReporter):
             )
 
             # Most of the time, the Tests row will already exist for this test (it's been run before.)
-            row = self.conn.execute(query).fetchone()
+            row = conn.execute(query).fetchone()
             if row:
                 return row[Tests.c.id]
             else:
                 # Not there (this test hasn't been run before); create it
-                results = self.conn.execute(Tests.insert({
+                results = conn.execute(Tests.insert({
                     'module' : module,
                     'class_name' : class_name,
                     'method_name' : method_name,
@@ -190,30 +200,49 @@ class SQLReporter(test_reporter.TestReporter):
                 }))
                 return results.lastrowid
 
+        def insert_single_run(result):
+            """Recursively insert a run and its previous runs."""
+            previous_run_id = insert_single_run(result['previous_run']) if result['previous_run'] else None
+            results = conn.execute(TestResults.insert(create_row_to_insert(result, previous_run_id=previous_run_id)))
+            return results.lastrowid
 
         conn = self.engine.connect()
 
         while True:
-            result = self.result_queue.get()
+            results = []
+            # Block until there's a result available.
+            results.append(self.result_queue.get())
+            # Grab any more tests that come in during the next self.reporting_frequency seconds.
+            time.sleep(self.reporting_frequency)
             try:
-                if result['previous_run']:
-                    results = conn.execute(TestResults.insert(create_row_to_insert(result['previous_run'])))
-                    previous_run_id = results.lastrowid
-                else:
-                    previous_run_id = None
+                while True:
+                    results.append(self.result_queue.get_nowait())
+            except Queue.Empty:
+                pass
 
-                conn.execute(TestResults.insert(create_row_to_insert(result, previous_run_id)))
-            except Exception, e:
-                logging.error("Exception while reporting results: " + repr(e))
-                self.ok = False
-            finally:
-                # Don't hang at report() time if we get errors.
-                self.result_queue.task_done()
+            # Insert any previous runs, if necessary.
+            for result in filter(lambda x: x['previous_run'], results):
+                result['previous_run_id'] = insert_single_run(result['previous_run'])
 
+            chunks = (results[i:i+self.batch_size] for i in xrange(0, len(results), self.batch_size))
+
+            for chunk in chunks:
+                try:
+                    conn.execute(TestResults.insert(),
+                        [create_row_to_insert(result, result.get('previous_run_id', None)) for result in chunk]
+                    )
+                except Exception, e:
+                    logging.error("Exception while reporting results: " + repr(e))
+                    self.ok = False
+                finally:
+                    # Do this in finally so we don't hang at report() time if we get errors.
+                    for _ in xrange(len(chunk)):
+                        self.result_queue.task_done()
 
 
     def report(self):
         self.end_time = time.time()
+        self.result_queue.join()
         query = SA.update(Builds,
             whereclause=(Builds.c.id == self.build_id),
             values={
@@ -222,17 +251,19 @@ class SQLReporter(test_reporter.TestReporter):
             }
         )
         self.conn.execute(query)
-        self.result_queue.join()
         return self.ok
 
 
 # Hooks for plugin system
 def add_command_line_options(parser):
     parser.add_option("--reporting-db-config", action="store", dest="reporting_db_config", type="string", default=None, help="Path to a yaml file describing the SQL database to report into.")
+    parser.add_option('--reporting-db-url', action="store", dest="reporting_db_url", type="string", default=None, help="The URL of a SQL database to report into.")
     parser.add_option("--build-info", action="store", dest="build_info", type="string", default=None, help="A JSON dictionary of information about this build, to store in the reporting database.")
+    parser.add_option("--sql-reporting-frequency", action="store", dest="sql_reporting_frequency", type="float", default=1.0, help="How long to wait between SQL inserts, at a minimum")
+    parser.add_option("--sql-batch-size", action="store", dest="sql_batch_size", type="int", default="500", help="Maximum number of rows to insert at any one time")
 
 def build_test_reporters(options):
-    if options.reporting_db_config:
+    if options.reporting_db_config or options.reporting_db_url:
         return [SQLReporter(options)]
     else:
         return []
