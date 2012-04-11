@@ -94,6 +94,11 @@ class TestRunner(object):
                         yield test_case
 
         discovered_tests = list(discover_inner())
+
+        for plugin_mod in self.plugin_modules:
+            if hasattr(plugin_mod, "rearrange_discovered_tests"):
+                discovered_tests = plugin_mod.rearrange_discovered_tests(self.options, discovered_tests)
+
         test_case_count = len(discovered_tests)
         test_method_count = sum(len(list(test_case.runnable_test_methods())) for test_case in discovered_tests)
         for reporter in self.test_reporters:

@@ -74,18 +74,32 @@ SA.Index('ix_build_test_failure', TestResults.c.build, TestResults.c.test, TestR
 def md5(s):
     return hashlib.md5(s.encode('utf8') if isinstance(s, unicode) else s).hexdigest()
 
+
+def make_engine(db_url=None, db_config=None, create_engine_opts=None, poolclass=None):
+    """Get a connection."""
+
+    db_url = db_url or SA.engine.url.URL(**yaml.safe_load(open(db_config)))
+
+    create_engine_opts = create_engine_opts or {
+        'poolclass' : poolclass or SA.pool.NullPool,
+        'pool_recycle' : 3600,
+    }
+
+    engine = SA.create_engine(db_url, **create_engine_opts)
+    metadata.create_all(engine)
+
+    return engine
+
+
 class SQLReporter(test_reporter.TestReporter):
     def __init__(self, options, *args, **kwargs):
-        dburl = options.reporting_db_url or SA.engine.url.URL(**yaml.safe_load(open(options.reporting_db_config)))
-
-        create_engine_opts = kwargs.pop('create_engine_opts', {
-            'poolclass' : kwargs.pop('poolclass', SA.pool.NullPool),
-            'pool_recycle' : 3600,
-        })
-
-        self.engine = SA.create_engine(dburl, **create_engine_opts)
+        self.engine = make_engine(
+            db_url=options.reporting_db_url,
+            db_config=options.reporting_db_config,
+            create_engine_opts=kwargs.pop('create_engine_opts', None),
+            poolclass=kwargs.pop('poolclass', None),
+        )
         self.conn = self.engine.connect()
-        metadata.create_all(self.engine)
 
         self.build_id = self.create_build_row(options.build_info)
         self.start_time = time.time()
