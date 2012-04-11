@@ -5,7 +5,7 @@ python-testify (0.2.5) unstable; urgency=low
   * Restore python 2.5 compatibility
   * Close clients' HTTP connections properly before shutting down the server.
 
- -- Evan Krall <krall@yelp.com> Tue 10 Apr 2012 20:47:57 -0700
+ -- Evan Krall <krall@yelp.com>  Tue, 10 Apr 2012 20:47:57 -0700
 
 python-testify (0.2.4) unstable; urgency=low
 
