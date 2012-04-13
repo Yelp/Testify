@@ -163,3 +163,28 @@ class TestRunnerServerTestCase(test_case.TestCase):
 
         # Check that it didn't requeue again.
         assert_equal(get_test(self.server, 'runner4'), None)
+
+class AsyncQueueTestCase(test_case.TestCase):
+
+    def test_preserves_ordering(self):
+        """If we put in several things with the same priority, they should come out FIFO"""
+        q = test_runner_server.AsyncQueue()
+
+        expected_values = [
+            (0, "a"),
+            (0, "c"),
+            (0, "b"),
+        ]
+
+        for priority, data in expected_values:
+            q.put(priority, data)
+
+        def check_data(priority, data):
+            expected_priority, expected_data = expected_values[0]
+            expected_values[0:1] = []
+
+            assert_equal(priority, expected_priority)
+            assert_equal(data, expected_data)
+
+        for _ in xrange(len(expected_values)):
+            q.get(0, check_data)

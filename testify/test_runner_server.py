@@ -33,6 +33,11 @@ class AsyncQueue(object):
         self.data_queue = Queue.PriorityQueue()
         self.callback_queue = Queue.PriorityQueue()
         self.finalized = False
+        self._insert_count = 0
+
+    def insert_count(self):
+        self._insert_count += 1
+        return self._insert_count
 
     def get(self, c_priority, callback):
         """If the queue is not empty, call callback immediately with the next item. Otherwise, put callback in a callback priority queue, to be called when data is put().
@@ -43,22 +48,22 @@ class AsyncQueue(object):
             return
         try:
             self.lock.acquire()
-            d_priority, data = self.data_queue.get_nowait()
+            d_priority, _, data = self.data_queue.get_nowait()
             self.lock.release() # Gets skipped if get_nowait raises Empty
             callback(d_priority, data)
         except Queue.Empty:
-            self.callback_queue.put((c_priority, callback,))
+            self.callback_queue.put((c_priority, self.insert_count(), callback,))
             self.lock.release()
 
     def put(self, d_priority, data):
         """If a get callback is waiting, call it immediately with this data. Otherwise, put data in a priority queue, to be retrieved at a future date."""
         try:
             self.lock.acquire()
-            c_priority, callback = self.callback_queue.get_nowait()
+            c_priority, _, callback = self.callback_queue.get_nowait()
             self.lock.release() # Gets skipped if get_nowait raises Empty
             callback(d_priority, data)
         except Queue.Empty:
-            self.data_queue.put((d_priority, data,))
+            self.data_queue.put((d_priority, self.insert_count(), data,))
             self.lock.release()
 
     def empty(self):
@@ -73,7 +78,7 @@ class AsyncQueue(object):
         try:
             while True:
                 with self.lock:
-                    _, callback = self.callback_queue.get_nowait()
+                    _, _, callback = self.callback_queue.get_nowait()
                 callback(None, None)
         except Queue.Empty:
             pass
