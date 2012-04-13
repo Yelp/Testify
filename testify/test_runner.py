@@ -14,6 +14,7 @@
 
 
 """This module contains the TestRunner class and other helper code"""
+from __future__ import with_statement
 __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 
@@ -192,5 +193,5 @@ class TestRunner(object):
         try:
             with open(self.failures_filename, 'w') as fh:
                 fh.write('\n'.join(self.failure_names))
-        except OSError, e:
+        except (OSError, IOError):
             pass
