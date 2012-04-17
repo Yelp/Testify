@@ -291,7 +291,7 @@ class TestCase(object):
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance"""
         self.__run_class_setup_fixtures()
-        self.__enter_context_managers(self.class_setup_teardown_fixtures, self.__run_test_methods)
+        self.__enter_class_context_managers(self.class_setup_teardown_fixtures, self.__run_test_methods)
         self.__run_class_teardown_fixtures()
 
     def __run_class_setup_fixtures(self):
@@ -320,11 +320,8 @@ class TestCase(object):
             result = TestResult(fixture_method)
 
             try:
-                for callback in self.__callbacks[callback_on_run_event]:
-                    callback(result.to_dict())
-
+                self.fire_event(callback_on_run_event, result)
                 result.start()
-
                 if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
                     result.end_in_success()
                 else:
@@ -349,8 +346,7 @@ class TestCase(object):
                 result.end_in_interruption(sys.exc_info())
                 raise
             finally:
-                for callback in self.__callbacks[callback_on_complete_event]:
-                    callback(result.to_dict())
+                self.fire_event(callback_on_complete_event, result)
 
     @classmethod
     def in_suite(cls, method, suite_name):
@@ -372,6 +368,31 @@ class TestCase(object):
         """
         method_suites = set(getattr(method, '_suites', set()))
         return (self.__suites_exclude & method_suites)
+
+
+    def __enter_class_context_managers(self, fixture_methods, callback):
+        """Transform each fixture_method into a context manager with contextlib.contextmanager, enter them recursively, and call callback"""
+        if fixture_methods:
+            fixture_method = fixture_methods[0]
+            ctm = contextmanager(fixture_method)()
+
+            enter_result = TestResult(fixture_method)
+            enter_result.start()
+            self.fire_event(self.EVENT_ON_RUN_CLASS_SETUP_METHOD, enter_result)
+            if self.__execute_block_recording_exceptions(ctm.__enter__, enter_result):
+                enter_result.end_in_success()
+            self.fire_event(self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, enter_result)
+
+            self.__enter_context_managers(fixture_methods[1:], callback)
+
+            exit_result = TestResult(fixture_method)
+            exit_result.start()
+            self.fire_event(self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, exit_result)
+            if self.__execute_block_recording_exceptions(lambda: ctm.__exit__(None, None, None), exit_result):
+                exit_result.end_in_success()
+            self.fire_event(self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, exit_result)
+        else:
+            callback()
 
     def __enter_context_managers(self, fixture_methods, callback):
         """Transform each fixture_method into a context manager with contextlib.contextmanager, enter them recursively, and call callback"""
@@ -400,8 +421,8 @@ class TestCase(object):
                 self._method_level = True # Flag that we're currently running method-level stuff (rather than class-level)
 
                 # run "on-run" callbacks. e.g. print out the test method name
-                for callback in self.__callbacks[self.EVENT_ON_RUN_TEST_METHOD]:
-                    callback(result.to_dict())
+                self.fire_event(self.EVENT_ON_RUN_TEST_METHOD, result)
+
                 result.start()
 
                 if self.__class_level_failure:
@@ -443,9 +464,7 @@ class TestCase(object):
                 result.end_in_interruption(sys.exc_info())
                 raise
             finally:
-                for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_METHOD]:
-                    callback(result.to_dict())
-
+                self.fire_event(self.EVENT_ON_COMPLETE_TEST_METHOD, result)
                 self._method_level = False
 
                 if not result.success:
@@ -462,6 +481,10 @@ class TestCase(object):
         inspection.is_fixture_method().
         """
         self.__callbacks[event].append(callback)
+
+    def fire_event(self, event, result):
+        for callback in self.__callbacks[event]:
+            callback(result.to_dict())
 
     def __execute_block_recording_exceptions(self, block_fxn, result, is_class_level=False):
         """Excerpted code for executing a block of code that might raise an
