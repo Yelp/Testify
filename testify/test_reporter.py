@@ -38,10 +38,25 @@ class TestReporter(object):
         """Called when a test method is complete. result is a TestResult dict which should be complete."""
         pass
 
+    def class_setup_start(self, result):
+        """Called when a class_setup or the first half of a class_setup_teardown starts"""
+        pass
+
+    def class_setup_complete(self, result):
+        """Called when a class_setup or the first half of a class_setup_teardown finishes"""
+        pass
+
+    def class_teardown_start(self, result):
+        """Called when a class_teardown or the second half of a class_setup_teardown starts"""
+        pass
+
+    def class_teardown_complete(self, result):
+        """Called when a class_teardown or the second half of a class_setup_teardown finishes"""
+        pass
+
     def report(self):
         """Called at the end of the test run to report results
 
 		Should return a bool to indicate if the reporter thinks the test run was successful
 		"""
         return True
-
