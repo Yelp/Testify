@@ -71,6 +71,28 @@ TestResults = SA.Table('test_results', metadata,
 )
 SA.Index('ix_build_test_failure', TestResults.c.build, TestResults.c.test, TestResults.c.failure)
 
+Fixtures = SA.Table('fixtures', metadata,
+    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+    SA.Column('module', SA.String(255)),
+    SA.Column('class_name', SA.String(255)),
+    SA.Column('method_name', SA.String(255)),
+    SA.Column('fixture_type', SA.String(255)),
+)
+# TODO figure out whether fixture_type should go at beginning.
+SA.Index('ix_individual_fixture', Fixtures.c.module, Fixtures.c.class_name, Fixtures.c.method_name, Fixtures.c.fixture_type, unique=True)
+
+FixtureResults = SA.Table('fixture_results', metadata,
+    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+    SA.Column('fixture', SA.Integer, index=True, nullable=False),
+    SA.Column('failure', SA.Integer, index=True),
+    SA.Column('build', SA.Integer, index=True, nullable=False),
+    SA.Column('end_time', SA.Integer, index=True, nullable=False),
+    SA.Column('run_time', SA.Float, index=True, nullable=False),
+    SA.Column('runner_id', SA.String(255), index=True, nullable=True),
+    SA.Column('previous_run', SA.Integer, index=False, nullable=True),
+)
+SA.Index('ix_build_fixture_failure', FixtureResults.c.build, FixtureResults.c.fixture, FixtureResults.c.failure)
+
 def md5(s):
     return hashlib.md5(s.encode('utf8') if isinstance(s, unicode) else s).hexdigest()
 
@@ -148,12 +170,18 @@ class SQLReporter(test_reporter.TestReporter):
         """Insert a result into the queue that report_results pulls from."""
         self.result_queue.put(result)
 
+    def class_setup_complete(self, result):
+        self.result_queue.put(result)
+
+    def class_teardown_complete(self, result):
+        self.result_queue.put(result)
+
     def report_results(self):
         """A worker func that runs in another thread and reports results to the database.
-        Create a TestResults row from a test result dict. Also inserts the previous_run row."""
+        Create a TestResults or FixtureResults row from a test result dict. Also inserts the previous_run row."""
         def create_row_to_insert(result, previous_run_id=None):
             return {
-                'test' : get_test_id(result['method']['module'], result['method']['class'], result['method']['name']),
+                ('fixture' if result['method']['fixture_type'] else 'test') : get_test_or_fixture_id(result['method']['module'], result['method']['class'], result['method']['name'], fixture_type=result['method']['fixture_type']),
                 'failure' : get_failure_id(result['exception_info']),
                 'build' : self.build_id,
                 'end_time' : result['end_time'],
@@ -162,33 +190,41 @@ class SQLReporter(test_reporter.TestReporter):
                 'previous_run' : previous_run_id,
             }
 
-        def get_test_id(module, class_name, method_name):
+        def get_test_or_fixture_id(module, class_name, method_name, fixture_type=False):
             """Get the ID of the Tests row that corresponds to this test. If the row doesn't exist, insert one"""
 
-            cached_result = self.test_id_cache.get((module, class_name, method_name), None)
-            if cached_result is not None:
-                return cached_result
+            if not fixture_type:
+                cached_result = self.test_id_cache.get((module, class_name, method_name), None)
+                if cached_result is not None:
+                    return cached_result
+
+            table = Fixtures if fixture_type else Tests
 
             query = SA.select(
-                [Tests.c.id],
-                SA.and_(
-                    Tests.c.module == module,
-                    Tests.c.class_name == class_name,
-                    Tests.c.method_name == method_name,
-                )
+                [table.c.id],
+                SA.and_(*(
+                    [
+                        table.c.module == module,
+                        table.c.class_name == class_name,
+                        table.c.method_name == method_name,
+                    ] + ([table.c.fixture_type == fixture_type] if fixture_type else [])
+                ))
             )
 
             # Most of the time, the Tests row will already exist for this test (it's been run before.)
             row = conn.execute(query).fetchone()
             if row:
-                return row[Tests.c.id]
+                return row[table.c.id]
             else:
                 # Not there (this test hasn't been run before); create it
-                results = conn.execute(Tests.insert({
+                row = {
                     'module' : module,
                     'class_name' : class_name,
                     'method_name' : method_name,
-                }))
+                }
+                if fixture_type:
+                    row['fixture_type'] = fixture_type
+                results = conn.execute(table.insert(row))
                 # and then return it.
                 return results.lastrowid
 
@@ -217,41 +253,49 @@ class SQLReporter(test_reporter.TestReporter):
         def insert_single_run(result):
             """Recursively insert a run and its previous runs."""
             previous_run_id = insert_single_run(result['previous_run']) if result['previous_run'] else None
-            results = conn.execute(TestResults.insert(create_row_to_insert(result, previous_run_id=previous_run_id)))
+            table = TestResults if not result['method']['fixture_type'] else FixtureResults
+            results = conn.execute(table.insert(create_row_to_insert(result, previous_run_id=previous_run_id)))
             return results.lastrowid
 
+
+        # Begin actual report_results code.
         conn = self.engine.connect()
 
         while True:
-            results = []
+            all_results = []
             # Block until there's a result available.
-            results.append(self.result_queue.get())
+            all_results.append(self.result_queue.get())
             # Grab any more tests that come in during the next self.reporting_frequency seconds.
             time.sleep(self.reporting_frequency)
             try:
                 while True:
-                    results.append(self.result_queue.get_nowait())
+                    all_results.append(self.result_queue.get_nowait())
             except Queue.Empty:
                 pass
 
             # Insert any previous runs, if necessary.
-            for result in filter(lambda x: x['previous_run'], results):
+            for result in filter(lambda x: x['previous_run'], all_results):
                 result['previous_run_id'] = insert_single_run(result['previous_run'])
 
-            chunks = (results[i:i+self.batch_size] for i in xrange(0, len(results), self.batch_size))
+            results_tests = [r for r in all_results if not r['method']['fixture_type']]
+            results_fixtures = [r for r in all_results if r['method']['fixture_type']]
 
-            for chunk in chunks:
-                try:
-                    conn.execute(TestResults.insert(),
-                        [create_row_to_insert(result, result.get('previous_run_id', None)) for result in chunk]
-                    )
-                except Exception, e:
-                    logging.error("Exception while reporting results: " + repr(e))
-                    self.ok = False
-                finally:
-                    # Do this in finally so we don't hang at report() time if we get errors.
-                    for _ in xrange(len(chunk)):
-                        self.result_queue.task_done()
+            for table, results in ((TestResults, results_tests,), (FixtureResults, results_fixtures,)):
+
+                chunks = (results[i:i+self.batch_size] for i in xrange(0, len(results), self.batch_size))
+
+                for chunk in chunks:
+                    try:
+                        conn.execute(table.insert(),
+                            [create_row_to_insert(result, result.get('previous_run_id', None)) for result in chunk]
+                        )
+                    except Exception, e:
+                        logging.error("Exception while reporting results: " + repr(e))
+                        self.ok = False
+                    finally:
+                        # Do this in finally so we don't hang at report() time if we get errors.
+                        for _ in xrange(len(chunk)):
+                            self.result_queue.task_done()
 
 
     def report(self):

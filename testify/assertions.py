@@ -138,3 +138,12 @@ def assert_call(turtle, call_idx, *args, **kwargs):
     actual = turtle.calls[call_idx] if turtle.calls else None
     msg = "Call %s expected %s, was %s" % (call_idx, (args, kwargs), actual)
     assert actual == (args, kwargs), msg
+
+def assert_subset(lval, rval, message=None):
+    """Assert the first argument is a subset of the second."""
+    if message:
+        assert lval.issubset(rval), message
+    else:
+        assert lval.issubset(rval), \
+            "assertion failed: l.issubset(r)\n l: %r\nr: %r\n\nMissing elements: %r" % \
+                (lval, rval, lval - rval)

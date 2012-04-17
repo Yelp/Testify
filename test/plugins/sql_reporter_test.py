@@ -10,13 +10,25 @@ except ImportError:
     import json
 
 
-from testify import TestCase, setup_teardown, assert_equal, assert_not_equal, assert_gt, assert_lt, assert_in_range
+from testify import TestCase, setup_teardown, assert_equal, assert_gt, assert_subset, assert_in_range, class_setup, class_teardown, class_setup_teardown
 from testify.test_result import TestResult
 from testify.test_runner import TestRunner
-from testify.plugins.sql_reporter import SQLReporter, add_command_line_options, Tests, Failures, Builds, TestResults
+from testify.plugins.sql_reporter import SQLReporter, add_command_line_options, Tests, Builds, TestResults, Fixtures, FixtureResults
 
 class DummyTestCase(TestCase):
 	__test__ = False
+	@class_setup
+	def _class_setup(self):
+		pass
+
+	@class_teardown
+	def _class_teardown(self):
+		pass
+
+	@class_setup_teardown
+	def _class_setup_teardown(self):
+		yield
+
 	def test_pass(self):
 		pass
 
@@ -42,7 +54,8 @@ class SQLReporterTestCase(TestCase):
 		])
 		create_engine_opts = {
 			'poolclass' : SA.pool.StaticPool,
-			'connect_args' : {'check_same_thread' : False}
+			'connect_args' : {'check_same_thread' : False},
+			# 'echo' : True,
 		}
 
 		self.reporter = SQLReporter(options, create_engine_opts=create_engine_opts)
@@ -70,7 +83,6 @@ class SQLReporterTestCase(TestCase):
 		assert_equal(build['end_time'], None)
 
 		assert runner.run()
-
 		# Now that we've run the tests, get the build row again and check to see that things are updated.
 		(updated_build,) = list(conn.execute(Builds.select()))
 
@@ -94,6 +106,21 @@ class SQLReporterTestCase(TestCase):
 
 		assert_equal(passed_test['method_name'], 'test_pass')
 		assert_equal(failed_test['method_name'], 'test_fail')
+
+		# Check that we have the three test fixtures that we expect.
+		fixture_results = list(conn.execute(SA.select(
+			columns=FixtureResults.columns + Fixtures.columns,
+			from_obj=FixtureResults.join(Fixtures, FixtureResults.c.fixture == Fixtures.c.id)
+		)))
+
+		expected_fixtures = set([
+			(u'class_setup', u'_class_setup'),
+			(u'class_teardown', u'_class_teardown'),
+			(u'class_setup_teardown', u'_class_setup_teardown'),
+		])
+
+		actual_fixtures = set([(r['fixture_type'], r['method_name']) for r in fixture_results])
+		assert_subset(expected_fixtures, actual_fixtures)
 
 
 	def test_update_counts(self):
