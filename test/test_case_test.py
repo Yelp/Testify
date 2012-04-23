@@ -1,4 +1,13 @@
-from testify import run, class_teardown, class_setup, setup, teardown, setup_teardown, class_setup_teardown, TestCase, assert_equal
+from testify import TestCase
+from testify import assert_equal
+from testify import class_setup
+from testify import class_setup_teardown
+from testify import class_teardown
+from testify import run
+from testify import setup
+from testify import setup_teardown
+from testify import teardown
+
 
 class TestMethodsGetRun(TestCase):
     def test_method_1(self):
