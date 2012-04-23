@@ -244,12 +244,6 @@ class OverrideTest(TestCase):
 
     def test_method_2(self):
         pass
-# class ExceptionsInClassSetup(TestCase):
-#   def classSetUp(self):
-#       raise Exception, "oh snap"
-#
-#   def test_something(self):
-#       pass
 
 if __name__ == '__main__':
     run()
