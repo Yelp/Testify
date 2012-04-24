@@ -55,7 +55,7 @@ class JSONReporter(test_reporter.TestReporter):
 
         # Create a new one
         if self.options.json_results_logging:
-            self.log_hndl = ResultLogHandler(logging.Handler)
+            self.log_hndl = ResultLogHandler()
             self.log_hndl.setLevel(self.options.verbosity)
             self.log_hndl.setFormatter(logging.Formatter('%(asctime)s\t%(name)-12s: %(levelname)-8s %(message)s'))
             root.addHandler(self.log_hndl)
