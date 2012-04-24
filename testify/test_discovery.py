@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import inspect
 import os
 import time
 import types
@@ -121,7 +122,7 @@ def discover(what):
                 module_suites = getattr(test_module, '_suites', [])
                 for member_name in dir(test_module):
                     obj = getattr(test_module, member_name)
-                    if isinstance(obj, types.TypeType):
+                    if isinstance(obj, types.TypeType) and inspect.getmodule(obj) == test_module:
                         for test_case_class in discover_inner(obj, suites + module_suites):
                             yield test_case_class
 
