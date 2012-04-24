@@ -1,4 +1,16 @@
-from testify import run, class_teardown, class_setup, setup, teardown, setup_teardown, class_setup_teardown, TestCase, assert_equal
+import itertools
+
+from testify import TestCase
+from testify import assert_equal
+from testify import class_setup
+from testify import class_setup_teardown
+from testify import class_teardown
+from testify import let
+from testify import run
+from testify import setup
+from testify import setup_teardown
+from testify import teardown
+
 
 class TestMethodsGetRun(TestCase):
     def test_method_1(self):
@@ -235,12 +247,31 @@ class OverrideTest(TestCase):
 
     def test_method_2(self):
         pass
-# class ExceptionsInClassSetup(TestCase):
-#   def classSetUp(self):
-#       raise Exception, "oh snap"
-#
-#   def test_something(self):
-#       pass
+
+class LetTest(TestCase):
+
+    @let
+    def counter(self):
+        return itertools.count(0)
+
+    def test_first_call_is_not_cached(self):
+        assert_equal(self.counter.next(), 0)
+
+    def test_subsequent_calls_are_cached(self):
+        assert_equal(self.counter.next(), 0)
+        assert_equal(self.counter.next(), 1)
+
+class LetWithLambdaTest(TestCase):
+
+    counter = let(lambda self: itertools.count(0))
+
+    def test_first_call_is_not_cached(self):
+        assert_equal(self.counter.next(), 0)
+
+    def test_subsequent_calls_are_cached(self):
+        assert_equal(self.counter.next(), 0)
+        assert_equal(self.counter.next(), 1)
+
 
 if __name__ == '__main__':
     run()

@@ -470,3 +470,33 @@ class_teardown = __fixture_decorator_factory('class_teardown')
 
 setup_teardown = __fixture_decorator_factory('setup_teardown')
 class_setup_teardown = __fixture_decorator_factory('class_setup_teardown')
+
+class let(object):
+    """Decorator that creates a lazy-evaluated helper property. The value is
+    cached across multiple calls in the same test, but not across multiple
+    tests.
+    """
+
+    class _unsaved(object): pass
+
+    def __init__(self, func):
+        self._func = func
+        self._result = self._unsaved
+
+    def __get__(self, test_case, cls):
+        if test_case is None:
+            return self
+        if self._result is self._unsaved:
+            self._save_result(self._func(test_case))
+            self._register_reset_after_test_completion(test_case)
+        return self._result
+
+    def _save_result(self, result):
+        self._result = result
+
+    def _register_reset_after_test_completion(self, test_case):
+        test_case.register_callback(TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
+                                    lambda _: self._reset_value())
+
+    def _reset_value(self):
+        self._result = self._unsaved

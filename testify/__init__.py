@@ -42,7 +42,8 @@ from test_case import (
                         class_teardown,
                         setup_teardown,
                         class_setup_teardown,
-                        suite)
+                        suite,
+                        let)
 
 from utils import turtle
 
