@@ -142,7 +142,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--replay-json', action="store", dest="replay_json", type="string", default=None, help="Instead of discovering and running tests, read a file with one JSON-encoded test result dictionary per line, and report each line to test reporters as if we had just run that test.")
     parser.add_option('--replay-json-inline', action="append", dest="replay_json_inline", type="string", metavar="JSON_OBJECT", help="Similar to --replay-json, but allows result objects to be passed on the command line. May be passed multiple times. If combined with --replay-json, inline results get reported first.")
 
-    parser.add_option("--rerun-failed", action="store_true", dest="rerun_failed", help="Run only the tests that failed on the last run.")
+    parser.add_option("--rerun-failed", action="store_true", dest="rerun_failed", help="Run only the tests that failed on the last run (failed tests are listed and retrieved from %s)" % DEFAULT_TESTIFY_FAILURES_FILENAME)
     parser.add_option('--rerun-test-file', action="store", dest="rerun_test_file", type="string", default=None, help="Rerun tests listed in FILE in order. One test per line, in the format 'path.to.class ClassName.test_method_name'. Consecutive tests in the same class will be run on the same test class instance.")
 
 
