@@ -136,21 +136,25 @@ class TestRunnerServer(TestRunner):
             raise ValueError("Class %s not checked out." % class_path)
         if d['runner'] != runner_id:
             raise ValueError("Class %s checked out by runner %s, not %s" % (class_path, d['runner'], runner_id))
-        if result['method']['name'] not in d['methods']:
-            raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
-        if result['success']:
-            d['passed_methods'][result['method']['name']] = result
+        if not result['method']['fixture_type']:
+            # Test method.
+            if result['method']['name'] not in d['methods']:
+                raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
+
+            if result['success']:
+                d['passed_methods'][result['method']['name']] = result
+            else:
+                d['failed_methods'][result['method']['name']] = result
+                self.failure_count += 1
+                if self.failure_limit and self.failure_count >= self.failure_limit:
+                    logging.error('Too many failures, shutting down.')
+                    return self.early_shutdown()
+            d['methods'].remove(result['method']['name'])
         else:
-            d['failed_methods'][result['method']['name']] = result
-            self.failure_count += 1
-            if self.failure_limit and self.failure_count >= self.failure_limit:
-                logging.error('Too many failures, shutting down.')
-                return self.early_shutdown()
+            d['fixture_methods'][result['method']['name']] = result
 
         d['timeout_time'] = time.time() + self.runner_timeout
-
-        d['methods'].remove(result['method']['name'])
 
         if not d['methods']:
             self.check_in_class(runner_id, class_path, finished=True)
@@ -258,6 +262,7 @@ class TestRunnerServer(TestRunner):
             'runner' : runner,
             'class_path' : test_dict['class_path'],
             'methods' : set(test_dict['methods']),
+            'fixture_methods' : {},
             'failed_methods' : {},
             'passed_methods' : {},
             'start_time' : time.time(),
