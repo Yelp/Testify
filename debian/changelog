@@ -1,3 +1,21 @@
+python-testify (0.2.6) unstable; urgency=low
+
+  * Handle all exceptions in HTTPReporter's background thread
+  * Add let() decorator, for lazy-loaded setup.
+  * Fix bug where test cases imported via 'import *' get tagged with the wrong suites
+  * Make JSONReporter compatible with Python 2.7 (Issue #45)
+
+ -- Evan Krall <krall@yelp.com>  Tue, 24 Apr 2012 19:06:32 -0700
+
+python-testify (0.2.5) unstable; urgency=low
+
+  * Batch inserts into the reporting database for better performance
+  * Tweaks to Turtle
+  * Restore python 2.5 compatibility
+  * Close clients' HTTP connections properly before shutting down the server.
+
+ -- Evan Krall <krall@yelp.com>  Tue, 10 Apr 2012 20:47:57 -0700
+
 python-testify (0.2.4) unstable; urgency=low
 
   * Use asynchronous reporting of results on both client and server for better performance

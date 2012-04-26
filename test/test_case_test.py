@@ -1,13 +1,15 @@
+import itertools
 import unittest
 
 from testify import assert_equal
 from testify import class_setup
+from testify import class_setup_teardown
 from testify import class_teardown
+from testify import let
 from testify import run
 from testify import setup
-from testify import teardown
 from testify import setup_teardown
-from testify import class_setup_teardown
+from testify import teardown
 from testify import TestCase
 from testify import test_runner
 
@@ -426,6 +428,31 @@ class TestDerivedUnitTestsRan(TestCase):
         assert DerivedUnitTestMixinWithFixture.i_ran
         assert DerivedUnitTestWithFixturesAndTests.i_ran
         assert DerivedUnitTestWithAdditionalFixturesAndTests.i_ran
+
+
+class LetTest(TestCase):
+
+    @let
+    def counter(self):
+        return itertools.count(0)
+
+    def test_first_call_is_not_cached(self):
+        assert_equal(self.counter.next(), 0)
+
+    def test_subsequent_calls_are_cached(self):
+        assert_equal(self.counter.next(), 0)
+        assert_equal(self.counter.next(), 1)
+
+class LetWithLambdaTest(TestCase):
+
+    counter = let(lambda self: itertools.count(0))
+
+    def test_first_call_is_not_cached(self):
+        assert_equal(self.counter.next(), 0)
+
+    def test_subsequent_calls_are_cached(self):
+        assert_equal(self.counter.next(), 0)
+        assert_equal(self.counter.next(), 1)
 
 
 if __name__ == '__main__':
