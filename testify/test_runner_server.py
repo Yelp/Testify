@@ -49,7 +49,7 @@ class AsyncQueue(object):
         try:
             self.lock.acquire()
             d_priority, _, data = self.data_queue.get_nowait()
-            self.lock.release() # Gets skipped if get_nowait raises Empty
+            self.lock.release()  # Gets skipped if get_nowait raises Empty
             callback(d_priority, data)
         except Queue.Empty:
             self.callback_queue.put((c_priority, self.insert_count(), callback,))
@@ -60,7 +60,7 @@ class AsyncQueue(object):
         try:
             self.lock.acquire()
             c_priority, _, callback = self.callback_queue.get_nowait()
-            self.lock.release() # Gets skipped if get_nowait raises Empty
+            self.lock.release()  # Gets skipped if get_nowait raises Empty
             callback(d_priority, data)
         except Queue.Empty:
             self.data_queue.put((d_priority, self.insert_count(), data,))
@@ -83,6 +83,7 @@ class AsyncQueue(object):
         except Queue.Empty:
             pass
 
+
 class TestRunnerServer(TestRunner):
     def __init__(self, *args, **kwargs):
         self.serve_port = kwargs.pop('serve_port')
@@ -93,13 +94,13 @@ class TestRunnerServer(TestRunner):
         self.shutdown_delay_for_outstanding_runners = kwargs['options'].shutdown_delay_for_outstanding_runners
 
         self.test_queue = AsyncQueue()
-        self.checked_out = {} # Keyed on class path (module class).
-        self.failed_rerun_methods = set() # Set of (class_path, method) who have failed.
-        self.timeout_rerun_methods = set() # Set of (class_path, method) who were sent to a client but results never came.
-        self.previous_run_results = {} # Keyed on (class_path, method), values are result dictionaries.
-        self.runners = set() # The set of runner_ids who have asked for tests.
-        self.runners_outstanding = set() # The set of runners who have posted results but haven't asked for the next test yet.
-        self.shutting_down = False # Whether shutdown() has been called.
+        self.checked_out = {}  # Keyed on class path (module class).
+        self.failed_rerun_methods = set()  # Set of (class_path, method) who have failed.
+        self.timeout_rerun_methods = set()  # Set of (class_path, method) who were sent to a client but results never came.
+        self.previous_run_results = {}  # Keyed on (class_path, method), values are result dictionaries.
+        self.runners = set()  # The set of runner_ids who have asked for tests.
+        self.runners_outstanding = set()  # The set of runners who have posted results but haven't asked for the next test yet.
+        self.shutting_down = False  # Whether shutdown() has been called.
 
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
@@ -153,7 +154,6 @@ class TestRunnerServer(TestRunner):
 
         if not d['methods']:
             self.check_in_class(runner_id, class_path, finished=True)
-
 
     def run(self):
         class TestsHandler(tornado.web.RequestHandler):
@@ -218,8 +218,8 @@ class TestRunnerServer(TestRunner):
         # Enqueue all of our tests.
         for test_instance in self.discover():
             test_dict = {
-                'class_path' : '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
-                'methods' : [test.__name__ for test in test_instance.runnable_test_methods()],
+                'class_path': '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
+                'methods': [test.__name__ for test in test_instance.runnable_test_methods()],
             }
 
             if test_dict['methods']:
@@ -241,13 +241,12 @@ class TestRunnerServer(TestRunner):
             else:
                 tornado.ioloop.IOLoop.instance().add_timeout(self.last_activity_time + self.server_timeout, timeout_server)
         self.activity()
-        timeout_server() # Set the first callback.
+        timeout_server()  # Set the first callback.
 
         tornado.ioloop.IOLoop.instance().start()
 
         report = [reporter.report() for reporter in self.test_reporters]
         return all(report)
-
 
     def activity(self):
         self.last_activity_time = time.time()
@@ -317,11 +316,11 @@ class TestRunnerServer(TestRunner):
 
                 result_dict = {
                     'previous_run' : self.previous_run_results.get((class_path, method), None),
-                    'start_time' : time.time()-self.runner_timeout,
+                    'start_time' : time.time() - self.runner_timeout,
                     'end_time' : time.time(),
                     'run_time' : self.runner_timeout,
                     'normalized_run_time' : "%.2fs" % (self.runner_timeout),
-                    'complete': True, # We've tried running the test.
+                    'complete': True,  # We've tried running the test.
                     'success' : False,
                     'failure' : False,
                     'error' : True,
@@ -388,7 +387,7 @@ class TestRunnerServer(TestRunner):
 
         if self.runners_outstanding:
             # Stop in 5 seconds if all the runners_outstanding don't come back by then.
-            iol.add_timeout(time.time()+self.shutdown_delay_for_outstanding_runners, iol.stop)
+            iol.add_timeout(time.time() + self.shutdown_delay_for_outstanding_runners, iol.stop)
         else:
             # Give tornado enough time to finish writing to all the clients, then shut down.
-            iol.add_timeout(time.time()+self.shutdown_delay_for_connection_close, iol.stop)
+            iol.add_timeout(time.time() + self.shutdown_delay_for_connection_close, iol.stop)

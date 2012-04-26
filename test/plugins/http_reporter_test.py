@@ -12,6 +12,7 @@ from testify.plugins.http_reporter import HTTPReporter
 
 class DummyTestCase(TestCase):
     __test__ = False
+
     def test(self):
         pass
 
@@ -33,7 +34,7 @@ class HTTPReporterTestCase(TestCase):
                 except Queue.Empty:
                     handler.finish("kthx")
 
-            def get_error_html(handler, status, **kwargs    ):
+            def get_error_html(handler, status, **kwargs):
                 return "error"
 
         app = tornado.web.Application([(r"/results", ResultsHandler)])
@@ -43,7 +44,7 @@ class HTTPReporterTestCase(TestCase):
 
         iol = tornado.ioloop.IOLoop.instance()
         thread = threading.Thread(target=iol.start)
-        thread.daemon = True # If for some reason, this thread gets blocked, don't prevent quitting.
+        thread.daemon = True  # If for some reason, this thread gets blocked, don't prevent quitting.
         thread.start()
 
         self.connect_addr = "localhost:%d" % portnum
