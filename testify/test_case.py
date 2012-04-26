@@ -180,19 +180,25 @@ class TestCase(object):
         # discover which fixures are on this class, including mixed-in ones
         self._fixture_methods = defaultdict(list)
 
-        for attr_name in dir(self):
-            # @properties that depend on @setup will fail here, hence the None
-            method = getattr(self, attr_name, None)
+        # we want to know everything on this class (including stuff inherited
+        # from bases), but we don't want to trigger any lazily loaded
+        # attributes, so dir() isn't an option; this traverses __bases__/__dict__
+        # correctly for us.
+        class_dict = dict((a.name, a.object) for a in inspect.classify_class_attrs(type(self)))
+
+        for attr_name, method in class_dict.iteritems():
 
             # if this is an old setUp/tearDown/etc, tag it as a fixture
             if attr_name in deprecated_fixture_type_map:
                 fixture_type = deprecated_fixture_type_map[attr_name]
                 fixture_decorator = globals()[fixture_type]
-                method = instancemethod(fixture_decorator(method.im_func), self)
+                method = fixture_decorator(method)
 
             # collect all of our fixtures in appropriate buckets
             if self.is_fixture_method(method):
-                self._fixture_methods[method._fixture_type].append(method)
+                # we grabbed this from the class and need to bind it to us
+                instance_method = instancemethod(method, self)
+                self._fixture_methods[method._fixture_type].append(instance_method)
 
         # arrange our fixture buckets appropriately
         for fixture_type, fixture_methods in self._fixture_methods.iteritems():
@@ -442,7 +448,7 @@ class TestCase(object):
     def is_fixture_method(self, method, fixture_type=None):
         # _fixture_id indicates this method was tagged by us as a fixture,
         # and the MethodType check ensures we don't tag turtles (who are all types)
-        if hasattr(method, '_fixture_type') and isinstance(method, types.MethodType):
+        if hasattr(method, '_fixture_type') and isinstance(method, types.FunctionType):
             if fixture_type:
                 return True if (getattr(method, '_fixture_type') == fixture_type) else False
             else:
