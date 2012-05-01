@@ -1,17 +1,19 @@
 import threading
 import tornado.ioloop
 
-from testify import test_case, test_runner_server, setup, class_setup, assert_equal, test_result, setup_teardown
+from testify import test_case, test_runner_server, class_setup, assert_equal, setup_teardown
+
 
 class Struct:
     """A convenient way to make an object with some members."""
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
+
 def get_test(server, runner_id):
     """A blocking function to request a test from a TestRunnerServer."""
     sem = threading.Semaphore(0)
-    tests_received = [] # Python closures aren't as cool as JS closures, so we have to use something already on the heap in order to pass data from an inner func to an outer func.
+    tests_received = []  # Python closures aren't as cool as JS closures, so we have to use something already on the heap in order to pass data from an inner func to an outer func.
 
     def inner(test_dict):
         tests_received.append(test_dict)
@@ -27,6 +29,7 @@ def get_test(server, runner_id):
     (test_received,) = tests_received
     return test_received
 
+
 class TestRunnerServerTestCase(test_case.TestCase):
     @class_setup
     def build_test_case(self):
@@ -34,6 +37,7 @@ class TestRunnerServerTestCase(test_case.TestCase):
             def __init__(self_, *args, **kwargs):
                 super(DummyTestCase, self_).__init__(*args, **kwargs)
                 self_.should_pass = kwargs.pop('should_pass', True)
+
             def test(self_):
                 assert self_.should_pass
 
@@ -53,7 +57,7 @@ class TestRunnerServerTestCase(test_case.TestCase):
             serve_port=0,
             test_reporters=[],
             plugin_modules=[],
-        );
+        )
 
         thread = threading.Thread(None, self.server.run)
         thread.start()
@@ -135,7 +139,6 @@ class TestRunnerServerTestCase(test_case.TestCase):
         third_test = get_test(self.server, 'runner3')
         self.timeout_class('runner3', third_test)
 
-
         assert_equal(first_test['class_path'], second_test['class_path'])
         assert_equal(first_test['test_methods'], second_test['test_methods'])
 
@@ -163,6 +166,7 @@ class TestRunnerServerTestCase(test_case.TestCase):
 
         # Check that it didn't requeue again.
         assert_equal(get_test(self.server, 'runner4'), None)
+
 
 class AsyncQueueTestCase(test_case.TestCase):
 
