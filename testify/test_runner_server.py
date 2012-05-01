@@ -152,7 +152,7 @@ class TestRunnerServer(TestRunner):
                     return self.early_shutdown()
             d['test_methods'].remove(result['method']['name'])
         else:
-            d['fixture_methods'][result['method']['name']] = result
+            d['fixture_method_results'][result['method']['name']] = result
 
         d['timeout_time'] = time.time() + self.runner_timeout
 
@@ -262,7 +262,7 @@ class TestRunnerServer(TestRunner):
             'runner' : runner,
             'class_path' : test_dict['class_path'],
             'test_methods' : set(test_dict['test_methods']),
-            'fixture_methods' : {},
+            'fixture_method_results' : {},
             'failed_methods' : {},
             'passed_methods' : {},
             'start_time' : time.time(),
