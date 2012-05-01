@@ -230,6 +230,7 @@ class TestRunnerServer(TestRunner):
                 'test_methods': [test.__name__ for test in test_instance.runnable_test_methods()],
                 'fixture_methods' : [fixture.__name__ for fixture in test_instance.class_setup_fixtures + \
                     test_instance.class_teardown_fixtures + \
+                    test_instance.class_setup_teardown_fixtures * 2 + \
                     [test_instance.classSetUp, test_instance.classTearDown]
                 ]
             }
@@ -270,7 +271,8 @@ class TestRunnerServer(TestRunner):
             'runner' : runner,
             'class_path' : test_dict['class_path'],
             'test_methods' : set(test_dict['test_methods']),
-            'fixture_methods' : set(test_dict['fixture_methods']),
+            # At some point this should maybe be a faster multiset implementation, but python 2.5/2.6 don't have a decent built-in implementation afaict.
+            'fixture_methods' : test_dict['fixture_methods'],
             'fixture_method_results' : {},
             'failed_methods' : {},
             'passed_methods' : {},
