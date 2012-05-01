@@ -139,7 +139,7 @@ class TestRunnerServer(TestRunner):
 
         if not result['method']['fixture_type']:
             # Test method.
-            if result['method']['name'] not in d['methods']:
+            if result['method']['name'] not in d['test_methods']:
                 raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
             if result['success']:
@@ -150,13 +150,13 @@ class TestRunnerServer(TestRunner):
                 if self.failure_limit and self.failure_count >= self.failure_limit:
                     logging.error('Too many failures, shutting down.')
                     return self.early_shutdown()
-            d['methods'].remove(result['method']['name'])
+            d['test_methods'].remove(result['method']['name'])
         else:
             d['fixture_methods'][result['method']['name']] = result
 
         d['timeout_time'] = time.time() + self.runner_timeout
 
-        if not d['methods']:
+        if not d['test_methods']:
             self.check_in_class(runner_id, class_path, finished=True)
 
     def run(self):
@@ -178,7 +178,7 @@ class TestRunnerServer(TestRunner):
                     self.runners_outstanding.discard(runner_id)
                     handler.finish(json.dumps({
                         'class': test_dict['class_path'],
-                        'methods': test_dict['methods'],
+                        'test_methods': test_dict['test_methods'],
                         'finished': False,
                     }))
 
@@ -223,10 +223,10 @@ class TestRunnerServer(TestRunner):
         for test_instance in self.discover():
             test_dict = {
                 'class_path': '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
-                'methods': [test.__name__ for test in test_instance.runnable_test_methods()],
+                'test_methods': [test.__name__ for test in test_instance.runnable_test_methods()],
             }
 
-            if test_dict['methods']:
+            if test_dict['test_methods']:
                 self.test_queue.put(0, test_dict)
 
         # Start an HTTP server.
@@ -261,7 +261,7 @@ class TestRunnerServer(TestRunner):
         self.checked_out[test_dict['class_path']] = {
             'runner' : runner,
             'class_path' : test_dict['class_path'],
-            'methods' : set(test_dict['methods']),
+            'test_methods' : set(test_dict['test_methods']),
             'fixture_methods' : {},
             'failed_methods' : {},
             'passed_methods' : {},
@@ -298,23 +298,23 @@ class TestRunnerServer(TestRunner):
         requeue_dict = {
             'last_runner' : runner,
             'class_path' : d['class_path'],
-            'methods' : [],
+            'test_methods' : [],
         }
 
         for method, result_dict in d['failed_methods'].iteritems():
             if (class_path, method) not in self.failed_rerun_methods:
-                requeue_dict['methods'].append(method)
+                requeue_dict['test_methods'].append(method)
                 self.failed_rerun_methods.add((class_path, method))
                 result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
                 self.previous_run_results[(class_path, method)] = result_dict
 
         if finished:
-            if len(d['methods']) != 0:
-                raise ValueError("check_in_class called with finished=True but this class (%s) still has %d methods without results." % (class_path, len(d['methods'])))
+            if len(d['test_methods']) != 0:
+                raise ValueError("check_in_class called with finished=True but this class (%s) still has %d methods without results." % (class_path, len(d['test_methods'])))
         elif timed_out:
             # Requeue or report timed-out tests.
 
-            for method in d['methods']:
+            for method in d['test_methods']:
                 # Fake the results dict.
                 error_message = "The runner running this method (%s) didn't respond within %ss.\n" % (runner, self.runner_timeout)
                 module, _, classname = class_path.partition(' ')
@@ -343,7 +343,7 @@ class TestRunnerServer(TestRunner):
                 }
 
                 if (class_path, method) not in self.timeout_rerun_methods:
-                    requeue_dict['methods'].append(method)
+                    requeue_dict['test_methods'].append(method)
                     self.timeout_rerun_methods.add((class_path, method))
                     self.previous_run_results[(class_path, method)] = result_dict
                 else:
@@ -351,7 +351,7 @@ class TestRunnerServer(TestRunner):
                         reporter.test_start(result_dict)
                         reporter.test_complete(result_dict)
 
-        if requeue_dict['methods']:
+        if requeue_dict['test_methods']:
             self.test_queue.put(-1, requeue_dict)
 
         if self.test_queue.empty() and len(self.checked_out) == 0:

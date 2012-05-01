@@ -80,7 +80,7 @@ class TestRunnerServerTestCase(test_case.TestCase):
         first_test = get_test(self.server, 'runner1')
 
         assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(first_test['methods'], ['test'])
+        assert_equal(first_test['test_methods'], ['test'])
 
         self.run_test('runner1')
 
@@ -91,13 +91,13 @@ class TestRunnerServerTestCase(test_case.TestCase):
         """Start a server with one test case to run. Make sure it hands out that test, report it as failure, then make sure it gives us the same one, then nothing else."""
         first_test = get_test(self.server, 'runner1')
         assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(first_test['methods'], ['test'])
+        assert_equal(first_test['test_methods'], ['test'])
 
         self.run_test('runner1', should_pass=False)
 
         second_test = get_test(self.server, 'runner2')
         assert_equal(second_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(second_test['methods'], ['test'])
+        assert_equal(second_test['test_methods'], ['test'])
 
         self.run_test('runner2', should_pass=False)
 
@@ -120,7 +120,7 @@ class TestRunnerServerTestCase(test_case.TestCase):
         assert second_test
 
         assert_equal(first_test['class_path'], second_test['class_path'])
-        assert_equal(first_test['methods'], second_test['methods'])
+        assert_equal(first_test['test_methods'], second_test['test_methods'])
         assert_equal(third_test, None)
 
     def test_fail_then_timeout_twice(self):
@@ -137,10 +137,10 @@ class TestRunnerServerTestCase(test_case.TestCase):
 
 
         assert_equal(first_test['class_path'], second_test['class_path'])
-        assert_equal(first_test['methods'], second_test['methods'])
+        assert_equal(first_test['test_methods'], second_test['test_methods'])
 
         assert_equal(first_test['class_path'], third_test['class_path'])
-        assert_equal(first_test['methods'], third_test['methods'])
+        assert_equal(first_test['test_methods'], third_test['test_methods'])
 
         # Check that it didn't requeue again.
         assert_equal(get_test(self.server, 'runner4'), None)
@@ -157,9 +157,9 @@ class TestRunnerServerTestCase(test_case.TestCase):
         third_test = get_test(self.server, 'runner3')
         self.run_test('runner3', should_pass=False)
         assert_equal(first_test['class_path'], second_test['class_path'])
-        assert_equal(first_test['methods'], second_test['methods'])
+        assert_equal(first_test['test_methods'], second_test['test_methods'])
         assert_equal(first_test['class_path'], third_test['class_path'])
-        assert_equal(first_test['methods'], third_test['methods'])
+        assert_equal(first_test['test_methods'], third_test['test_methods'])
 
         # Check that it didn't requeue again.
         assert_equal(get_test(self.server, 'runner4'), None)
