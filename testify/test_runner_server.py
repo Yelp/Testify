@@ -152,11 +152,15 @@ class TestRunnerServer(TestRunner):
                     return self.early_shutdown()
             d['test_methods'].remove(result['method']['name'])
         else:
+            if result['method']['name'] not in d['fixture_methods']:
+                raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
+
             d['fixture_method_results'][result['method']['name']] = result
+            d['fixture_methods'].remove(result['method']['name'])
 
         d['timeout_time'] = time.time() + self.runner_timeout
 
-        if not d['test_methods']:
+        if not d['test_methods'] and not d['fixture_methods']:
             self.check_in_class(runner_id, class_path, finished=True)
 
     def run(self):
@@ -224,6 +228,10 @@ class TestRunnerServer(TestRunner):
             test_dict = {
                 'class_path': '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
                 'test_methods': [test.__name__ for test in test_instance.runnable_test_methods()],
+                'fixture_methods' : [fixture.__name__ for fixture in test_instance.class_setup_fixtures + \
+                    test_instance.class_teardown_fixtures + \
+                    [test_instance.classSetUp, test_instance.classTearDown]
+                ]
             }
 
             if test_dict['test_methods']:
@@ -262,6 +270,7 @@ class TestRunnerServer(TestRunner):
             'runner' : runner,
             'class_path' : test_dict['class_path'],
             'test_methods' : set(test_dict['test_methods']),
+            'fixture_methods' : set(test_dict['fixture_methods']),
             'fixture_method_results' : {},
             'failed_methods' : {},
             'passed_methods' : {},
@@ -299,6 +308,7 @@ class TestRunnerServer(TestRunner):
             'last_runner' : runner,
             'class_path' : d['class_path'],
             'test_methods' : [],
+            'fixture_methods' : [],
         }
 
         for method, result_dict in d['failed_methods'].iteritems():
