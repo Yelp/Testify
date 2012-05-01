@@ -285,7 +285,11 @@ class CallbacksGetCalledTest(TestCase):
                 pass
 
             @class_setup_teardown
-            def __class_setup_teardown(self):
+            def __class_setup_teardown_1(self):
+                yield
+
+            @class_setup_teardown
+            def __class_setup_teardown_2(self):
                 yield
 
             def test_things(self):
@@ -302,6 +306,7 @@ class CallbacksGetCalledTest(TestCase):
         )
 
         calls_to_callback = []
+
         def make_callback(event):
             def callback(result):
                 calls_to_callback.append((event, result['method']['name']))
@@ -316,14 +321,20 @@ class CallbacksGetCalledTest(TestCase):
             (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, 'classSetUp'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, 'classSetUp'),
 
-            (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, '__class_setup_teardown'),
-            (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, '__class_setup_teardown'),
+            (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, '__class_setup_teardown_1'),
+            (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, '__class_setup_teardown_1'),
+
+            (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, '__class_setup_teardown_2'),
+            (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, '__class_setup_teardown_2'),
 
             (TestCase.EVENT_ON_RUN_TEST_METHOD, 'test_things'),
             (TestCase.EVENT_ON_COMPLETE_TEST_METHOD, 'test_things'),
 
-            (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, '__class_setup_teardown'),
-            (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, '__class_setup_teardown'),
+            (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, '__class_setup_teardown_2'),
+            (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, '__class_setup_teardown_2'),
+
+            (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, '__class_setup_teardown_1'),
+            (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, '__class_setup_teardown_1'),
 
             (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, 'classTearDown'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, 'classTearDown'),

@@ -300,7 +300,7 @@ class TestCase(object):
                 enter_result.end_in_success()
             self.fire_event(self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, enter_result)
 
-            self.__enter_context_managers(fixture_methods[1:], callback)
+            self.__enter_class_context_managers(fixture_methods[1:], callback)
 
             exit_result = TestResult(fixture_method)
             exit_result.start()
