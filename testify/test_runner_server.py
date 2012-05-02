@@ -102,6 +102,7 @@ class TestRunnerServer(TestRunner):
         self.runners_outstanding = set()  # The set of runners who have posted results but haven't asked for the next test yet.
         self.shutting_down = False  # Whether shutdown() has been called.
         self.fixtures_for_class = {}  # Keyed on class_path, stores a list of class_setup/class_teardown fixtures that a class should run. Used for requeuing.
+        self.fixture_method_types = {}  # Keyed on (class_path, method), stores the fixture type of each fixture method.
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
     def get_next_test(self, runner_id, on_test_callback, on_empty_callback):
@@ -227,12 +228,17 @@ class TestRunnerServer(TestRunner):
         # Enqueue all of our tests.
         for test_instance in self.discover():
             class_path = '%s %s' % (test_instance.__module__, test_instance.__class__.__name__)
-            # Save the list of fixtures, in case we need to rerun this class later.
-            self.fixtures_for_class[class_path] = tuple(fixture.__name__ for fixture in test_instance.class_setup_fixtures + \
+
+            fixtures = test_instance.class_setup_fixtures + \
                 test_instance.class_teardown_fixtures + \
                 test_instance.class_setup_teardown_fixtures * 2 + \
                 [test_instance.classSetUp, test_instance.classTearDown]
-            )
+
+            for fixture in fixtures:
+                self.fixture_method_types[(class_path, fixture.__name__)] = fixture._fixture_type
+
+            # Save the list of fixtures, in case we need to rerun this class later.
+            self.fixtures_for_class[class_path] = tuple(fixture.__name__ for fixture in fixtures)
 
             test_dict = {
                 'class_path': class_path,
@@ -302,6 +308,7 @@ class TestRunnerServer(TestRunner):
         d = self.checked_out.pop(class_path)
 
         for method, result_dict in itertools.chain(
+                    d['fixture_method_results'].iteritems(),
                     d['passed_methods'].iteritems(),
                     ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown or (class_path, method) in self.failed_rerun_methods),
                 ):
@@ -331,7 +338,7 @@ class TestRunnerServer(TestRunner):
         elif timed_out:
             # Requeue or report timed-out tests.
 
-            for method in d['test_methods']:
+            for method in list(d['test_methods']) + d['fixture_methods']:
                 # Fake the results dict.
                 error_message = "The runner running this method (%s) didn't respond within %ss.\n" % (runner, self.runner_timeout)
                 module, _, classname = class_path.partition(' ')
@@ -355,11 +362,11 @@ class TestRunnerServer(TestRunner):
                         'class' : classname,
                         'name' : method,
                         'full_name' : "%s.%s" % (class_path, method),
-                        'fixture_type' : None,
+                        'fixture_type' : self.fixture_method_types.get((class_path, method)),
                     }
                 }
 
-                if (class_path, method) not in self.timeout_rerun_methods:
+                if not self.fixture_method_types.get((class_path, method)) and (class_path, method) not in self.timeout_rerun_methods:
                     requeue_dict['test_methods'].append(method)
                     self.timeout_rerun_methods.add((class_path, method))
                     self.previous_run_results[(class_path, method)] = result_dict

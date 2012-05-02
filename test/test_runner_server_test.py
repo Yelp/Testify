@@ -1,7 +1,7 @@
 import threading
 import tornado.ioloop
 
-from testify import test_case, test_runner_server, class_setup, assert_equal, setup_teardown
+from testify import test_case, test_runner_server, class_setup, assert_equal, setup_teardown, test_reporter
 
 
 class Struct:
@@ -45,6 +45,18 @@ class TestRunnerServerTestCase(test_case.TestCase):
 
     @setup_teardown
     def run_server(self):
+        self.reported_results = []
+        class ResultRecorder(test_reporter.TestReporter):
+            def test_complete(reporter, result):
+                self.reported_results.append(result)
+
+            def class_setup_complete(reporter, result):
+                self.reported_results.append(result)
+
+            def class_teardown_complete(reporter, result):
+                self.reported_results.append(result)
+
+
         self.server = test_runner_server.TestRunnerServer(
             self.dummy_test_case,
             options=Struct(
@@ -55,7 +67,7 @@ class TestRunnerServerTestCase(test_case.TestCase):
                 shutdown_delay_for_outstanding_runners=1,
             ),
             serve_port=0,
-            test_reporters=[],
+            test_reporters=[ResultRecorder(None)],
             plugin_modules=[],
         )
 
@@ -69,7 +81,14 @@ class TestRunnerServerTestCase(test_case.TestCase):
 
     def timeout_class(self, runner, test):
         assert test
-        tornado.ioloop.IOLoop.instance().add_callback(lambda: self.server.check_in_class(runner, test['class_path'], timed_out=True))
+        sem = threading.Semaphore(0)
+
+        def inner():
+            self.server.check_in_class(runner, test['class_path'], timed_out=True)
+            sem.release()
+
+        tornado.ioloop.IOLoop.instance().add_callback(inner)
+        sem.acquire()  # block until inner is finished.
 
     def run_test(self, runner_id, should_pass=True):
         test_instance = self.dummy_test_case(should_pass=should_pass)
@@ -167,6 +186,28 @@ class TestRunnerServerTestCase(test_case.TestCase):
 
         # Check that it didn't requeue again.
         assert_equal(get_test(self.server, 'runner4'), None)
+
+    def test_tests_and_fixtures_reported_pass(self):
+        """Test that when everything passes, the server reports results."""
+        first_test = get_test(self.server, 'runner1')
+        self.run_test('runner1', should_pass=True)
+        assert_equal(set([r['method']['name'] for r in self.reported_results]), set([
+            'classSetUp',
+            'test',
+            'classTearDown',
+        ]))
+
+    def test_tests_and_fixtures_reported_timeout(self):
+        """If a class times out, there should be a fake result for everything."""
+        first_test = get_test(self.server, 'runner1')
+        self.timeout_class('runner1', first_test)
+        second_test = get_test(self.server, 'runner2')
+        self.timeout_class('runner2', second_test)
+        assert_equal(set([r['method']['name'] for r in self.reported_results]), set([
+            'classSetUp',
+            'test',
+            'classTearDown',
+        ]))
 
 
 class AsyncQueueTestCase(test_case.TestCase):
