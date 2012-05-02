@@ -55,7 +55,6 @@ class SQLReporterTestCase(TestCase):
         create_engine_opts = {
             'poolclass' : SA.pool.StaticPool,
             'connect_args' : {'check_same_thread' : False},
-            # 'echo' : True,
         }
 
         self.reporter = SQLReporter(options, create_engine_opts=create_engine_opts)
