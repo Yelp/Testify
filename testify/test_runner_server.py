@@ -101,7 +101,7 @@ class TestRunnerServer(TestRunner):
         self.runners = set()  # The set of runner_ids who have asked for tests.
         self.runners_outstanding = set()  # The set of runners who have posted results but haven't asked for the next test yet.
         self.shutting_down = False  # Whether shutdown() has been called.
-
+        self.fixtures_for_class = {}  # Keyed on class_path, stores a list of class_setup/class_teardown fixtures that a class should run. Used for requeuing.
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
     def get_next_test(self, runner_id, on_test_callback, on_empty_callback):
@@ -152,6 +152,7 @@ class TestRunnerServer(TestRunner):
                     return self.early_shutdown()
             d['test_methods'].remove(result['method']['name'])
         else:
+            # Fixture method
             if result['method']['name'] not in d['fixture_methods']:
                 raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
@@ -225,14 +226,18 @@ class TestRunnerServer(TestRunner):
 
         # Enqueue all of our tests.
         for test_instance in self.discover():
+            class_path = '%s %s' % (test_instance.__module__, test_instance.__class__.__name__)
+            # Save the list of fixtures, in case we need to rerun this class later.
+            self.fixtures_for_class[class_path] = tuple(fixture.__name__ for fixture in test_instance.class_setup_fixtures + \
+                test_instance.class_teardown_fixtures + \
+                test_instance.class_setup_teardown_fixtures * 2 + \
+                [test_instance.classSetUp, test_instance.classTearDown]
+            )
+
             test_dict = {
-                'class_path': '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
+                'class_path': class_path,
                 'test_methods': [test.__name__ for test in test_instance.runnable_test_methods()],
-                'fixture_methods' : [fixture.__name__ for fixture in test_instance.class_setup_fixtures + \
-                    test_instance.class_teardown_fixtures + \
-                    test_instance.class_setup_teardown_fixtures * 2 + \
-                    [test_instance.classSetUp, test_instance.classTearDown]
-                ]
+                'fixture_methods' : list(self.fixtures_for_class[class_path])
             }
 
             if test_dict['test_methods']:
@@ -310,7 +315,7 @@ class TestRunnerServer(TestRunner):
             'last_runner' : runner,
             'class_path' : d['class_path'],
             'test_methods' : [],
-            'fixture_methods' : [],
+            'fixture_methods' : list(self.fixtures_for_class[d['class_path']]),
         }
 
         for method, result_dict in d['failed_methods'].iteritems():

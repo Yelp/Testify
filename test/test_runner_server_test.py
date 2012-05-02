@@ -73,10 +73,11 @@ class TestRunnerServerTestCase(test_case.TestCase):
 
     def run_test(self, runner_id, should_pass=True):
         test_instance = self.dummy_test_case(should_pass=should_pass)
-        test_instance.register_callback(
-            test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
-            lambda result: self.server.report_result(runner_id, result)
-        )
+        for event in (test_case.TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD, test_case.TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,):
+            test_instance.register_callback(
+                event,
+                lambda result: self.server.report_result(runner_id, result)
+            )
         test_instance.run()
 
     def test_passing_tests_run_only_once(self):
