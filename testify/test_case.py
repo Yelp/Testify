@@ -24,6 +24,7 @@ __testify = 1
 
 from collections import defaultdict
 from contextlib import contextmanager
+from functools import wraps
 import inspect
 from new import instancemethod
 import sys
@@ -478,12 +479,17 @@ def suite(*args, **kwargs):
 
     return mark_test_with_suites
 
+
 def __fixture_decorator_factory(fixture_type):
     """Decorator generator for the fixture decorators"""
     def fixture_method(func):
-        MetaTestCase._fixture_accumulator[fixture_type].append(func)
-        func._fixture_type = fixture_type
-        return func
+        @wraps(func)
+        def inner(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        MetaTestCase._fixture_accumulator[fixture_type].append(inner)
+        inner._fixture_type = fixture_type
+        return inner
     return fixture_method
 
 class_setup = __fixture_decorator_factory('class_setup')

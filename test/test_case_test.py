@@ -340,5 +340,52 @@ class CallbacksGetCalledTest(TestCase):
             (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, 'classTearDown'),
         ])
 
+
+class MultipleDecoratorsSupportedTest(TestCase):
+    def test_multiple_decorators_have_appropriate_fixture_types(self):
+        """Apparently people think it's convenient to decorate their fixtures with multiple fixture types.
+        Make sure that the fixture accumulators each contain functions with the appropriate _fixture_type."""
+
+        class ThreeDecoratorsTestCase(TestCase):
+            @setup
+            @teardown
+            @class_setup
+            def blah(self):
+                pass
+
+        for fixture_type in ('setup', 'teardown', 'class_setup'):
+            (func,) = ThreeDecoratorsTestCase._fixture_methods[fixture_type]
+            assert_equal(func._fixture_type, fixture_type)
+
+    def test_multiple_decorators_reported_with_correct_fixture_type_and_name(self):
+        """Make sure that when a method is decorated with both @class_setup and @class_teardown,
+        the appropriate fixture type is reported to the right callback, and the name and class_name are correct"""
+        class TwoDecoratorsTestCase(TestCase):
+            @class_setup
+            @class_teardown
+            def why_would_you_ever_want_to_do_this(self):
+                pass
+
+        test_instance = TwoDecoratorsTestCase()
+
+        class_setup_results = []
+        class_teardown_results = []
+
+        test_instance.register_callback(TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, class_setup_results.append)
+        test_instance.register_callback(TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, class_teardown_results.append)
+
+        test_instance.run()
+
+        (class_setup_result,) = [r for r in class_setup_results if r['method']['name'] != 'classSetUp']
+        assert_equal(class_setup_result['method']['fixture_type'], 'class_setup')
+        assert_equal(class_setup_result['method']['name'], 'why_would_you_ever_want_to_do_this')
+        assert_equal(class_setup_result['method']['class'], 'TwoDecoratorsTestCase')
+
+        (class_teardown_result,) = [r for r in class_teardown_results if r['method']['name'] != 'classTearDown']
+        assert_equal(class_teardown_result['method']['fixture_type'], 'class_teardown')
+        assert_equal(class_teardown_result['method']['name'], 'why_would_you_ever_want_to_do_this')
+        assert_equal(class_teardown_result['method']['class'], 'TwoDecoratorsTestCase')
+
+
 if __name__ == '__main__':
     run()
