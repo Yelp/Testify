@@ -89,7 +89,7 @@ FixtureResults = SA.Table('fixture_results', metadata,
     SA.Column('end_time', SA.Integer, index=True, nullable=False),
     SA.Column('run_time', SA.Float, index=True, nullable=False),
     SA.Column('runner_id', SA.String(255), index=True, nullable=True),
-    SA.Column('previous_run', SA.Integer, index=False, nullable=True),
+    # Unlike the TestResults table, there is no previous_run column here because the TestRunnerServer doesn't associate fixture results with their previous run.
 )
 SA.Index('ix_build_fixture_failure', FixtureResults.c.build, FixtureResults.c.fixture, FixtureResults.c.failure)
 
@@ -257,7 +257,6 @@ class SQLReporter(test_reporter.TestReporter):
             results = conn.execute(table.insert(create_row_to_insert(result, previous_run_id=previous_run_id)))
             return results.lastrowid
 
-
         # Begin actual report_results code.
         conn = self.engine.connect()
 
@@ -282,7 +281,7 @@ class SQLReporter(test_reporter.TestReporter):
 
             for table, results in ((TestResults, results_tests,), (FixtureResults, results_fixtures,)):
 
-                chunks = (results[i:i+self.batch_size] for i in xrange(0, len(results), self.batch_size))
+                chunks = (results[i : i + self.batch_size] for i in xrange(0, len(results), self.batch_size))
 
                 for chunk in chunks:
                     try:

@@ -157,7 +157,7 @@ class TestRunnerServer(TestRunner):
             if result['method']['name'] not in d['fixture_methods']:
                 raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
-            d['fixture_method_results'][result['method']['name']] = result
+            d['fixture_method_results'].append((result['method']['name'], result))
             d['fixture_methods'].remove(result['method']['name'])
 
         d['timeout_time'] = time.time() + self.runner_timeout
@@ -284,7 +284,7 @@ class TestRunnerServer(TestRunner):
             'test_methods' : set(test_dict['test_methods']),
             # At some point this should maybe be a faster multiset implementation, but python 2.5/2.6 don't have a decent built-in implementation afaict.
             'fixture_methods' : test_dict['fixture_methods'],
-            'fixture_method_results' : {},
+            'fixture_method_results' : [],
             'failed_methods' : {},
             'passed_methods' : {},
             'start_time' : time.time(),
@@ -307,15 +307,37 @@ class TestRunnerServer(TestRunner):
 
         d = self.checked_out.pop(class_path)
 
+        # The set of class_setup_teardown fixtures we've reported already.
+        seen_class_setup_teardowns = set()
+
+        def report(result_dict):
+            for reporter in self.test_reporters:
+                if result_dict['method']['fixture_type'] == 'class_setup':
+                    reporter.class_setup_start(result_dict)
+                    reporter.class_setup_complete(result_dict)
+                elif result_dict['method']['fixture_type'] == 'class_teardown':
+                    reporter.class_teardown_start(result_dict)
+                    reporter.class_teardown_complete(result_dict)
+                elif result_dict['method']['fixture_type'] == 'class_setup_teardown':
+                    # The first time we report a class_setup_teardown, it should be sent through class_setup_(start|complete)
+                    if method not in seen_class_setup_teardowns:
+                        reporter.class_setup_start(result_dict)
+                        reporter.class_setup_complete(result_dict)
+                        seen_class_setup_teardowns.add(method)
+                    else:
+                        reporter.class_teardown_start(result_dict)
+                        reporter.class_teardown_complete(result_dict)
+                else:
+                    reporter.test_start(result_dict)
+                    reporter.test_complete(result_dict)
+
         for method, result_dict in itertools.chain(
-                    d['fixture_method_results'].iteritems(),
+                    d['fixture_method_results'],
                     d['passed_methods'].iteritems(),
                     ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown or (class_path, method) in self.failed_rerun_methods),
                 ):
-            for reporter in self.test_reporters:
-                result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
-                reporter.test_start(result_dict)
-                reporter.test_complete(result_dict)
+            result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
+            report(result_dict)
 
         #Requeue failed tests
         requeue_dict = {
@@ -371,9 +393,7 @@ class TestRunnerServer(TestRunner):
                     self.timeout_rerun_methods.add((class_path, method))
                     self.previous_run_results[(class_path, method)] = result_dict
                 else:
-                    for reporter in self.test_reporters:
-                        reporter.test_start(result_dict)
-                        reporter.test_complete(result_dict)
+                    report(result_dict)
 
         if requeue_dict['test_methods']:
             self.test_queue.put(-1, requeue_dict)
