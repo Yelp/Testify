@@ -70,6 +70,7 @@ TestResults = SA.Table('test_results', metadata,
     SA.Column('previous_run', SA.Integer, index=False, nullable=True),
 )
 SA.Index('ix_build_test_failure', TestResults.c.build, TestResults.c.test, TestResults.c.failure)
+SA.Index('ix_build_test_run_time', TestResults.c.build, TestResults.c.test, TestResults.c.run_time)
 
 Fixtures = SA.Table('fixtures', metadata,
     SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
@@ -92,6 +93,7 @@ FixtureResults = SA.Table('fixture_results', metadata,
     # Unlike the TestResults table, there is no previous_run column here because the TestRunnerServer doesn't associate fixture results with their previous run.
 )
 SA.Index('ix_build_fixture_failure', FixtureResults.c.build, FixtureResults.c.fixture, FixtureResults.c.failure)
+SA.Index('ix_build_fixture_run_time', FixtureResults.c.build, FixtureResults.c.fixture, FixtureResults.c.run_time)
 
 def md5(s):
     return hashlib.md5(s.encode('utf8') if isinstance(s, unicode) else s).hexdigest()
