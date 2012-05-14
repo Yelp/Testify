@@ -29,7 +29,7 @@ import threading
 
 class AsyncQueue(object):
     def __init__(self):
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.data_queue = Queue.PriorityQueue()
         self.callback_queue = Queue.PriorityQueue()
         self.finalized = False
