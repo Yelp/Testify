@@ -215,6 +215,10 @@ class TestCase(object):
             member = getattr(self, member_name)
             if not inspect.ismethod(member):
                 continue
+            if getattr(member, '_fixture_type', None):
+                # Skip any fixtures that happen to be named things like test_setup.
+                continue
+
             member_suites = getattr(member, '_suites', set()) | set(getattr(self, '_suites', []))
             # if there are any exclude suites, exclude methods under them
             if self.__suites_exclude and self.__suites_exclude & member_suites:
