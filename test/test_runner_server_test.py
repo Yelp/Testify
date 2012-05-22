@@ -1,4 +1,5 @@
 import threading
+import time
 import tornado.ioloop
 
 from testify import test_case, test_runner_server, setup, class_setup, assert_equal, test_result, setup_teardown
@@ -163,3 +164,42 @@ class TestRunnerServerTestCase(test_case.TestCase):
 
         # Check that it didn't requeue again.
         assert_equal(get_test(self.server, 'runner4'), None)
+
+    def test_get_next_test_doesnt_loop_forever(self):
+        """In certain situations, get_next_test will recurse until it runs out of stack space. Make sure that doesn't happen.
+
+        Here are the conditions needed to reproduce this bug
+         - The server sees multiple runners
+         - The server has more than one test in its queue
+         - All the tests in the server's queue were last run by the runner asking for tests.
+        """
+        self.server.test_queue = test_runner_server.AsyncQueue()
+
+        self.server.test_queue.put(0, {'last_runner': 'foo', 'class_path': '1', 'methods': ['blah'], 'fixture_methods': []})
+        self.server.test_queue.put(0, {'last_runner': 'foo', 'class_path': '2', 'methods': ['blah'], 'fixture_methods': []})
+        self.server.test_queue.put(0, {'last_runner': 'foo', 'class_path': '3', 'methods': ['blah'], 'fixture_methods': []})
+
+        failure = ["get_next_test never called our callback."]
+        sem = threading.Semaphore(0)
+
+        def on_test_callback(test):
+            failure[0] = None
+            sem.release()
+
+        def on_empty_callback():
+            failure[0] = "get_next_test called back with no test."
+            sem.release()
+
+        # We need the server to see multiple runners, otherwise the offending code path doesn't get triggered.
+        get_test(self.server, 'bar')
+        # If this test fails the way we expect it to, this call to get_test will block indefinitely.
+
+        thread = threading.Thread(None, lambda: self.server.get_next_test('foo', on_test_callback, on_empty_callback))
+        thread.start()
+        thread.join(0.5)
+
+        assert not thread.is_alive(), "get_next_test is still running after 0.5s"
+        assert sem.acquire(False), "Server never gave us a result."
+
+        if failure[0]:
+            raise Exception(failure[0])
