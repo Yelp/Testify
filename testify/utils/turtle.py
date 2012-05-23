@@ -64,6 +64,9 @@ class Turtle(object):
     def __len__(self):
         return len(self.calls)
 
+    def __nonzero__(self):
+        return True
+
     def __getattr__(self, name):
         self.__dict__[name] = Turtle()
         return self.__dict__[name]
