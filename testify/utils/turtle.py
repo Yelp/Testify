@@ -24,19 +24,29 @@ After a turtle is used, it can be inspected to find out what happened:
   >>> leonardo.attack(weapon="katanas")
   <testify.utils.turtle.Turtle object at 0x7fbd01e67dd0>
 
-  >>> leonardo.do_katanas.calls
-  [[((), {'weapon': katanas})]]
+  >>> len(leonardo.defend)
+  0
 
-To control the behavior of a turtle (for example, if you want some function to call to return None instead)
+  >>> len(leonardo.attack)
+  1
+
+  >>> leonardo.attack.calls
+  [((), {'weapon': katanas})]
+
+  >>> for args, kwargs in leonardo.attack:
+  ...     print kwargs.get('weapon')
+  katanas
+
+To control the behavior of a turtle (for example, if you want some function call to return False instead)
 just set the attribute yourself
 
-  >>> raphael = Turtle()
-  >>> raphael.color = "red"
-  >>> raphael.is_lame = lambda : False
+  >>> raphael = Turtle(color="red")
+  >>> raphael.is_shell_shocked = lambda : False
 
 Then you can call:
-  if raphael.color is None or raphael.is_lame():
-      <do stuff>
+  >>> if not raphael.is_shell_shocked():
+  ...     print raphael.color
+  red
 
 "Turtles all the way down": http://en.wikipedia.org/wiki/Turtles_all_the_way_down
 """
@@ -44,15 +54,23 @@ Then you can call:
 class Turtle(object):
     def __init__(self, *args, **kwargs):
         self.__dict__.update(kwargs)
+
         self.calls = []
         self.returns = []
+
+    def __iter__(self):
+        return iter(self.calls)
+
+    def __len__(self):
+        return len(self.calls)
 
     def __getattr__(self, name):
         self.__dict__[name] = Turtle()
         return self.__dict__[name]
-    
+
     def __call__(self, *args, **kwargs):
         self.calls.append((args, kwargs))
         new_turtle = type(self)()
         self.returns.append(new_turtle)
         return new_turtle
+
