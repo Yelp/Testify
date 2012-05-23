@@ -56,3 +56,6 @@ class Turtle(object):
         new_turtle = type(self)()
         self.returns.append(new_turtle)
         return new_turtle
+
+    def __iter__(self):
+        yield StopIteration
