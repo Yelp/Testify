@@ -78,18 +78,6 @@ class TestResult(object):
             self.interrupted = True
             self.exception_info = exception_info
 
-    def relevant_traceback(self):
-
-        def is_relevant_tb_level(tb):
-            return tb.tb_frame.f_globals.has_key('__testify')
-
-        exctype, value, tb = self.exception_info
-
-        # Skip test runner traceback levels
-        while tb and is_relevant_tb_level(tb):
-            tb = tb.tb_next
-
-        return tb
 
     def format_exception_info(self, pretty=False):
         if self.exception_info is None:
@@ -97,15 +85,21 @@ class TestResult(object):
 
         tb_formatter = fancy_tb_formatter if (pretty and fancy_tb_formatter) else traceback.format_exception
 
+        def is_relevant_tb_level(tb):
+            return tb.tb_frame.f_globals.has_key('__testify')
+
         def count_relevant_tb_levels(tb):
             length = 0
             while tb and not is_relevant_tb_level(tb):
                 length += 1
                 tb = tb.tb_next
             return length
-        
-        tb = self.relevant_traceback()
 
+        exctype, value, tb = self.exception_info
+
+        # Skip test runner traceback levels
+        while tb and is_relevant_tb_level(tb):
+            tb = tb.tb_next
         if exctype is AssertionError:
             # Skip testify.assertions traceback levels
             length = count_relevant_tb_levels(tb)

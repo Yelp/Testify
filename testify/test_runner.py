@@ -56,7 +56,7 @@ class TestRunner(object):
         self.bucket_overrides = bucket_overrides if bucket_overrides is not None else {}
         self.bucket_salt = bucket_salt
 
-        self.post_mortem_debugger = post_mortem_debugger
+        self.debugger = debugger
 
         self.suites_include = set(suites_include)
         self.suites_exclude = set(suites_exclude)

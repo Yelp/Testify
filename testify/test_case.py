@@ -420,8 +420,8 @@ class TestCase(object):
                     self.__class_level_error = exc_info
             if self.__debugger:
                 exc, val, tb = exc_info
-                print "DEBUGGER"
-                print result.format_exception_info()
+                print "\nDEBUGGER"
+                print "\n".join(result.format_exception_info())
                 import ipdb
                 ipdb.post_mortem(tb)
             return False
