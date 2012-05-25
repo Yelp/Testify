@@ -148,6 +148,8 @@ class TestCase(object):
         self.__suites_require = kwargs.get('suites_require', set())
         self.__name_overrides = kwargs.get('name_overrides', None)
 
+        self.__debugger = kwargs.get('debugger')
+
         # callbacks for various stages of execution, used for stuff like logging
         self.__callbacks = defaultdict(list)
 
@@ -415,6 +417,12 @@ class TestCase(object):
                 result.end_in_error(exc_info)
                 if is_class_level:
                     self.__class_level_error = exc_info
+            if self.__debugger:
+                exc, val, tb = exc_info
+                print "\nDEBUGGER"
+                print "\n".join(result.format_exception_info())
+                import ipdb
+                ipdb.post_mortem(tb)
             return False
         else:
             return True
