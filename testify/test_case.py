@@ -27,7 +27,6 @@ from contextlib import contextmanager
 import inspect
 from new import instancemethod
 import sys
-import traceback
 import types
 
 from test_result import TestResult
