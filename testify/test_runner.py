@@ -38,6 +38,7 @@ class TestRunner(object):
                  bucket_count=None,
                  bucket_overrides=None,
                  bucket_salt=None,
+                 debugger=False,
                  suites_include=(),
                  suites_exclude=(),
                  suites_require=(),
@@ -54,6 +55,8 @@ class TestRunner(object):
         self.bucket_count = bucket_count
         self.bucket_overrides = bucket_overrides if bucket_overrides is not None else {}
         self.bucket_salt = bucket_salt
+
+        self.post_mortem_debugger = post_mortem_debugger
 
         self.suites_include = set(suites_include)
         self.suites_exclude = set(suites_exclude)
@@ -90,6 +93,7 @@ class TestRunner(object):
                             suites_require=self.suites_require,
                             name_overrides=self.module_method_overrides.get(test_case_class.__name__, None),
                             failure_limit=(self.failure_limit - self.failure_count) if self.failure_limit else None,
+                            debugger=self.debugger
                         )
                         yield test_case
 
