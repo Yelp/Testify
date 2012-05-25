@@ -33,6 +33,7 @@ class AsyncDelayedQueue(object):
         self.finalized = False
 
     def get(self, c_priority, callback, runner=None):
+        """Queue up a callback to receive a test."""
         if self.finalized:
             callback(None, None)
             return
@@ -41,10 +42,22 @@ class AsyncDelayedQueue(object):
         tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def put(self, d_priority, data):
+        """Queue up a test to get given to a callback."""
         self.data_queue.put((d_priority, data))
         tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def match(self):
+        """Try to pair a test to a callback.
+
+        This loops over each queued callback (and each queued test)
+        trying to find a match. It breaks out of the loop as soon as
+        it finds a valid callback-test match, re-queueing anything it
+        skipped. (In the worst case, this is O(n^2), but most of the
+        time no loop iterations beyond the first will be necessary -
+        the vast majority of the time, the first callback will match
+        the first test).
+        """
+
         callback = None
         runner = None
         data = None
