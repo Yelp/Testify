@@ -78,6 +78,7 @@ class TestResult(object):
             self.interrupted = True
             self.exception_info = exception_info
 
+
     def format_exception_info(self, pretty=False):
         if self.exception_info is None:
             return None

@@ -148,7 +148,7 @@ class TestCase(object):
         self.__suites_require = kwargs.get('suites_require', set())
         self.__name_overrides = kwargs.get('name_overrides', None)
 
-        self.__debugger = kwargs.get('debugger', False)
+        self.__debugger = kwargs.get('debugger')
 
         # callbacks for various stages of execution, used for stuff like logging
         self.__callbacks = defaultdict(list)
