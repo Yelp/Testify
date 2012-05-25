@@ -1,3 +1,4 @@
+# vim: et ts=4 sts=4 sw=4
 """
 Client-server setup to evenly distribute tests across multiple processes. The server
 discovers all test classes and enqueues them, then clients connect to the server,
@@ -24,56 +25,76 @@ import logging
 import Queue
 import time
 import itertools
-import threading
 
-
-class AsyncQueue(object):
+class AsyncDelayedQueue(object):
     def __init__(self):
-        self.lock = threading.Lock()
         self.data_queue = Queue.PriorityQueue()
         self.callback_queue = Queue.PriorityQueue()
         self.finalized = False
 
-    def get(self, c_priority, callback):
-        """If the queue is not empty, call callback immediately with the next item. Otherwise, put callback in a callback priority queue, to be called when data is put().
-        If finalize() is called before data arrives for callback, callback(None, None) is called."""
-
+    def get(self, c_priority, callback, runner=None):
         if self.finalized:
             callback(None, None)
             return
-        try:
-            self.lock.acquire()
-            d_priority, data = self.data_queue.get_nowait()
-            self.lock.release() # Gets skipped if get_nowait raises Empty
-            callback(d_priority, data)
-        except Queue.Empty:
-            self.callback_queue.put((c_priority, callback,))
-            self.lock.release()
+
+        self.callback_queue.put((c_priority, callback, runner))
+        tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def put(self, d_priority, data):
-        """If a get callback is waiting, call it immediately with this data. Otherwise, put data in a priority queue, to be retrieved at a future date."""
-        try:
-            self.lock.acquire()
-            c_priority, callback = self.callback_queue.get_nowait()
-            self.lock.release() # Gets skipped if get_nowait raises Empty
+        self.data_queue.put((d_priority, data))
+        tornado.ioloop.IOLoop.instance().add_callback(self.match)
+
+    def match(self):
+        callback = None
+        runner = None
+        data = None
+
+        skipped_callbacks = []
+        while callback is None:
+
+            try:
+                c_priority, callback, runner = self.callback_queue.get_nowait()
+            except Queue.Empty:
+                break
+
+            skipped_tests = []
+            while data is None:
+                try:
+                    d_priority, data = self.data_queue.get_nowait()
+                except Queue.Empty:
+                    break
+
+                if runner is not None and data.get('last_runner') == runner:
+                    skipped_tests.append((d_priority, data))
+                    data = None
+                    continue
+
+            for skipped in skipped_tests:
+                self.data_queue.put(skipped)
+
+            if data is None:
+                skipped_callbacks.append((c_priority, callback, runner))
+                callback = None
+                continue
+
+        for skipped in skipped_callbacks:
+            self.callback_queue.put(skipped)
+
+        if callback is not None:
             callback(d_priority, data)
-        except Queue.Empty:
-            self.data_queue.put((d_priority, data,))
-            self.lock.release()
+            tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def empty(self):
         return self.data_queue.empty()
 
     def waiting(self):
-        return not self.callback_queue.empty()
+        return self.callback_queue.empty()
 
     def finalize(self):
-        """Call all queued callbacks with None, and make sure any future calls to get() immediately call their callback with None."""
         self.finalized = True
         try:
             while True:
-                with self.lock:
-                    _, callback = self.callback_queue.get_nowait()
+                _, callback, _ = self.callback_queue.get_nowait()
                 callback(None, None)
         except Queue.Empty:
             pass
@@ -87,7 +108,7 @@ class TestRunnerServer(TestRunner):
         self.shutdown_delay_for_connection_close = kwargs['options'].shutdown_delay_for_connection_close
         self.shutdown_delay_for_outstanding_runners = kwargs['options'].shutdown_delay_for_outstanding_runners
 
-        self.test_queue = AsyncQueue()
+        self.test_queue = AsyncDelayedQueue()
         self.checked_out = {} # Keyed on class path (module class).
         self.failed_rerun_methods = set() # Set of (class_path, method) who have failed.
         self.timeout_rerun_methods = set() # Set of (class_path, method) who were sent to a client but results never came.
@@ -117,10 +138,10 @@ class TestRunnerServer(TestRunner):
                     self.test_queue.callback_queue.put((-1, callback))
                 else:
                     # Get the next test, process it, then place the old test back in the queue.
-                    self.test_queue.get(0, callback)
+                    self.test_queue.get(0, callback, runner=runner_id)
                     self.test_queue.put(priority, test_dict)
 
-        self.test_queue.get(0, callback)
+        self.test_queue.get(0, callback, runner=runner_id)
 
     def report_result(self, runner_id, result):
         class_path = '%s %s' % (result['method']['module'], result['method']['class'])
