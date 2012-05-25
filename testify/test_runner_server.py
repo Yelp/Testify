@@ -29,10 +29,15 @@ import threading
 
 class AsyncQueue(object):
     def __init__(self):
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.data_queue = Queue.PriorityQueue()
         self.callback_queue = Queue.PriorityQueue()
         self.finalized = False
+        self._insert_count = 0
+
+    def insert_count(self):
+        self._insert_count += 1
+        return self._insert_count
 
     def get(self, c_priority, callback):
         """If the queue is not empty, call callback immediately with the next item. Otherwise, put callback in a callback priority queue, to be called when data is put().
@@ -43,22 +48,22 @@ class AsyncQueue(object):
             return
         try:
             self.lock.acquire()
-            d_priority, data = self.data_queue.get_nowait()
-            self.lock.release() # Gets skipped if get_nowait raises Empty
+            d_priority, _, data = self.data_queue.get_nowait()
+            self.lock.release()  # Gets skipped if get_nowait raises Empty
             callback(d_priority, data)
         except Queue.Empty:
-            self.callback_queue.put((c_priority, callback,))
+            self.callback_queue.put((c_priority, self.insert_count(), callback,))
             self.lock.release()
 
     def put(self, d_priority, data):
         """If a get callback is waiting, call it immediately with this data. Otherwise, put data in a priority queue, to be retrieved at a future date."""
         try:
             self.lock.acquire()
-            c_priority, callback = self.callback_queue.get_nowait()
-            self.lock.release() # Gets skipped if get_nowait raises Empty
+            c_priority, _, callback = self.callback_queue.get_nowait()
+            self.lock.release()  # Gets skipped if get_nowait raises Empty
             callback(d_priority, data)
         except Queue.Empty:
-            self.data_queue.put((d_priority, data,))
+            self.data_queue.put((d_priority, self.insert_count(), data,))
             self.lock.release()
 
     def empty(self):
@@ -73,10 +78,11 @@ class AsyncQueue(object):
         try:
             while True:
                 with self.lock:
-                    _, callback = self.callback_queue.get_nowait()
+                    _, _, callback = self.callback_queue.get_nowait()
                 callback(None, None)
         except Queue.Empty:
             pass
+
 
 class TestRunnerServer(TestRunner):
     def __init__(self, *args, **kwargs):
@@ -88,14 +94,15 @@ class TestRunnerServer(TestRunner):
         self.shutdown_delay_for_outstanding_runners = kwargs['options'].shutdown_delay_for_outstanding_runners
 
         self.test_queue = AsyncQueue()
-        self.checked_out = {} # Keyed on class path (module class).
-        self.failed_rerun_methods = set() # Set of (class_path, method) who have failed.
-        self.timeout_rerun_methods = set() # Set of (class_path, method) who were sent to a client but results never came.
-        self.previous_run_results = {} # Keyed on (class_path, method), values are result dictionaries.
-        self.runners = set() # The set of runner_ids who have asked for tests.
-        self.runners_outstanding = set() # The set of runners who have posted results but haven't asked for the next test yet.
-        self.shutting_down = False # Whether shutdown() has been called.
-
+        self.checked_out = {}  # Keyed on class path (module class).
+        self.failed_rerun_methods = set()  # Set of (class_path, method) who have failed.
+        self.timeout_rerun_methods = set()  # Set of (class_path, method) who were sent to a client but results never came.
+        self.previous_run_results = {}  # Keyed on (class_path, method), values are result dictionaries.
+        self.runners = set()  # The set of runner_ids who have asked for tests.
+        self.runners_outstanding = set()  # The set of runners who have posted results but haven't asked for the next test yet.
+        self.shutting_down = False  # Whether shutdown() has been called.
+        self.fixtures_for_class = {}  # Keyed on class_path, stores a list of class_setup/class_teardown fixtures that a class should run. Used for requeuing.
+        self.fixture_method_types = {}  # Keyed on (class_path, method), stores the fixture type of each fixture method.
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
     def get_next_test(self, runner_id, on_test_callback, on_empty_callback):
@@ -130,25 +137,33 @@ class TestRunnerServer(TestRunner):
             raise ValueError("Class %s not checked out." % class_path)
         if d['runner'] != runner_id:
             raise ValueError("Class %s checked out by runner %s, not %s" % (class_path, d['runner'], runner_id))
-        if result['method']['name'] not in d['methods']:
-            raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
-        if result['success']:
-            d['passed_methods'][result['method']['name']] = result
+        if not result['method']['fixture_type']:
+            # Test method.
+            if result['method']['name'] not in d['test_methods']:
+                raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
+
+            if result['success']:
+                d['passed_methods'][result['method']['name']] = result
+            else:
+                d['failed_methods'][result['method']['name']] = result
+                self.failure_count += 1
+                if self.failure_limit and self.failure_count >= self.failure_limit:
+                    logging.error('Too many failures, shutting down.')
+                    return self.early_shutdown()
+            d['test_methods'].remove(result['method']['name'])
         else:
-            d['failed_methods'][result['method']['name']] = result
-            self.failure_count += 1
-            if self.failure_limit and self.failure_count >= self.failure_limit:
-                logging.error('Too many failures, shutting down.')
-                return self.early_shutdown()
+            # Fixture method
+            if result['method']['name'] not in d['fixture_methods']:
+                raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
+
+            d['fixture_method_results'].append((result['method']['name'], result))
+            d['fixture_methods'].remove(result['method']['name'])
 
         d['timeout_time'] = time.time() + self.runner_timeout
 
-        d['methods'].remove(result['method']['name'])
-
-        if not d['methods']:
+        if not d['test_methods'] and not d['fixture_methods']:
             self.check_in_class(runner_id, class_path, finished=True)
-
 
     def run(self):
         class TestsHandler(tornado.web.RequestHandler):
@@ -169,7 +184,7 @@ class TestRunnerServer(TestRunner):
                     self.runners_outstanding.discard(runner_id)
                     handler.finish(json.dumps({
                         'class': test_dict['class_path'],
-                        'methods': test_dict['methods'],
+                        'test_methods': test_dict['test_methods'],
                         'finished': False,
                     }))
 
@@ -212,12 +227,26 @@ class TestRunnerServer(TestRunner):
 
         # Enqueue all of our tests.
         for test_instance in self.discover():
+            class_path = '%s %s' % (test_instance.__module__, test_instance.__class__.__name__)
+
+            fixtures = test_instance.class_setup_fixtures + \
+                test_instance.class_teardown_fixtures + \
+                test_instance.class_setup_teardown_fixtures * 2 + \
+                [test_instance.classSetUp, test_instance.classTearDown]
+
+            for fixture in fixtures:
+                self.fixture_method_types[(class_path, fixture.__name__)] = fixture._fixture_type
+
+            # Save the list of fixtures, in case we need to rerun this class later.
+            self.fixtures_for_class[class_path] = tuple(fixture.__name__ for fixture in fixtures)
+
             test_dict = {
-                'class_path' : '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
-                'methods' : [test.__name__ for test in test_instance.runnable_test_methods()],
+                'class_path': class_path,
+                'test_methods': [test.__name__ for test in test_instance.runnable_test_methods()],
+                'fixture_methods' : list(self.fixtures_for_class[class_path])
             }
 
-            if test_dict['methods']:
+            if test_dict['test_methods']:
                 self.test_queue.put(0, test_dict)
 
         # Start an HTTP server.
@@ -236,13 +265,12 @@ class TestRunnerServer(TestRunner):
             else:
                 tornado.ioloop.IOLoop.instance().add_timeout(self.last_activity_time + self.server_timeout, timeout_server)
         self.activity()
-        timeout_server() # Set the first callback.
+        timeout_server()  # Set the first callback.
 
         tornado.ioloop.IOLoop.instance().start()
 
         report = [reporter.report() for reporter in self.test_reporters]
         return all(report)
-
 
     def activity(self):
         self.last_activity_time = time.time()
@@ -253,7 +281,10 @@ class TestRunnerServer(TestRunner):
         self.checked_out[test_dict['class_path']] = {
             'runner' : runner,
             'class_path' : test_dict['class_path'],
-            'methods' : set(test_dict['methods']),
+            'test_methods' : set(test_dict['test_methods']),
+            # At some point this should maybe be a faster multiset implementation, but python 2.5/2.6 don't have a decent built-in implementation afaict.
+            'fixture_methods' : test_dict['fixture_methods'],
+            'fixture_method_results' : [],
             'failed_methods' : {},
             'passed_methods' : {},
             'start_time' : time.time(),
@@ -276,47 +307,71 @@ class TestRunnerServer(TestRunner):
 
         d = self.checked_out.pop(class_path)
 
+        # The set of class_setup_teardown fixtures we've reported already.
+        seen_class_setup_teardowns = set()
+
+        def report(result_dict):
+            for reporter in self.test_reporters:
+                if result_dict['method']['fixture_type'] == 'class_setup':
+                    reporter.class_setup_start(result_dict)
+                    reporter.class_setup_complete(result_dict)
+                elif result_dict['method']['fixture_type'] == 'class_teardown':
+                    reporter.class_teardown_start(result_dict)
+                    reporter.class_teardown_complete(result_dict)
+                elif result_dict['method']['fixture_type'] == 'class_setup_teardown':
+                    # The first time we report a class_setup_teardown, it should be sent through class_setup_(start|complete)
+                    if method not in seen_class_setup_teardowns:
+                        reporter.class_setup_start(result_dict)
+                        reporter.class_setup_complete(result_dict)
+                        seen_class_setup_teardowns.add(method)
+                    else:
+                        reporter.class_teardown_start(result_dict)
+                        reporter.class_teardown_complete(result_dict)
+                else:
+                    reporter.test_start(result_dict)
+                    reporter.test_complete(result_dict)
+
         for method, result_dict in itertools.chain(
+                    d['fixture_method_results'],
                     d['passed_methods'].iteritems(),
                     ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown or (class_path, method) in self.failed_rerun_methods),
                 ):
-            for reporter in self.test_reporters:
-                result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
-                reporter.test_start(result_dict)
-                reporter.test_complete(result_dict)
+            result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
+            report(result_dict)
 
         #Requeue failed tests
         requeue_dict = {
             'last_runner' : runner,
             'class_path' : d['class_path'],
-            'methods' : [],
+            'test_methods' : [],
+            'fixture_methods' : list(self.fixtures_for_class[d['class_path']]),
         }
 
         for method, result_dict in d['failed_methods'].iteritems():
             if (class_path, method) not in self.failed_rerun_methods:
-                requeue_dict['methods'].append(method)
+                requeue_dict['test_methods'].append(method)
                 self.failed_rerun_methods.add((class_path, method))
                 result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
                 self.previous_run_results[(class_path, method)] = result_dict
 
         if finished:
-            if len(d['methods']) != 0:
-                raise ValueError("check_in_class called with finished=True but this class (%s) still has %d methods without results." % (class_path, len(d['methods'])))
+            if len(d['test_methods']) != 0:
+                raise ValueError("check_in_class called with finished=True but this class (%s) still has %d methods without results." % (class_path, len(d['test_methods'])))
         elif timed_out:
             # Requeue or report timed-out tests.
 
-            for method in d['methods']:
+            for method in list(d['test_methods']) + d['fixture_methods']:
                 # Fake the results dict.
                 error_message = "The runner running this method (%s) didn't respond within %ss.\n" % (runner, self.runner_timeout)
                 module, _, classname = class_path.partition(' ')
 
                 result_dict = {
                     'previous_run' : self.previous_run_results.get((class_path, method), None),
-                    'start_time' : time.time()-self.runner_timeout,
+                    'start_time' : time.time() - self.runner_timeout,
                     'end_time' : time.time(),
                     'run_time' : self.runner_timeout,
                     'normalized_run_time' : "%.2fs" % (self.runner_timeout),
-                    'complete': True, # We've tried running the test.
+                    'complete': True,  # We've tried running the test.
                     'success' : False,
                     'failure' : False,
                     'error' : True,
@@ -329,20 +384,18 @@ class TestRunnerServer(TestRunner):
                         'class' : classname,
                         'name' : method,
                         'full_name' : "%s.%s" % (class_path, method),
-                        'fixture_type' : None,
+                        'fixture_type' : self.fixture_method_types.get((class_path, method)),
                     }
                 }
 
-                if (class_path, method) not in self.timeout_rerun_methods:
-                    requeue_dict['methods'].append(method)
+                if not self.fixture_method_types.get((class_path, method)) and (class_path, method) not in self.timeout_rerun_methods:
+                    requeue_dict['test_methods'].append(method)
                     self.timeout_rerun_methods.add((class_path, method))
                     self.previous_run_results[(class_path, method)] = result_dict
                 else:
-                    for reporter in self.test_reporters:
-                        reporter.test_start(result_dict)
-                        reporter.test_complete(result_dict)
+                    report(result_dict)
 
-        if requeue_dict['methods']:
+        if requeue_dict['test_methods']:
             self.test_queue.put(-1, requeue_dict)
 
         if self.test_queue.empty() and len(self.checked_out) == 0:
@@ -383,7 +436,7 @@ class TestRunnerServer(TestRunner):
 
         if self.runners_outstanding:
             # Stop in 5 seconds if all the runners_outstanding don't come back by then.
-            iol.add_timeout(time.time()+self.shutdown_delay_for_outstanding_runners, iol.stop)
+            iol.add_timeout(time.time() + self.shutdown_delay_for_outstanding_runners, iol.stop)
         else:
             # Give tornado enough time to finish writing to all the clients, then shut down.
-            iol.add_timeout(time.time()+self.shutdown_delay_for_connection_close, iol.stop)
+            iol.add_timeout(time.time() + self.shutdown_delay_for_connection_close, iol.stop)

@@ -50,6 +50,12 @@ class HTTPReporter(test_reporter.TestReporter):
 	def test_complete(self, result):
 		self.result_queue.put(result)
 
+	def class_setup_complete(self, result):
+		self.result_queue.put(result)
+
+	def class_teardown_complete(self, result):
+		self.result_queue.put(result)
+
 	def report(self):
 		"""Wait until all results have been sent back."""
 		self.result_queue.join()

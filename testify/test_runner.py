@@ -70,7 +70,7 @@ class TestRunner(object):
 
     @classmethod
     def get_test_method_name(cls, test_method):
-        return '%s %s.%s' % (test_method.__module__, test_method.im_class.__name__, test_method.__name__)
+        return '%s %s.%s' % (test_method.im_class.__module__, test_method.im_class.__name__, test_method.__name__)
 
     def discover(self):
         def discover_inner():
@@ -94,6 +94,11 @@ class TestRunner(object):
                         yield test_case
 
         discovered_tests = list(discover_inner())
+
+        for plugin_mod in self.plugin_modules:
+            if hasattr(plugin_mod, "rearrange_discovered_tests"):
+                discovered_tests = plugin_mod.rearrange_discovered_tests(self.options, discovered_tests)
+
         test_case_count = len(discovered_tests)
         test_method_count = sum(len(list(test_case.runnable_test_methods())) for test_case in discovered_tests)
         for reporter in self.test_reporters:
@@ -133,6 +138,12 @@ class TestRunner(object):
                 for reporter in self.test_reporters:
                     test_case.register_callback(test_case.EVENT_ON_RUN_TEST_METHOD, reporter.test_start)
                     test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, reporter.test_complete)
+
+                    test_case.register_callback(test_case.EVENT_ON_RUN_CLASS_SETUP_METHOD, reporter.class_setup_start)
+                    test_case.register_callback(test_case.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, reporter.class_setup_complete)
+
+                    test_case.register_callback(test_case.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, reporter.class_teardown_start)
+                    test_case.register_callback(test_case.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, reporter.class_teardown_complete)
 
                 test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, failure_counter)
 

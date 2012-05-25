@@ -21,7 +21,10 @@ from test_case import MetaTestCase
 from test_logger import _log
 from errors import TestifyError
 
-class DiscoveryError(TestifyError): pass
+
+class DiscoveryError(TestifyError):
+    pass
+
 
 def gather_test_paths(testing_dir):
     """Given a directory path, yield up paths for all py files inside of it"""
@@ -34,7 +37,8 @@ def gather_test_paths(testing_dir):
             if subfile.endswith('.py') and not (subfile.startswith('__init__.') or subfile.startswith('.')):
                 relative_path = os.path.realpath(adir)[len(os.getcwd()) + 1:]
                 fs_path = os.path.join(relative_path, subfile)
-                yield fs_path[:-3].replace('/','.')
+                yield fs_path[:-3].replace('/', '.')
+
 
 def discover(what):
     """Given a string module path, drill into it for its TestCases.
@@ -55,15 +59,15 @@ def discover(what):
             except (ValueError, ImportError), e:
                 import_error = e
                 _log.info('discover_inner: Failed to import %s: %s' % (locator, e))
-                if os.path.isfile(locator) or os.path.isfile(locator+'.py'):
+                if os.path.isfile(locator) or os.path.isfile(locator + '.py'):
                     here = os.path.abspath(os.path.curdir) + os.path.sep
                     new_loc = os.path.abspath(locator)
                     if not new_loc.startswith(here):
                         raise DiscoveryError('Can only load modules by path within the current directory')
 
                     new_loc = new_loc[len(here):]
-                    new_loc = new_loc.rsplit('.py',1)[0] #allows for .pyc and .pyo as well
-                    new_loc = new_loc.replace(os.sep,'.')
+                    new_loc = new_loc.rsplit('.py', 1)[0]  # allows for .pyc and .pyo as well
+                    new_loc = new_loc.replace(os.sep, '.')
                     try:
                         test_module = __import__(new_loc)
                         locator = new_loc
@@ -109,12 +113,12 @@ def discover(what):
 
                         # If it's actually a package (directory + __init__.py)
                         if os.path.isdir(os.path.join(module_filesystem_path, item)) and os.path.exists(os.path.join(module_filesystem_path, item, '__init__.py')):
-                            for test_case_class in discover_inner("%s.%s" % (locator, item), suites+module_suites):
+                            for test_case_class in discover_inner("%s.%s" % (locator, item), suites + module_suites):
                                 yield test_case_class
 
                         # other than directories, only look in .py files
                         elif item.endswith('.py'):
-                            for test_case_class in discover_inner("%s.%s" % (locator, item[:-3]), suites+module_suites):
+                            for test_case_class in discover_inner("%s.%s" % (locator, item[:-3]), suites + module_suites):
                                 yield test_case_class
 
             # Otherwise it's some other type of module
