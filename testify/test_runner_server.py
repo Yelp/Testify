@@ -98,12 +98,16 @@ class AsyncDelayedQueue(object):
             tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def empty(self):
+        """Returns whether or not we have any pending tests."""
         return self.data_queue.empty()
 
     def waiting(self):
+        """Returns whether or not we have any pending callbacks."""
         return self.callback_queue.empty()
 
     def finalize(self):
+        """Immediately call any pending callbacks with None,None
+        and ensure that any future get() calls do the same."""
         self.finalized = True
         try:
             while True:
