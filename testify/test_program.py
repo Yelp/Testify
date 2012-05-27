@@ -100,6 +100,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.set_defaults(verbosity=test_logger.VERBOSITY_NORMAL)
     parser.add_option("-s", "--silent", action="store_const", const=test_logger.VERBOSITY_SILENT, dest="verbosity")
     parser.add_option("-v", "--verbose", action="store_const", const=test_logger.VERBOSITY_VERBOSE, dest="verbosity")
+    parser.add_option("-d", "--ipdb", action="store_true", dest="debugger", help="Enter post mortem debugging mode with ipdb in the case of an exception thrown in a test method or fixture method.")
 
     parser.add_option("-i", "--include-suite", action="append", dest="suites_include", type="string", default=[])
     parser.add_option("-x", "--exclude-suite", action="append", dest="suites_exclude", type="string", default=[])
@@ -178,6 +179,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
             reporters += plugin.build_test_reporters(options)
 
     test_runner_args = {
+        'debugger': options.debugger,
         'suites_include': options.suites_include,
         'suites_exclude': options.suites_exclude,
         'suites_require': options.suites_require,
