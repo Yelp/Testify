@@ -25,7 +25,7 @@ The basic components of this system are:
         to kindly execute themselves.
 """
 __testify = 1
-__version__ = "0.2.6"
+__version__ = "0.2.7"
 
 import sys
 
