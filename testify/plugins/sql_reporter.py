@@ -56,7 +56,7 @@ Builds = SA.Table('builds', metadata,
     SA.Column('end_time', SA.Integer, index=True, nullable=True),
     SA.Column('run_time', SA.Float, nullable=True),
     SA.Column('method_count', SA.Integer, nullable=True),
-    SA.Column('submit_time', SA.Integer, nullable=True),
+    SA.Column('submit_time', SA.Integer, index=True, nullable=True),
 )
 SA.Index('ix_individual_run', Builds.c.buildbot, Builds.c.buildname, Builds.c.buildnumber, Builds.c.revision, unique=True)
 
