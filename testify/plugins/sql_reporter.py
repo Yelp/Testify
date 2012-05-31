@@ -117,7 +117,7 @@ class SQLReporter(test_reporter.TestReporter):
             'buildnumber' : info_dict['buildnumber'],
             'branch' : info_dict['branch'],
             'revision' : info_dict['revision'],
-            'submit_time' : info_dict['submitstamp'],
+            'submit_time' : info_dict.get('submitstamp'),
             'buildname' : info_dict['buildname'],
         }))
         return results.lastrowid
