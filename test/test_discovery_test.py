@@ -7,7 +7,7 @@ HERE = dirname(abspath(__file__))
 
 class DiscoveryTestCase(TestCase):
     def discover(self, path):
-        # Exhaust the generator to catch exceptons
+        # Exhaust the generator to catch exceptions
         [mod for mod in test_discovery.discover(path)]
 
 def relative(func):

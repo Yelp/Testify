@@ -62,7 +62,6 @@ class TestLoggerBase(test_reporter.TestReporter):
 
             self.results.append(result)
 
-
     def report(self):
         # All the TestCases have been run - now collate results by status and log them
         results_by_status = collections.defaultdict(list)
@@ -87,6 +86,7 @@ class TestLoggerBase(test_reporter.TestReporter):
 
     def report_test_name(self, test_method):
         pass
+
     def report_test_result(self, result):
         pass
 
@@ -116,7 +116,7 @@ class TestLoggerBase(test_reporter.TestReporter):
 
 class TextTestLogger(TestLoggerBase):
     def __init__(self, options, stream=sys.stdout):
-        super(TextTestLogger, self).__init__(options)
+        super(TextTestLogger, self).__init__(options, stream)
 
         # Checking for color support isn't as fun as we might hope.  We're
         # going to use the command 'tput colors' to get a list of colors
@@ -150,6 +150,11 @@ class TextTestLogger(TestLoggerBase):
             start_color = chr(0033) + '[1;%sm' % color
             end_color = chr(0033) + '[m'
             return start_color + message + end_color
+
+    def test_discovery_failure(self, exc):
+        self.writeln("Discovery failure!")
+        self.writeln("There was a problem importing one or more tests:")
+        self.writeln(str(exc))
 
     def report_test_name(self, test_method):
         _log.info("running: %s", self._format_test_method_name(test_method))
@@ -193,7 +198,6 @@ class TextTestLogger(TestLoggerBase):
                     self.writeln("%s in %s" % (self._colorize(status_description, color), result['normalized_run_time']))
                 else:
                     self.writeln(self._colorize(status_description, color))
-
 
     def heading(self, *messages):
         self.writeln("")
@@ -247,38 +251,3 @@ class TextTestLogger(TestLoggerBase):
             0,
             )
         self.writeln("(Total test time %.2fs)" % total_test_time)
-
-class HTMLTestLogger(TextTestLogger):
-
-    def writeln(self, message):
-        """Write a message and append a newline"""
-        self.stream.write("%s<br />" % (message.encode('utf8') if isinstance(message, unicode) else message))
-        self.stream.flush()
-
-    BLACK   = "#000"
-    BLUE    = "#00F"
-    GREEN   = "#0F0"
-    CYAN    = "#0FF"
-    RED     = "#F00"
-    MAGENTA = "#F0F"
-    YELLOW  = "#FF0"
-    WHITE   = "#FFF"
-
-    def _colorize(self, message, color = CYAN):
-        if not color:
-            return message
-        else:
-            start_color = "<span style='color:%s'>" % color
-            end_color = "</span>"
-            return start_color + message + end_color
-
-class ColorlessTextTestLogger(TextTestLogger):
-
-    def _colorize(self, message, color=None):
-        return message
-
-
-class TestResultGrabberHandler(logging.Handler):
-    """Logging handler to store log message during a test run"""
-    def emit(self, record):
-        raise Exception(repr(record))

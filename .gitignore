@@ -5,3 +5,4 @@ MANIFEST
 ._*
 *.sw[nop]
 *.egg-info
+tags
