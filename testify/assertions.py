@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
+import functools
 import re
 
 from .utils import stringdiffer
@@ -474,3 +476,33 @@ def assert_exactly_one(*args, **kwargs):
         raise AssertionError("Expected exactly one True (got %d) args: %r" % (len(true_args), args))
 
     return true_args[0]
+
+
+def assert_takes_less_than(max_time_in_ms):
+    """A decorator, primarily for test methods, that asserts that the method completes
+    within a certain amount of time.
+
+    Example:
+
+        @assert_takes_less_than(2*1000)
+        def foo(self):
+            # Do stuff
+
+        This would assert that foo takes less than 2 seconds to run.
+    """
+    def decorator(method):
+        @functools.wraps(method)
+        def method_wrapper(*args, **kwargs):
+            start_time = datetime.datetime.now()
+
+            result = method(*args, **kwargs)
+
+            delta = datetime.datetime.now() - start_time
+            msecs = delta.seconds * 1000.0 + delta.microseconds / 1000.0
+
+            assert_lt(msecs, max_time_in_ms)
+            return result
+
+        return method_wrapper
+
+    return decorator
