@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import with_statement
 
-import datetime
+import datetime as _datetime
 import functools
 import re
 
@@ -510,11 +510,11 @@ def assert_takes_less_than(max_time_in_ms):
     def decorator(method):
         @functools.wraps(method)
         def method_wrapper(*args, **kwargs):
-            start_time = datetime.datetime.now()
+            start_time = _datetime.datetime.now()
 
             result = method(*args, **kwargs)
 
-            delta = datetime.datetime.now() - start_time
+            delta = _datetime.datetime.now() - start_time
             msecs = delta.seconds * 1000.0 + delta.microseconds / 1000.0
 
             assert_lt(msecs, max_time_in_ms)
