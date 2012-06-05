@@ -1,3 +1,11 @@
+python-testify (0.2.8) unstable; urgency=low
+
+  * Add a significant number of new assertions
+  * Allow assert_raises to be used as a context manager
+  * Pass through build submit times in sql_reporter
+
+ -- Amber Yust <ayust@yelp.com>  Tue, 05 Jun 2012 15:59:17 -0700
+
 python-testify (0.2.7) unstable; urgency=low
 
   * Fix a significant bug with client-server mode infinite recursion
