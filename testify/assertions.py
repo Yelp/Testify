@@ -317,6 +317,11 @@ def assert_all_match_regex(pattern, values, msg="expected %(value)r to match %(p
         assert re.match(pattern, value), msg % {'value':value, 'pattern':pattern}
 
 
+def assert_match_regex(pattern, value, *args, **kwargs):
+	"""Assert that a single value matches a regex pattern."""
+	assert_all_match_regex(pattern, [value], *args, **kwargs)
+
+
 def assert_any_match_regex(pattern, values, msg="expected at least one %(values)r to match %(pattern)r"):
     """Assert that at least one value in an iterable matches a regex pattern.
 
