@@ -251,7 +251,7 @@ def assert_in_range(val, start, end, message=None, inclusive=False):
 
 def assert_between(a, b, c):
     """Assert that b is between a and c, inclusive."""
-    assert_in_range(a, b, c, inclusive=True)
+    assert_in_range(b, a, c, inclusive=True)
 
 
 def assert_in(item, sequence, msg="assertion failed: expected %(item)r in %(sequence)r"):

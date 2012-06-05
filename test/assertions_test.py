@@ -3,6 +3,7 @@ from __future__ import with_statement
 from testify import TestCase
 from testify import assertions
 from testify import run
+from testify import assert_between
 from testify import assert_equal
 from testify import assert_not_reached
 
@@ -24,6 +25,21 @@ class DiffMessageTestCase(TestCase):
         expected = 'Diff:\nl: abc<>\nr: abc<def>'
         diff_message = assertions._diff_message(AbcRepr(), AbcDefRepr())
         assert_equal(expected, diff_message)
+
+
+class AssertBetweenTestCase(TestCase):
+
+	def test_argument_order(self):
+		try:
+			assert_between(1, 2, 3)
+		except AssertionError:
+			assert False, "Expected assert_between(1, 2, 3) to pass."
+
+		try:
+			assert_between(2, 1, 3)
+			assert False, "Expected assert_between(2, 1, 3) to fail."
+		except AssertionError:
+			pass
 
 
 class AssertEqualTestCase(TestCase):
