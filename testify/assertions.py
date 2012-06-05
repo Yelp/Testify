@@ -21,19 +21,6 @@ from .utils import stringdiffer
 
 __testify = 1
 
-def _relist(a_val):
-    """Turns a value into a list, unless it's already a list-like object."""
-    if a_val is None:
-        return []
-    elif isinstance(a_val, basestring) or hasattr(a_val, 'keys'):
-        return [a_val]
-    else:
-        try:
-            return list(a_val)
-        except TypeError:
-            return [a_val]
-
-
 def _val_subtract(val1, val2, dict_subtractor, list_subtractor):
     """
     Find the difference between two container types
@@ -223,12 +210,6 @@ def assert_gte(lval, rval, message=None):
         assert lval >= rval, 'assertion failed: %r >= %r' % (lval, rval)
 
 
-def assert_between(a, b, c):
-    """Assert that b is between a and c, inclusive."""
-    assert_lte(a, b)
-    assert_lte(b, c)
-
-
 def assert_in_range(val, start, end, message=None, inclusive=False):
     """Assert that val is greater than start and less than end. If inclusive is true, val may be equal to start or end."""
     if inclusive:
@@ -237,6 +218,11 @@ def assert_in_range(val, start, end, message=None, inclusive=False):
     else:
         real_message = message or "! %s < %r < %r" % (start, val, end)
         assert start < val < end, real_message
+
+
+def assert_between(a, b, c):
+    """Assert that b is between a and c, inclusive."""
+    assert_in_range(a, b, c, inclusive=True)
 
 
 def assert_in(item, sequence, msg="assertion failed: expected %(item)r in %(sequence)r"):
@@ -317,32 +303,30 @@ def assert_is_not(left, right, msg="expected %(left)r is not %(right)r"):
     assert left is not right, msg % {'left':left, 'right':right}
 
 
-def assert_match_regex(pattern, values, msg="expected %(value)r to match %(pattern)r"):
-    """Assert that all values match a regex pattern.
+def assert_all_match_regex(pattern, values, msg="expected %(value)r to match %(pattern)r"):
+    """Assert that all values in an iterable match a regex pattern.
 
     Args:
     pattern -- a regex.
-    values -- a single or list of values to test.
+    values -- an iterable of values to test.
 
     Raises AssertionError if any value does not match.
 
     """
-    values = _relist(values)
     for value in values:
         assert re.match(pattern, value), msg % {'value':value, 'pattern':pattern}
 
 
-def assert_at_least_one_match_regex(pattern, values, msg="expected at least one %(values)r to match %(pattern)r"):
-    """Assert that at least on value matches a regex pattern.
+def assert_any_match_regex(pattern, values, msg="expected at least one %(values)r to match %(pattern)r"):
+    """Assert that at least one value in an iterable matches a regex pattern.
 
     Args:
     pattern -- a regex.
-    values -- a single or list of values to test.
+    values -- an iterable of values to test.
 
     Raises AssertionError if all values don't match.
 
     """
-    values = _relist(values)
     for value in values:
         if re.match(pattern, value) is not None:
             return
@@ -350,17 +334,16 @@ def assert_at_least_one_match_regex(pattern, values, msg="expected at least one 
     raise AssertionError(msg % {'values':values, 'pattern':pattern})
 
 
-def assert_not_match_regex(pattern, values, msg="expected %(value)r to not match %(pattern)r"):
+def assert_all_not_match_regex(pattern, values, msg="expected %(value)r to not match %(pattern)r"):
     """Assert that all values don't match a regex pattern.
 
     Args:
     pattern -- a regex.
-    values -- a single or list of values to test.
+    values -- an iterable of values to test.
 
     Raises AssertionError if any values matches.
 
     """
-    values = _relist(values)
     for value in values:
         assert not re.match(pattern, value), msg % {'value':value, 'pattern':pattern}
 
