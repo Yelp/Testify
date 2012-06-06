@@ -35,12 +35,21 @@ import deprecated_assertions
 from testify.utils import class_logger
 
 # just a useful list to have
-fixture_types = ['class_setup', 'setup', 'teardown', 'class_teardown', 'setup_teardown', 'class_setup_teardown']
-deprecated_fixture_type_map = {
+FIXTURE_TYPES = (
+    'class_setup',
+    'setup',
+    'teardown',
+    'class_teardown',
+    'setup_teardown',
+    'class_setup_teardown',
+)
+
+DEPRECATED_FIXTURE_TYPE_MAP = {
     'classSetUp': 'class_setup',
     'setUp': 'setup',
     'tearDown': 'teardown',
-    'classTearDown': 'class_teardown'}
+    'classTearDown': 'class_teardown',
+}
 
 
 class TwistedFailureError(Exception):
@@ -174,7 +183,7 @@ class TestCase(object):
         See __fixture_decorator_factory for more info.
         """
         # init our self.(class_setup|setup|teardown|class_teardown)_fixtures lists
-        for fixture_type in fixture_types:
+        for fixture_type in FIXTURE_TYPES:
             setattr(self, "%s_fixtures" % fixture_type, [])
 
         # discover which fixures are on this class, including mixed-in ones
@@ -189,8 +198,8 @@ class TestCase(object):
         for attr_name, method in class_dict.iteritems():
 
             # if this is an old setUp/tearDown/etc, tag it as a fixture
-            if attr_name in deprecated_fixture_type_map:
-                fixture_type = deprecated_fixture_type_map[attr_name]
+            if attr_name in DEPRECATED_FIXTURE_TYPE_MAP:
+                fixture_type = DEPRECATED_FIXTURE_TYPE_MAP[attr_name]
                 fixture_decorator = globals()[fixture_type]
                 method = fixture_decorator(method)
 
@@ -477,7 +486,7 @@ class TestifiedUnitTest(TestCase, unittest.TestCase):
 
         # testify.TestCase defines its own deprecated fixtures; don't let them
         # overwrite unittest's fixtures
-        for deprecated_fixture_name in deprecated_fixture_type_map:
+        for deprecated_fixture_name in DEPRECATED_FIXTURE_TYPE_MAP:
             del default_test_case_dict[deprecated_fixture_name]
 
         # set testify defaults on the unittest class
@@ -556,13 +565,12 @@ def __fixture_decorator_factory(fixture_type):
         # record the fixture type and id for this function
         function._fixture_type = fixture_type
 
-        if function.__name__ in deprecated_fixture_type_map:
+        if function.__name__ in DEPRECATED_FIXTURE_TYPE_MAP:
             # we push deprecated setUps/tearDowns to the beginning or end of
             # our fixture lists, respectively. this is the best we can do,
             # because these methods are generated in the order their classes
             # are created, so we can't assign a fair fixture_id to them.
             function._fixture_id = 0 if fixture_type.endswith('setup') else float('inf')
-
         else:
             # however, if we've tagged a fixture with our decorators then we
             # effectively register their place on the class hierarchy by this
