@@ -240,7 +240,7 @@ class FixtureMethodRegistrationOrderTest(TestCase):
         self.counter += 1
 
     @class_teardown
-    def jsut_class_teardown(self):
+    def just_class_teardown(self):
         assert_equal(self.counter, 18)
         self.counter += 1
 
@@ -303,15 +303,14 @@ class TestOtherCasesWithSameFixtureMixinsGetRun(TestCase, FixtureMixin):
 class NewerFixtureMixin(object):
     @class_setup
     def set_another_attr(cls):
-        # this setup should run after FixtureMixin's
-        assert cls.foo
+        assert cls.foo # this setup should run after FixtureMixin's
         cls.bar = True
 
     def test_bar(self):
         self.bar_ran = self.bar
 
 
-class TestFixtureMixinOrder(TestCase, FixtureMixin, NewerFixtureMixin):
+class TestFixtureMixinOrder(TestCase, NewerFixtureMixin, FixtureMixin):
     @class_teardown
     def make_sure_i_ran(self):
         assert self.foo_ran
@@ -430,6 +429,50 @@ class TestDerivedUnitTestsRan(TestCase):
         assert DerivedUnitTestWithAdditionalFixturesAndTests.i_ran
 
 
+class DeprecatedFixtureOrderTestBase(TestCase):
+    @class_setup
+    def set_something(self):
+        assert not hasattr(self, 'something')
+        self.something = True
+
+    @class_teardown
+    def clear_something(self):
+        assert self.something == None
+
+class DeprecatedFixtureOrderTestChild(DeprecatedFixtureOrderTestBase):
+    """Tests that deprecated fixtures on children are called in the correct order."""
+
+    def classSetUp(self):
+        """Should be called after do_something."""
+        assert self.something == True
+        self.something = False
+
+    def test_something(self):
+        assert self.something == False
+
+    def classTearDown(self):
+        """Should be called before clear_something"""
+        assert self.something == False
+        self.something = None
+
+
+class FixtureOverloadTestBase(TestCase):
+    foo = True
+    @setup
+    def unset_foo(self):
+        self.foo = False
+
+class FixtureOverloadTestChild(FixtureOverloadTestBase):
+    """Tests that overloading a fixture works as expected."""
+    @setup
+    def unset_foo(self):
+        pass
+
+    def test_overloaded_setup(self):
+        # we shouldn't have unset this
+        assert self.foo
+
+
 class LetTest(TestCase):
 
     @let
@@ -453,6 +496,10 @@ class LetWithLambdaTest(TestCase):
     def test_subsequent_calls_are_cached(self):
         assert_equal(self.counter.next(), 0)
         assert_equal(self.counter.next(), 1)
+
+class LetWithSubclassTest(TestCase):
+    """Test that @let is inherited correctly."""
+    pass
 
 
 if __name__ == '__main__':
