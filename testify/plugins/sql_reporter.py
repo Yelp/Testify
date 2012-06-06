@@ -56,6 +56,7 @@ Builds = SA.Table('builds', metadata,
     SA.Column('end_time', SA.Integer, index=True, nullable=True),
     SA.Column('run_time', SA.Float, nullable=True),
     SA.Column('method_count', SA.Integer, nullable=True),
+    SA.Column('submit_time', SA.Integer, index=True, nullable=True),
 )
 SA.Index('ix_individual_run', Builds.c.buildbot, Builds.c.buildname, Builds.c.buildnumber, Builds.c.revision, unique=True)
 
@@ -117,6 +118,7 @@ class SQLReporter(test_reporter.TestReporter):
             'buildnumber' : info_dict['buildnumber'],
             'branch' : info_dict['branch'],
             'revision' : info_dict['revision'],
+            'submit_time' : info_dict.get('submitstamp'),
             'buildname' : info_dict['buildname'],
         }))
         return results.lastrowid
@@ -267,3 +269,5 @@ def build_test_reporters(options):
         return [SQLReporter(options)]
     else:
         return []
+
+# vim: set ts=4 sts=4 sw=4 et:
