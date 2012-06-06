@@ -44,6 +44,15 @@ FIXTURE_TYPES = (
     'class_setup_teardown',
 )
 
+# in general, inherited fixtures are applied first unless they are of these
+# types. these fixtures are applied (in order of their definitions) starting
+# with those defined on the current class, and and then those defined on
+# inherited classes (following MRO).
+REVERSED_FIXTURE_TYPES = (
+    'teardown',
+    'class_teardown',
+)
+
 DEPRECATED_FIXTURE_TYPE_MAP = {
     'classSetUp': 'class_setup',
     'setUp': 'setup',
@@ -186,6 +195,10 @@ class TestCase(object):
         for fixture_type in FIXTURE_TYPES:
             setattr(self, "%s_fixtures" % fixture_type, [])
 
+        # the list of classes in our heirarchy, starting with the highest class
+        # (object), and ending with our class
+        reverse_mro_list = [x for x in reversed(type(self).mro())]
+
         # discover which fixures are on this class, including mixed-in ones
         self._fixture_methods = defaultdict(list)
 
@@ -193,9 +206,10 @@ class TestCase(object):
         # from bases), but we don't want to trigger any lazily loaded
         # attributes, so dir() isn't an option; this traverses __bases__/__dict__
         # correctly for us.
-        class_dict = dict((a.name, a.object) for a in inspect.classify_class_attrs(type(self)))
-
-        for attr_name, method in class_dict.iteritems():
+        for classified_attr in inspect.classify_class_attrs(type(self)):
+            attr_name = classified_attr.name
+            method = classified_attr.object
+            defining_class = classified_attr.defining_class
 
             # if this is an old setUp/tearDown/etc, tag it as a fixture
             if attr_name in DEPRECATED_FIXTURE_TYPE_MAP:
@@ -205,25 +219,27 @@ class TestCase(object):
 
             # collect all of our fixtures in appropriate buckets
             if self.is_fixture_method(method):
+                # where in our MRO this fixture was defined
+                method._defining_class_depth = reverse_mro_list.index(defining_class)
                 # we grabbed this from the class and need to bind it to us
                 instance_method = instancemethod(method, self)
                 self._fixture_methods[method._fixture_type].append(instance_method)
 
         # arrange our fixture buckets appropriately
         for fixture_type, fixture_methods in self._fixture_methods.iteritems():
-            # sort our fixtures in order of oldest (smaller id) to newest
-            fixture_methods.sort(key=lambda x: x._fixture_id)
+            # sort our fixtures in order of oldest (smaller id) to newest, but
+            # also grouped by class to correctly place deprecated fixtures
+            fixture_methods.sort(key=lambda x: (x._defining_class_depth, x._fixture_id))
 
-            fixture_list = "%s_fixtures" % fixture_type
-            existing_fixtures_of_this_type = getattr(self, fixture_list)
+            # for setup methods, we want methods defined further back in the
+            # class hierarchy to execute first.  for teardown methods though,
+            # we want the opposite while still maintaining the class-level
+            # definition order, so we reverse only on class depth.
+            if fixture_type in REVERSED_FIXTURE_TYPES:
+                fixture_methods.sort(key=lambda x: x._defining_class_depth, reverse=True)
 
-            if fixture_type.endswith('setup'):
-                # for setup methods, we want methods defined further back in the
-                # class hierarchy to execute first
-                setattr(self, fixture_list, existing_fixtures_of_this_type + fixture_methods)
-            else:
-                # for teardown methods though, we want the opposite
-                setattr(self, fixture_list, fixture_methods + existing_fixtures_of_this_type)
+            fixture_list_name = "%s_fixtures" % fixture_type
+            setattr(self, fixture_list_name, fixture_methods)
 
     def _generate_test_method(self, method_name, function):
         """Allow tests to define new test methods in their __init__'s and have appropriate suites applied."""
