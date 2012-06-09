@@ -75,3 +75,5 @@ class HTTPReporterTestCase(TestCase):
 
         assert_equal(first['runner_id'], 'tries_twice')
         assert_equal(first, second)
+
+# vim: set ts=4 sts=4 sw=4 et:

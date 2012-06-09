@@ -58,3 +58,5 @@ def build_test_reporters(options):
     if options.connect_addr:
         return [HTTPReporter(options, options.connect_addr, options.runner_id)]
     return []
+
+# vim: set ts=4 sts=4 sw=4 et:

@@ -184,3 +184,5 @@ class TestRunner(object):
 
         pp = pprint.PrettyPrinter(indent=2)
         print(pp.pformat([self.get_test_method_name(test) for test in test_list]))
+
+# vim: set ts=4 sts=4 sw=4 et:

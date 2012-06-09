@@ -32,9 +32,11 @@ class BrokenImportTestCase(TestCase):
 
 
 class DiscoveryFailureTestCase(BrokenImportTestCase):
-    def test_discover_test_with_broken_import_raises_discovery_error_no_module_named_non_existent_module(self):
-        discovered_tests = test_discovery.discover(self.broken_import_module)
+    def test_discover_test_with_broken_import(self):
+        """Insure that DiscoveryError is raised when a test which imports a
+        non-existent module is discovered."""
         try:
+            discovered_tests = test_discovery.discover(self.broken_import_module)
             discovered_tests.next()
         except DiscoveryError, exc:
             assert_in('No module named non_existent_module', str(exc))
@@ -44,3 +46,5 @@ class DiscoveryFailureTestCase(BrokenImportTestCase):
 
 if __name__ == '__main__':
     run()
+
+# vim: set ts=4 sts=4 sw=4 et:

@@ -251,3 +251,5 @@ class TextTestLogger(TestLoggerBase):
             0,
             )
         self.writeln("(Total test time %.2fs)" % total_test_time)
+
+# vim: set ts=4 sts=4 sw=4 et:

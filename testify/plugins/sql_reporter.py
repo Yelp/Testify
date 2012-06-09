@@ -57,7 +57,7 @@ Builds = SA.Table('builds', metadata,
     SA.Column('run_time', SA.Float, nullable=True),
     SA.Column('method_count', SA.Integer, nullable=True),
     SA.Column('submit_time', SA.Integer, index=True, nullable=True),
-    SA.Column('discovery_failure', SA.Boolean, nullable=True),
+    SA.Column('discovery_failure', SA.Boolean, default=False, nullable=True),
 )
 SA.Index('ix_individual_run', Builds.c.buildbot, Builds.c.buildname, Builds.c.buildnumber, Builds.c.revision, unique=True)
 
@@ -138,7 +138,7 @@ class SQLReporter(test_reporter.TestReporter):
         self.result_queue.put(result)
 
     def test_discovery_failure(self, exc):
-        """Set the discovery_failure flag to False."""
+        """Set the discovery_failure flag to True."""
         self.conn.execute(SA.update(Builds,
             whereclause=(Builds.c.id == self.build_id),
             values={

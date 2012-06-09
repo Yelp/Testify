@@ -55,3 +55,5 @@ class TestDiscoverIgnoreImportedThings(DiscoveryTestCase):
 
 if __name__ == '__main__':
     run()
+
+# vim: set ts=4 sts=4 sw=4 et:

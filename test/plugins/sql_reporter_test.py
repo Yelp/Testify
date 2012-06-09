@@ -25,6 +25,8 @@ class DummyTestCase(TestCase):
         assert False
 
 class SQLReporterBaseTestCase(TestCase):
+    __test__ = False
+
     @setup_teardown
     def make_reporter(self):
         """Make self.reporter, a SQLReporter that runs on an empty in-memory SQLite database."""
@@ -84,8 +86,9 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         assert_in_range(updated_build['end_time'], 0, time.time())
         assert_equal(updated_build['method_count'], 2)
 
-        # There should be no discovery_failure with our tests.
-        assert not build['discovery_failure']
+        # The discovery_failure column should exist and be False.
+        assert 'discovery_failure' in build
+        assert_equal(build['discovery_failure'], False)
 
         # Check that we have one failure and one pass, and that they're the right tests.
         test_results = list(conn.execute(SA.select(
@@ -154,5 +157,6 @@ class SQLReporterDiscoveryFailureTestCase(SQLReporterBaseTestCase, BrokenImportT
         conn = self.reporter.conn
         (build,) = list(conn.execute(Builds.select()))
 
-        discovery_failure = build['discovery_failure']
-        assert discovery_failure
+        assert_equal(build['discovery_failure'], True)
+
+# vim: set ts=4 sts=4 sw=4 et:
