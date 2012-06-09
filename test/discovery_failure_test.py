@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+from testify.test_logger import _log
 from testify import TestCase, assert_in, run, setup, teardown, test_discovery
 from testify.test_discovery import DiscoveryError
 
@@ -24,11 +25,16 @@ class BrokenImportTestCase(TestCase):
 
     @teardown
     def delete_broken_import_file(self):
-        os.remove(self.broken_import_file_path)
-        # Also remove the .pyc that was created if the file was imported.
-        pyc = self.broken_import_file_path + 'c'
-        if os.path.exists(pyc):
-            os.remove(pyc)
+        files = [
+            self.broken_import_file_path,
+            # Also remove the .pyc that was created if the file was imported.
+            self.broken_import_file_path + 'c',
+        ]
+        for f in files:
+            try:
+                os.remove(f)
+            except OSError, exc:
+                _log.error("Could not remove broken import file %s: %r" % (f, exc))
 
 
 class DiscoveryFailureTestCase(BrokenImportTestCase):
