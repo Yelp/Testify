@@ -13,8 +13,6 @@
 # limitations under the License.
 from __future__ import with_statement
 
-import datetime as _datetime
-import functools
 import re
 
 import contextlib
