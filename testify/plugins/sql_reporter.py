@@ -224,7 +224,11 @@ class SQLReporter(test_reporter.TestReporter):
 
             # Insert any previous runs, if necessary.
             for result in filter(lambda x: x['previous_run'], results):
-                result['previous_run_id'] = insert_single_run(result['previous_run'])
+                try:
+                    result['previous_run_id'] = insert_single_run(result['previous_run'])
+                except Exception, e:
+                    logging.error("Exception while reporting results: " + repr(e))
+                    self.ok = False
 
             chunks = (results[i:i+self.batch_size] for i in xrange(0, len(results), self.batch_size))
 
