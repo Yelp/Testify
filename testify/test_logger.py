@@ -205,7 +205,12 @@ class TextTestLogger(TestLoggerBase):
         self.writeln("")
         self.writeln("=" * 72)
         self.writeln(self._format_test_method_name(result['method']))
-        self.writeln(''.join(result['exception_info_pretty']))
+
+        if self.use_color:
+            self.writeln(''.join(result['exception_info_pretty']))
+        else:
+            self.writeln(''.join(result['exception_info']))
+
         self.writeln('=' * 72)
         self.writeln("")
 
