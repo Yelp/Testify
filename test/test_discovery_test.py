@@ -7,7 +7,7 @@ HERE = dirname(abspath(__file__))
 
 class DiscoveryTestCase(TestCase):
     def discover(self, path):
-        # Exhaust the generator to catch exceptons
+        # Exhaust the generator to catch exceptions
         [mod for mod in test_discovery.discover(path)]
 
 def relative(func):
@@ -55,3 +55,5 @@ class TestDiscoverIgnoreImportedThings(DiscoveryTestCase):
 
 if __name__ == '__main__':
     run()
+
+# vim: set ts=4 sts=4 sw=4 et:

@@ -97,7 +97,12 @@ class TestRunner(object):
                         )
                         yield test_case
 
-        discovered_tests = list(discover_inner())
+        discovered_tests = []
+        try:
+            discovered_tests = list(discover_inner())
+        except test_discovery.DiscoveryError, exc:
+            for reporter in self.test_reporters:
+                reporter.test_discovery_failure(exc)
         test_case_count = len(discovered_tests)
         test_method_count = sum(len(list(test_case.runnable_test_methods())) for test_case in discovered_tests)
         for reporter in self.test_reporters:
@@ -179,3 +184,5 @@ class TestRunner(object):
 
         pp = pprint.PrettyPrinter(indent=2)
         print(pp.pformat([self.get_test_method_name(test) for test in test_list]))
+
+# vim: set ts=4 sts=4 sw=4 et:
