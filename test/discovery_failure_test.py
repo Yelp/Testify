@@ -7,6 +7,8 @@ from testify.test_discovery import DiscoveryError
 
 
 class BrokenImportTestCase(TestCase):
+    __test__ = False
+
     @setup
     def create_broken_import_file(self):
         """Write out a test file containing a bad import. This way, a broken
