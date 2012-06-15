@@ -20,10 +20,11 @@ __testify = 1
 from collections import defaultdict
 import functools
 import pprint
-
+import sys
 
 from test_case import MetaTestCase, TestCase
 import test_discovery
+
 
 class TestRunner(object):
     """TestRunner is the controller class of the testify suite.
@@ -103,6 +104,7 @@ class TestRunner(object):
         except test_discovery.DiscoveryError, exc:
             for reporter in self.test_reporters:
                 reporter.test_discovery_failure(exc)
+            sys.exit(1)
         test_case_count = len(discovered_tests)
         test_method_count = sum(len(list(test_case.runnable_test_methods())) for test_case in discovered_tests)
         for reporter in self.test_reporters:
