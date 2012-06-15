@@ -1,8 +1,7 @@
 import threading
-import time
 import tornado.ioloop
 
-from testify import test_case, test_runner_server, setup, class_setup, assert_equal, test_result, setup_teardown
+from testify import test_case, test_runner_server, class_setup, assert_equal, setup_teardown
 
 class Struct:
     """A convenient way to make an object with some members."""
@@ -198,4 +197,6 @@ class TestRunnerServerTestCase(test_case.TestCase):
         assert not thread.is_alive(), "get_next_test is still running after 0.5s"
 
         if failures:
-			raise Exception(' '.join(failures))
+            raise Exception(' '.join(failures))
+
+# vim: set ts=4 sts=4 sw=4 et:
