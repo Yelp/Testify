@@ -257,4 +257,15 @@ class TextTestLogger(TestLoggerBase):
             )
         self.writeln("(Total test time %.2fs)" % total_test_time)
 
+
+class ColorlessTextTestLogger(TextTestLogger):
+    def _colorize(self, message, color=None):
+        return message
+
+
+class TestResultGrabberHandler(logging.Handler):
+    """Logging handler to store log message during a test run"""
+    def emit(self, record):
+        raise Exception(repr(record))
+
 # vim: set ts=4 sts=4 sw=4 et:
