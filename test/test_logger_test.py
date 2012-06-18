@@ -31,7 +31,7 @@ class TestTextLoggerDiscoveryFailureTestCase(BrokenImportTestCase):
         )
         runner.run()
         logger_output = self.stream.getvalue()
-        assert_in('Discovery failure!', logger_output)
+        assert_in('DISCOVERY FAILURE!', logger_output)
 
 
 if __name__ == '__main__':

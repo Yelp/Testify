@@ -152,7 +152,7 @@ class TextTestLogger(TestLoggerBase):
             return start_color + message + end_color
 
     def test_discovery_failure(self, exc):
-        self.writeln("Discovery failure!")
+        self.writeln(self._colorize("DISCOVERY FAILURE!", self.MAGENTA))
         self.writeln("There was a problem importing one or more tests:")
         self.writeln(str(exc))
 
