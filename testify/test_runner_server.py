@@ -248,6 +248,7 @@ class TestRunnerServer(TestRunner):
                 else:
                     return super(ResultsHandler, handler).get_error_html(status_code, **kwargs)
 
+        ### try:
         # Enqueue all of our tests.
         for test_instance in self.discover():
             test_dict = {
@@ -278,6 +279,8 @@ class TestRunnerServer(TestRunner):
 
         tornado.ioloop.IOLoop.instance().start()
 
+        ### # Report what happened, even if there were failures.
+        ### finally:
         report = [reporter.report() for reporter in self.test_reporters]
         return all(report)
 
