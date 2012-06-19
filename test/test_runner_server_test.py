@@ -2,11 +2,8 @@ import threading
 import tornado.ioloop
 
 from testify import test_case, test_runner_server, class_setup, assert_equal, setup_teardown
+from testify.utils import turtle
 
-class Struct:
-    """A convenient way to make an object with some members."""
-    def __init__(self, **entries):
-        self.__dict__.update(entries)
 
 def get_test(server, runner_id):
     """A blocking function to request a test from a TestRunnerServer."""
@@ -43,7 +40,7 @@ class TestRunnerServerTestCase(test_case.TestCase):
     def run_server(self):
         self.server = test_runner_server.TestRunnerServer(
             self.dummy_test_case,
-            options=Struct(
+            options=turtle.Turtle(
                 runner_timeout=1,
                 server_timeout=10,
                 revision=None,
