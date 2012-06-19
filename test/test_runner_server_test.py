@@ -24,7 +24,9 @@ def get_test(server, runner_id):
     (test_received,) = tests_received
     return test_received
 
-class TestRunnerServerTestCase(test_case.TestCase):
+class TestRunnerServerBaseTestCase(test_case.TestCase):
+    __test__ = False
+
     @class_setup
     def build_test_case(self):
         class DummyTestCase(test_case.TestCase):
@@ -60,6 +62,8 @@ class TestRunnerServerTestCase(test_case.TestCase):
         self.server.shutdown()
         thread.join()
 
+
+class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
     def timeout_class(self, runner, test):
         assert test
         tornado.ioloop.IOLoop.instance().add_callback(lambda: self.server.check_in_class(runner, test['class_path'], timed_out=True))
