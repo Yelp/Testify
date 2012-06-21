@@ -9,6 +9,7 @@ The server keeps track of the overall status of the run and manages timeouts and
 
 from __future__ import with_statement
 
+from test_logger import _log
 from test_runner import TestRunner
 import tornado.httpserver
 import tornado.ioloop
@@ -250,7 +251,13 @@ class TestRunnerServer(TestRunner):
 
         ### try:
         # Enqueue all of our tests.
-        for test_instance in self.discover():
+        discovered_tests = []
+        try:
+            discovered_tests = self.discover()
+        except Exception, exc:
+            _log.debug("Test discovery blew up!: %r" % exc)
+            raise
+        for test_instance in discovered_tests:
             test_dict = {
                 'class_path' : '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
                 'methods' : [test.__name__ for test in test_instance.runnable_test_methods()],
@@ -422,9 +429,17 @@ class TestRunnerServer(TestRunner):
         iol = tornado.ioloop.IOLoop.instance()
         # Can't immediately call stop, otherwise the runner currently POSTing its results will get a Connection Refused when it tries to ask for the next test.
 
-        if self.runners_outstanding:
-            # Stop in 5 seconds if all the runners_outstanding don't come back by then.
-            iol.add_timeout(time.time()+self.shutdown_delay_for_outstanding_runners, iol.stop)
+        # Without this check, we could end up queueing a stop() call on a
+        # tornado server we spin up later, causing it to hang mysteriously.
+        if iol.running():
+            if self.runners_outstanding:
+                # Stop in 5 seconds if all the runners_outstanding don't come back by then.
+                iol.add_timeout(time.time()+self.shutdown_delay_for_outstanding_runners, iol.stop)
+            else:
+                # Give tornado enough time to finish writing to all the clients, then shut down.
+                iol.add_timeout(time.time()+self.shutdown_delay_for_connection_close, iol.stop)
         else:
-            # Give tornado enough time to finish writing to all the clients, then shut down.
-            iol.add_timeout(time.time()+self.shutdown_delay_for_connection_close, iol.stop)
+            _log.error("TestRunnerServer on port %s has been asked to shutdown but its IOLoop is not running."
+                " Perhaps it died an early death due to discovery failure." % self.serve_port
+            )
+                
