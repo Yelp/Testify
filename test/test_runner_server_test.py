@@ -84,8 +84,8 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
 class TestRunnerServerBrokenImportTestCase(TestRunnerServerBaseTestCase, BrokenImportTestCase,):
     def create_broken_import_file(self):
         """We must control when this setup method is run since
-        build_test_case() depends on it. Stub this one out and call the real
-        method ourselves from build_test_case()."""
+        build_test_case() depends on it. So we'll stub it out for now and call
+        it when we're ready from build_test_case()."""
         pass
 
     def build_test_case(self):
