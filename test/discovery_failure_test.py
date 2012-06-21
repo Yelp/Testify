@@ -1,9 +1,9 @@
 import os
 import tempfile
 
-from testify.test_logger import _log
-from testify import TestCase, assert_in, class_setup, run, teardown, test_discovery
+from testify import TestCase, assert_in, class_setup, class_teardown, run, test_discovery
 from testify.test_discovery import DiscoveryError
+from testify.test_logger import _log
 
 
 class BrokenImportTestCase(TestCase):
@@ -40,7 +40,7 @@ class BrokenImportTestCase(TestCase):
     def setup_import_file(self):
         self.create_broken_import_file()
 
-    @teardown
+    @class_teardown
     def teardown_import_file(self):
         self.delete_broken_import_file()
 

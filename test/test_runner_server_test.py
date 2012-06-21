@@ -93,16 +93,18 @@ class TestRunnerServerBrokenImportTestCase(TestRunnerServerBaseTestCase, BrokenI
         self.dummy_test_case = self.broken_import_module
 
     def start_server(self):
-        mock_reporter = turtle.Turtle()
-        super(TestRunnerServerBrokenImportTestCase, self).start_server(test_reporters=[mock_reporter])
+        ### i_come_from="hax"
+        self.mock_reporter = turtle.Turtle(i_come_from="start_server")
+        super(TestRunnerServerBrokenImportTestCase, self).start_server(test_reporters=[self.mock_reporter])
 
     def stop_server(self):
         super(TestRunnerServerBrokenImportTestCase, self).stop_server()
-
-    # Testify ignores this class unless it has a test_ method. This should be
-    # temporary.
-    def test_something(self):
-        pass
+    def test_reports_are_generated_after_discovery_failure(self):
+        ### heisenbug? comment out the next line and the test fails!
+        ### sometimes it fails anyway!
+        print self.mock_reporter.i_come_from
+        assert_equal(len(self.mock_reporter.report), 1)
+        print self.mock_reporter.report.calls
 
 
 class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):

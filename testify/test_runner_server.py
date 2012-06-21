@@ -248,47 +248,47 @@ class TestRunnerServer(TestRunner):
                 else:
                     return super(ResultsHandler, handler).get_error_html(status_code, **kwargs)
 
-        ### try:
-        # Enqueue all of our tests.
-        discovered_tests = []
         try:
-            discovered_tests = self.discover()
-        except Exception, exc:
-            _log.debug("Test discovery blew up!: %r" % exc)
-            raise
-        for test_instance in discovered_tests:
-            test_dict = {
-                'class_path' : '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
-                'methods' : [test.__name__ for test in test_instance.runnable_test_methods()],
-            }
+            # Enqueue all of our tests.
+            discovered_tests = []
+            try:
+                discovered_tests = self.discover()
+            except Exception, exc:
+                _log.debug("Test discovery blew up!: %r" % exc)
+                raise
+            for test_instance in discovered_tests:
+                test_dict = {
+                    'class_path' : '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
+                    'methods' : [test.__name__ for test in test_instance.runnable_test_methods()],
+                }
 
-            if test_dict['methods']:
-                self.test_queue.put(0, test_dict)
+                if test_dict['methods']:
+                    self.test_queue.put(0, test_dict)
 
-        # Start an HTTP server.
-        application = tornado.web.Application([
-            (r"/tests", TestsHandler),
-            (r"/results", ResultsHandler),
-        ])
+            # Start an HTTP server.
+            application = tornado.web.Application([
+                (r"/tests", TestsHandler),
+                (r"/results", ResultsHandler),
+            ])
 
-        server = tornado.httpserver.HTTPServer(application)
-        server.listen(self.serve_port)
+            server = tornado.httpserver.HTTPServer(application)
+            server.listen(self.serve_port)
 
-        def timeout_server():
-            if time.time() > self.last_activity_time + self.server_timeout:
-                logging.error('No client activity for %ss, shutting down.' % self.server_timeout)
-                self.shutdown()
-            else:
-                tornado.ioloop.IOLoop.instance().add_timeout(self.last_activity_time + self.server_timeout, timeout_server)
-        self.activity()
-        timeout_server() # Set the first callback.
+            def timeout_server():
+                if time.time() > self.last_activity_time + self.server_timeout:
+                    logging.error('No client activity for %ss, shutting down.' % self.server_timeout)
+                    self.shutdown()
+                else:
+                    tornado.ioloop.IOLoop.instance().add_timeout(self.last_activity_time + self.server_timeout, timeout_server)
+            self.activity()
+            timeout_server() # Set the first callback.
 
-        tornado.ioloop.IOLoop.instance().start()
+            tornado.ioloop.IOLoop.instance().start()
 
-        ### # Report what happened, even if there were failures.
-        ### finally:
-        report = [reporter.report() for reporter in self.test_reporters]
-        return all(report)
+        finally:
+            # Report what happened, even if something went wrong.
+            report = [reporter.report() for reporter in self.test_reporters]
+            return all(report)
 
 
     def activity(self):
