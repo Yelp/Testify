@@ -1,4 +1,3 @@
-# vim: et ts=4 sts=4 sw=4
 """
 Client-server setup to evenly distribute tests across multiple processes. The server
 discovers all test classes and enqueues them, then clients connect to the server,
@@ -442,4 +441,5 @@ class TestRunnerServer(TestRunner):
             _log.error("TestRunnerServer on port %s has been asked to shutdown but its IOLoop is not running."
                 " Perhaps it died an early death due to discovery failure." % self.serve_port
             )
-                
+
+# vim: set ts=4 sts=4 sw=4 et:
