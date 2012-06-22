@@ -6,3 +6,4 @@ MANIFEST
 *.sw[nop]
 *.egg-info
 tags
+.tox
