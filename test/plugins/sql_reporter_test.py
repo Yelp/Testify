@@ -158,5 +158,6 @@ class SQLReporterDiscoveryFailureTestCase(SQLReporterBaseTestCase, BrokenImportT
         (build,) = list(conn.execute(Builds.select()))
 
         assert_equal(build['discovery_failure'], True)
+        assert_equal(build['method_count'], 0)
 
 # vim: set ts=4 sts=4 sw=4 et:
