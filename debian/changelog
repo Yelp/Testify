@@ -1,3 +1,10 @@
+python-testify (0.2.10) unstable; urgency=low
+
+  * Fixes for discovery failure reporting
+  * Add support for tox and Travis CI
+
+ -- Evan Krall <krall@yelp.com>  Tue, 26 Jun 2012 13:23:36 -0700
+
 python-testify (0.2.9) unstable; urgency=low
 
   * Report discovery failures more gracefully
