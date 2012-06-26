@@ -1,3 +1,9 @@
+python-testify (0.3.0) unstable; urgency=low
+
+  * Change fixtures to operate with normal Python inheritance (overriding a base class fixture method replaces it, rather than adding to it).
+
+ -- Amber Yust <ayust@yelp.com>  Tue, 26 Jun 2012 15:32:26 -0700
+
 python-testify (0.2.10) unstable; urgency=low
 
   * Fixes for discovery failure reporting
