@@ -1,4 +1,3 @@
-# vim: et ts=4 sts=4 sw=4
 """
 Client-server setup to evenly distribute tests across multiple processes. The server
 discovers all test classes and enqueues them, then clients connect to the server,
@@ -9,6 +8,7 @@ The server keeps track of the overall status of the run and manages timeouts and
 
 from __future__ import with_statement
 
+from test_logger import _log
 from test_runner import TestRunner
 import tornado.httpserver
 import tornado.ioloop
@@ -248,38 +248,47 @@ class TestRunnerServer(TestRunner):
                 else:
                     return super(ResultsHandler, handler).get_error_html(status_code, **kwargs)
 
-        # Enqueue all of our tests.
-        for test_instance in self.discover():
-            test_dict = {
-                'class_path' : '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
-                'methods' : [test.__name__ for test in test_instance.runnable_test_methods()],
-            }
+        try:
+            # Enqueue all of our tests.
+            discovered_tests = []
+            try:
+                discovered_tests = self.discover()
+            except Exception, exc:
+                _log.debug("Test discovery blew up!: %r" % exc)
+                raise
+            for test_instance in discovered_tests:
+                test_dict = {
+                    'class_path' : '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
+                    'methods' : [test.__name__ for test in test_instance.runnable_test_methods()],
+                }
 
-            if test_dict['methods']:
-                self.test_queue.put(0, test_dict)
+                if test_dict['methods']:
+                    self.test_queue.put(0, test_dict)
 
-        # Start an HTTP server.
-        application = tornado.web.Application([
-            (r"/tests", TestsHandler),
-            (r"/results", ResultsHandler),
-        ])
+            # Start an HTTP server.
+            application = tornado.web.Application([
+                (r"/tests", TestsHandler),
+                (r"/results", ResultsHandler),
+            ])
 
-        server = tornado.httpserver.HTTPServer(application)
-        server.listen(self.serve_port)
+            server = tornado.httpserver.HTTPServer(application)
+            server.listen(self.serve_port)
 
-        def timeout_server():
-            if time.time() > self.last_activity_time + self.server_timeout:
-                logging.error('No client activity for %ss, shutting down.' % self.server_timeout)
-                self.shutdown()
-            else:
-                tornado.ioloop.IOLoop.instance().add_timeout(self.last_activity_time + self.server_timeout, timeout_server)
-        self.activity()
-        timeout_server() # Set the first callback.
+            def timeout_server():
+                if time.time() > self.last_activity_time + self.server_timeout:
+                    logging.error('No client activity for %ss, shutting down.' % self.server_timeout)
+                    self.shutdown()
+                else:
+                    tornado.ioloop.IOLoop.instance().add_timeout(self.last_activity_time + self.server_timeout, timeout_server)
+            self.activity()
+            timeout_server() # Set the first callback.
 
-        tornado.ioloop.IOLoop.instance().start()
+            tornado.ioloop.IOLoop.instance().start()
 
-        report = [reporter.report() for reporter in self.test_reporters]
-        return all(report)
+        finally:
+            # Report what happened, even if something went wrong.
+            report = [reporter.report() for reporter in self.test_reporters]
+            return all(report)
 
 
     def activity(self):
@@ -419,9 +428,18 @@ class TestRunnerServer(TestRunner):
         iol = tornado.ioloop.IOLoop.instance()
         # Can't immediately call stop, otherwise the runner currently POSTing its results will get a Connection Refused when it tries to ask for the next test.
 
-        if self.runners_outstanding:
-            # Stop in 5 seconds if all the runners_outstanding don't come back by then.
-            iol.add_timeout(time.time()+self.shutdown_delay_for_outstanding_runners, iol.stop)
+        # Without this check, we could end up queueing a stop() call on a
+        # tornado server we spin up later, causing it to hang mysteriously.
+        if iol.running():
+            if self.runners_outstanding:
+                # Stop in 5 seconds if all the runners_outstanding don't come back by then.
+                iol.add_timeout(time.time()+self.shutdown_delay_for_outstanding_runners, iol.stop)
+            else:
+                # Give tornado enough time to finish writing to all the clients, then shut down.
+                iol.add_timeout(time.time()+self.shutdown_delay_for_connection_close, iol.stop)
         else:
-            # Give tornado enough time to finish writing to all the clients, then shut down.
-            iol.add_timeout(time.time()+self.shutdown_delay_for_connection_close, iol.stop)
+            _log.error("TestRunnerServer on port %s has been asked to shutdown but its IOLoop is not running."
+                " Perhaps it died an early death due to discovery failure." % self.serve_port
+            )
+
+# vim: set ts=4 sts=4 sw=4 et:

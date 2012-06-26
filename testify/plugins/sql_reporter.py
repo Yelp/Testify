@@ -138,11 +138,12 @@ class SQLReporter(test_reporter.TestReporter):
         self.result_queue.put(result)
 
     def test_discovery_failure(self, exc):
-        """Set the discovery_failure flag to True."""
+        """Set the discovery_failure flag to True and method_count to 0."""
         self.conn.execute(SA.update(Builds,
             whereclause=(Builds.c.id == self.build_id),
             values={
                 'discovery_failure' : True,
+                'method_count' : 0,
             }
         ))
 
