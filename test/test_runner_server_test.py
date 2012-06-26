@@ -39,7 +39,10 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
 
         self.dummy_test_case = DummyTestCase
 
-    def start_server(self, test_reporters=[]):
+    def start_server(self, test_reporters=None):
+        if test_reporters is None:
+            test_reporters = []
+
         self.server = test_runner_server.TestRunnerServer(
             self.dummy_test_case,
             options=turtle.Turtle(
@@ -93,18 +96,26 @@ class TestRunnerServerBrokenImportTestCase(TestRunnerServerBaseTestCase, BrokenI
         self.dummy_test_case = self.broken_import_module
 
     def start_server(self):
-        ### i_come_from="hax"
-        self.mock_reporter = turtle.Turtle(i_come_from="start_server")
+        """To insure the server has started before we start testing, set up a
+        lock which will be released when reporting happens as the final phase
+        of server startup.
+
+        Without this, weird race conditions abound where things break because
+        server startup is incomplete."""
+        lock = threading.Event()
+        self.report_call_count = 0
+
+        def report_releases_lock():
+            lock.set()
+            self.report_call_count += 1
+        self.mock_reporter = turtle.Turtle(report=report_releases_lock)
         super(TestRunnerServerBrokenImportTestCase, self).start_server(test_reporters=[self.mock_reporter])
 
-    def stop_server(self):
-        super(TestRunnerServerBrokenImportTestCase, self).stop_server()
+        lock.wait(1)
+        assert lock.isSet(), "Timed out waiting for server to finish starting."
+
     def test_reports_are_generated_after_discovery_failure(self):
-        ### heisenbug? comment out the next line and the test fails!
-        ### sometimes it fails anyway!
-        print self.mock_reporter.i_come_from
-        assert_equal(len(self.mock_reporter.report), 1)
-        print self.mock_reporter.report.calls
+        assert_equal(self.report_call_count, 1)
 
 
 class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
