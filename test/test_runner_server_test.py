@@ -1,13 +1,11 @@
 import threading
-import time
 import tornado.ioloop
 
-from testify import test_case, test_runner_server, setup, class_setup, assert_equal, test_result, setup_teardown
+from discovery_failure_test import BrokenImportTestCase
+from testify import assert_equal, class_setup, setup, teardown, test_case, test_runner_server
+from testify.test_logger import _log
+from testify.utils import turtle
 
-class Struct:
-    """A convenient way to make an object with some members."""
-    def __init__(self, **entries):
-        self.__dict__.update(entries)
 
 def get_test(server, runner_id):
     """A blocking function to request a test from a TestRunnerServer."""
@@ -28,8 +26,9 @@ def get_test(server, runner_id):
     (test_received,) = tests_received
     return test_received
 
-class TestRunnerServerTestCase(test_case.TestCase):
-    @class_setup
+class TestRunnerServerBaseTestCase(test_case.TestCase):
+    __test__ = False
+
     def build_test_case(self):
         class DummyTestCase(test_case.TestCase):
             def __init__(self_, *args, **kwargs):
@@ -40,11 +39,13 @@ class TestRunnerServerTestCase(test_case.TestCase):
 
         self.dummy_test_case = DummyTestCase
 
-    @setup_teardown
-    def run_server(self):
+    def start_server(self, test_reporters=None):
+        if test_reporters is None:
+            test_reporters = []
+
         self.server = test_runner_server.TestRunnerServer(
             self.dummy_test_case,
-            options=Struct(
+            options=turtle.Turtle(
                 runner_timeout=1,
                 server_timeout=10,
                 revision=None,
@@ -52,18 +53,72 @@ class TestRunnerServerTestCase(test_case.TestCase):
                 shutdown_delay_for_outstanding_runners=1,
             ),
             serve_port=0,
-            test_reporters=[],
+            test_reporters=test_reporters,
             plugin_modules=[],
         );
 
-        thread = threading.Thread(None, self.server.run)
-        thread.start()
+        def catch_exceptions_in_thread():
+            try:
+                self.server.run()
+            except (Exception, SystemExit), exc:
+                _log.error("Thread threw exception: %r" % exc)
+                raise
 
-        yield
+        self.thread = threading.Thread(None, catch_exceptions_in_thread)
+        self.thread.start()
 
+    def stop_server(self):
         self.server.shutdown()
-        thread.join()
+        self.thread.join()
 
+    @class_setup
+    def setup_test_case(self):
+        self.build_test_case()
+
+    @setup
+    def setup_server(self):
+        self.start_server()
+
+    @teardown
+    def teardown_server(self):
+        self.stop_server()
+
+
+class TestRunnerServerBrokenImportTestCase(TestRunnerServerBaseTestCase, BrokenImportTestCase,):
+    def create_broken_import_file(self):
+        """We must control when this setup method is run since
+        build_test_case() depends on it. So we'll stub it out for now and call
+        it when we're ready from build_test_case()."""
+        pass
+
+    def build_test_case(self):
+        super(TestRunnerServerBrokenImportTestCase, self).create_broken_import_file()
+        self.dummy_test_case = self.broken_import_module
+
+    def start_server(self):
+        """To insure the server has started before we start testing, set up a
+        lock which will be released when reporting happens as the final phase
+        of server startup.
+
+        Without this, weird race conditions abound where things break because
+        server startup is incomplete."""
+        lock = threading.Event()
+        self.report_call_count = 0
+
+        def report_releases_lock():
+            lock.set()
+            self.report_call_count += 1
+        self.mock_reporter = turtle.Turtle(report=report_releases_lock)
+        super(TestRunnerServerBrokenImportTestCase, self).start_server(test_reporters=[self.mock_reporter])
+
+        lock.wait(1)
+        assert lock.isSet(), "Timed out waiting for server to finish starting."
+
+    def test_reports_are_generated_after_discovery_failure(self):
+        assert_equal(self.report_call_count, 1)
+
+
+class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
     def timeout_class(self, runner, test):
         assert test
         tornado.ioloop.IOLoop.instance().add_callback(lambda: self.server.check_in_class(runner, test['class_path'], timed_out=True))
@@ -198,4 +253,6 @@ class TestRunnerServerTestCase(test_case.TestCase):
         assert not thread.is_alive(), "get_next_test is still running after 0.5s"
 
         if failures:
-			raise Exception(' '.join(failures))
+            raise Exception(' '.join(failures))
+
+# vim: set ts=4 sts=4 sw=4 et:

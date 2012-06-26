@@ -38,10 +38,15 @@ class TestReporter(object):
         """Called when a test method is complete. result is a TestResult dict which should be complete."""
         pass
 
+    def test_discovery_failure(self, exc):
+        """Called when there was a failure during test discovery. exc is the exception object generated during the error."""
+        pass
+
     def report(self):
         """Called at the end of the test run to report results
 
-		Should return a bool to indicate if the reporter thinks the test run was successful
-		"""
+        Should return a bool to indicate if the reporter thinks the test run was successful
+        """
         return True
 
+# vim: set ts=4 sts=4 sw=4 et:

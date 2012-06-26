@@ -57,6 +57,7 @@ Builds = SA.Table('builds', metadata,
     SA.Column('run_time', SA.Float, nullable=True),
     SA.Column('method_count', SA.Integer, nullable=True),
     SA.Column('submit_time', SA.Integer, index=True, nullable=True),
+    SA.Column('discovery_failure', SA.Boolean, default=False, nullable=True),
 )
 SA.Index('ix_individual_run', Builds.c.buildbot, Builds.c.buildname, Builds.c.buildnumber, Builds.c.revision, unique=True)
 
@@ -135,6 +136,16 @@ class SQLReporter(test_reporter.TestReporter):
     def test_complete(self, result):
         """Insert a result into the queue that report_results pulls from."""
         self.result_queue.put(result)
+
+    def test_discovery_failure(self, exc):
+        """Set the discovery_failure flag to True and method_count to 0."""
+        self.conn.execute(SA.update(Builds,
+            whereclause=(Builds.c.id == self.build_id),
+            values={
+                'discovery_failure' : True,
+                'method_count' : 0,
+            }
+        ))
 
     def report_results(self):
         """A worker func that runs in another thread and reports results to the database.
@@ -224,7 +235,11 @@ class SQLReporter(test_reporter.TestReporter):
 
             # Insert any previous runs, if necessary.
             for result in filter(lambda x: x['previous_run'], results):
-                result['previous_run_id'] = insert_single_run(result['previous_run'])
+                try:
+                    result['previous_run_id'] = insert_single_run(result['previous_run'])
+                except Exception, e:
+                    logging.error("Exception while reporting results: " + repr(e))
+                    self.ok = False
 
             chunks = (results[i:i+self.batch_size] for i in xrange(0, len(results), self.batch_size))
 

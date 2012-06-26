@@ -1,3 +1,12 @@
+python-testify (0.2.9) unstable; urgency=low
+
+  * Report discovery failures more gracefully
+  * Handle exceptions for SQL reporting failures
+  * Remove a naughty assertion (decorator assertions don't place nice)
+  * Don't use color codes in tracebacks when they're not supported
+
+ -- Amber Yust <ayust@yelp.com>  Mon, 18 Jun 2012 11:10:48 -0700
+
 python-testify (0.2.8) unstable; urgency=low
 
   * Add a significant number of new assertions
