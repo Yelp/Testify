@@ -17,7 +17,8 @@ import inspect
 import os
 import time
 import types
-from test_case import MetaTestCase
+import unittest
+from test_case import MetaTestCase, TestifiedUnitTest
 from test_logger import _log
 from errors import TestifyError
 
@@ -127,8 +128,7 @@ def discover(what):
                             yield test_case_class
 
         # it's not a list, it's not a bare module - let's see if it's an honest-to-god TestCaseBase
-        else:
-            if isinstance(test_module, MetaTestCase) and (not '__test__' in test_module.__dict__ or bool(test_module.__test__)):
+        elif isinstance(test_module, MetaTestCase) and (not '__test__' in test_module.__dict__ or bool(test_module.__test__)):
                 if test_module not in discover_set:
                     _log.debug("discover: discovered %s" % test_module)
                     if suites:
@@ -139,6 +139,12 @@ def discover(what):
                         test_module._suites = test_module._suites | set(suites)
                     discover_set.add(test_module)
                     yield test_module
+
+        # detect unittest test cases
+        elif issubclass(test_module, unittest.TestCase) and (not '__test__' in test_module.__dict__ or bool(test_module.__test__)):
+            test_case = TestifiedUnitTest.from_unittest_case(test_module)
+            discover_set.add(test_case)
+            yield test_case
 
     discover_set = set()
     time_start = time.time()
