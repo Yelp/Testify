@@ -1,15 +1,14 @@
 import os
 import tempfile
 
-from testify.test_logger import _log
-from testify import TestCase, assert_in, run, setup, teardown, test_discovery
+from testify import TestCase, assert_in, class_setup, class_teardown, run, test_discovery
 from testify.test_discovery import DiscoveryError
+from testify.test_logger import _log
 
 
 class BrokenImportTestCase(TestCase):
     __test__ = False
 
-    @setup
     def create_broken_import_file(self):
         """Write out a test file containing a bad import. This way, a broken
         test isn't lying around to be discovered while running other tests.
@@ -25,7 +24,6 @@ class BrokenImportTestCase(TestCase):
             broken_import_file.write('import non_existent_module')
         self.broken_import_module = 'test.%s' % os.path.splitext(os.path.basename(self.broken_import_file_path))[0]
 
-    @teardown
     def delete_broken_import_file(self):
         files = [
             self.broken_import_file_path,
@@ -37,6 +35,14 @@ class BrokenImportTestCase(TestCase):
                 os.remove(f)
             except OSError, exc:
                 _log.error("Could not remove broken import file %s: %r" % (f, exc))
+
+    @class_setup
+    def setup_import_file(self):
+        self.create_broken_import_file()
+
+    @class_teardown
+    def teardown_import_file(self):
+        self.delete_broken_import_file()
 
 
 class DiscoveryFailureTestCase(BrokenImportTestCase):
