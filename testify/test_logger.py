@@ -115,7 +115,7 @@ class TestLoggerBase(test_reporter.TestReporter):
             return "%s.%s" % (test_method['class'], test_method['name'])
 
 class TextTestLogger(TestLoggerBase):
-    def __init__(self, options, stream=sys.stdout):
+    def __init__(self, options, stream=sys.stderr):
         super(TextTestLogger, self).__init__(options, stream)
 
         # Checking for color support isn't as fun as we might hope.  We're
