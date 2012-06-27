@@ -33,6 +33,7 @@ import unittest
 from test_result import TestResult
 import deprecated_assertions
 from testify.utils import class_logger
+from testify.utils import inspection
 
 # just a useful list to have
 FIXTURE_TYPES = (
@@ -209,23 +210,34 @@ class TestCase(object):
         # attributes, so dir() isn't an option; this traverses __bases__/__dict__
         # correctly for us.
         for classified_attr in inspect.classify_class_attrs(type(self)):
-            attr_name = classified_attr.name
-            method = classified_attr.object
-            defining_class = classified_attr.defining_class
+            # have to index here for Python 2.5 compatibility
+            attr_name = classified_attr[0]
+            unbound_method = classified_attr[3]
+            defining_class = classified_attr[2]
+
+            # skip everything that's not a function/method
+            if not inspect.isroutine(unbound_method):
+                continue
 
             # if this is an old setUp/tearDown/etc, tag it as a fixture
             if attr_name in DEPRECATED_FIXTURE_TYPE_MAP:
                 fixture_type = DEPRECATED_FIXTURE_TYPE_MAP[attr_name]
                 fixture_decorator = globals()[fixture_type]
-                method = fixture_decorator(method)
+                unbound_method = fixture_decorator(unbound_method)
 
             # collect all of our fixtures in appropriate buckets
-            if self.is_fixture_method(method):
+            if inspection.is_fixture_method(unbound_method):
                 # where in our MRO this fixture was defined
-                method._defining_class_depth = reverse_mro_list.index(defining_class)
+                defining_class_depth = reverse_mro_list.index(defining_class)
+                inspection.callable_setattr(
+                        unbound_method,
+                        '_defining_class_depth',
+                        defining_class_depth,
+                )
+
                 # we grabbed this from the class and need to bind it to us
-                instance_method = instancemethod(method, self)
-                self._fixture_methods[method._fixture_type].append(instance_method)
+                instance_method = instancemethod(unbound_method, self)
+                self._fixture_methods[instance_method._fixture_type].append(instance_method)
 
         # arrange our fixture buckets appropriately
         for fixture_type, fixture_methods in self._fixture_methods.iteritems():
@@ -423,14 +435,17 @@ class TestCase(object):
 
         The argument to the callback will be the test method object itself.
 
-        Fixture objects can be distinguished by the running them through self.is_fixture_method().
+        Fixture objects can be distinguished by the running them through
+        inspection.is_fixture_method().
         """
         self.__callbacks[event].append(callback)
 
     def __execute_block_recording_exceptions(self, block_fxn, result, is_class_level=False):
-        """Excerpted code for executing a block of code that might except and cause us to update a result object.
+        """Excerpted code for executing a block of code that might except and
+        cause us to update a result object.
 
-        Return value is a boolean describing whether the block was successfully executed without exceptions.
+        Return value is a boolean describing whether the block was successfully
+        executed without exceptions.
         """
         try:
             block_fxn()
@@ -477,15 +492,6 @@ class TestCase(object):
     def tearDown(self): pass
     def classTearDown(self): pass
     def runTest(self): pass
-
-    def is_fixture_method(self, method, fixture_type=None):
-        # _fixture_id indicates this method was tagged by us as a fixture,
-        # and the MethodType check ensures we don't tag turtles (who are all types)
-        if hasattr(method, '_fixture_type') and isinstance(method, types.FunctionType):
-            if fixture_type:
-                return True if (getattr(method, '_fixture_type') == fixture_type) else False
-            else:
-                return True
 
 
 class TestifiedUnitTest(TestCase, unittest.TestCase):
@@ -585,7 +591,11 @@ def __fixture_decorator_factory(fixture_type):
     parent class execute setups/teardowns, respectively.
     """
 
-    def fixture_decorator(function):
+    def fixture_decorator(callable_):
+        # Decorators act on *functions*, so we need to take care when dynamically
+        # decorating class attributes (which are (un)bound methods).
+        function = inspection.get_function(callable_)
+
         # record the fixture type and id for this function
         function._fixture_type = fixture_type
 
