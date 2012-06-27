@@ -19,6 +19,8 @@ import datetime
 import time
 import traceback
 
+from testify.utils import inspection
+
 #If IPython is available, use it for fancy color traceback formatting
 try:
     try:
@@ -130,6 +132,6 @@ class TestResult(object):
                 'class' : self.test_method.im_class.__name__,
                 'name' : self.test_method.__name__,
                 'full_name' : '%s %s.%s' % (self.test_method.im_class.__module__, self.test_method.im_class.__name__, self.test_method.__name__),
-                'fixture_type' : None if not self.test_method.im_self.is_fixture_method(self.test_method) else self.test_method._fixture_type,
+                'fixture_type' : None if not inspection.is_fixture_method(self.test_method) else self.test_method._fixture_type,
             }
         }
