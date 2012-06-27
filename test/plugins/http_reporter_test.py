@@ -1,4 +1,3 @@
-import json
 import threading
 import tornado.ioloop
 import tornado.httpserver
@@ -8,6 +7,13 @@ import Queue
 from testify import assert_equal, setup_teardown, TestCase
 from testify.test_runner import TestRunner
 from testify.plugins.http_reporter import HTTPReporter
+
+try:
+    import simplejson as json
+    _hush_pyflakes = [json]
+    del _hush_pyflakes
+except ImportError:
+    import json
 
 
 class DummyTestCase(TestCase):

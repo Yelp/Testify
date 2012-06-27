@@ -210,9 +210,10 @@ class TestCase(object):
         # attributes, so dir() isn't an option; this traverses __bases__/__dict__
         # correctly for us.
         for classified_attr in inspect.classify_class_attrs(type(self)):
-            attr_name = classified_attr.name
-            unbound_method = classified_attr.object
-            defining_class = classified_attr.defining_class
+            # have to index here for Python 2.5 compatibility
+            attr_name = classified_attr[0]
+            unbound_method = classified_attr[3]
+            defining_class = classified_attr[2]
 
             # skip everything that's not a function/method
             if not inspect.isroutine(unbound_method):

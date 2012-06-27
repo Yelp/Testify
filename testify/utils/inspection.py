@@ -38,7 +38,7 @@ def callable_setattr(callable_, attr_name, attr_value):
 def get_function(callable_):
     """If given a method, returns its function object; otherwise a no-op."""
     if isinstance(callable_, types.MethodType):
-        return callable_.__func__
+        return callable_.im_func
     return callable_
 
 def is_fixture_method(callable_):
