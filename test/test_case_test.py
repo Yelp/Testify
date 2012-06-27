@@ -290,6 +290,15 @@ class TestFixtureMixinsGetRun(TestCase, FixtureMixin):
         assert self.foo_ran
 
 
+class RedefinedFixtureWithNoDecoratorTest(TestCase, FixtureMixin):
+    def set_attr(self):
+        pass
+
+    def test_foo(self):
+        # set_attr shouldn't have run because it's no longer decorated
+        assert not hasattr(self, 'foo')
+
+
 class TestSubclassedCasesWithFeatureMixinsGetRun(TestFixtureMixinsGetRun):
     pass
 
