@@ -220,11 +220,11 @@ class TestCase(object):
                 method = fixture_decorator(method)
 
             # collect all of our fixtures in appropriate buckets
-            if self.is_fixture_method(method):
+            if self.is_fixture_method(getattr(method, '__func__', None)):
                 # where in our MRO this fixture was defined
-                method._defining_class_depth = reverse_mro_list.index(defining_class)
+                method.__func__._defining_class_depth = reverse_mro_list.index(defining_class)
                 # we grabbed this from the class and need to bind it to us
-                instance_method = instancemethod(method, self)
+                instance_method = instancemethod(method.__func__, self)
                 self._fixture_methods[method._fixture_type].append(instance_method)
 
         # arrange our fixture buckets appropriately
@@ -586,6 +586,9 @@ def __fixture_decorator_factory(fixture_type):
     """
 
     def fixture_decorator(function):
+        if inspect.ismethod(function):
+            function = function.__func__
+
         # record the fixture type and id for this function
         function._fixture_type = fixture_type
 
