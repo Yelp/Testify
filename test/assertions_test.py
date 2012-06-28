@@ -164,7 +164,6 @@ class AssertDictSubsetTestCase(TestCase):
         try:
             assert_dict_subset(subset, superset)
         except AssertionError, e:
-            print e
             assert_equal(expected, e.args[0])
         else:
             assert_not_reached('AssertionError should have been raised')
