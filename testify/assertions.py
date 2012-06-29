@@ -345,8 +345,8 @@ def assert_all_match_regex(pattern, values, msg="expected %(value)r to match %(p
 
 
 def assert_match_regex(pattern, value, *args, **kwargs):
-	"""Assert that a single value matches a regex pattern."""
-	assert_all_match_regex(pattern, [value], *args, **kwargs)
+    """Assert that a single value matches a regex pattern."""
+    assert_all_match_regex(pattern, [value], *args, **kwargs)
 
 
 def assert_any_match_regex(pattern, values, msg="expected at least one %(values)r to match %(pattern)r"):
@@ -420,7 +420,7 @@ def assert_dict_subset(left, right, msg="expected [subset has:%(extra_left)r, su
         return
 
     extra_left = difference_dict
-    small_right = dict((k, right[k]) for k in right if k not in left.keys())
+    small_right = dict((k, right[k]) for k in right if k in left.keys())
     extra_right = _dict_subtract(small_right, left)
     raise AssertionError(msg % {
         'left': left,
@@ -431,8 +431,7 @@ def assert_dict_subset(left, right, msg="expected [subset has:%(extra_left)r, su
 
 
 def assert_subset(left, right, msg="expected %(set_left)r <= %(set_right)r [left has:%(extra)r]"):
-    """Assert that the left set is a subset of the right set.
-    """
+    """Assert that the left set is a subset of the right set."""
     set_left = set(left)
     set_right = set(right)
     if not (set_left <= set_right):
