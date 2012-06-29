@@ -158,8 +158,8 @@ class AssertDictSubsetTestCase(TestCase):
 
     def test_message_on_fail(self):
         superset = {'one': 1, 'two': 2, 'three': 3}
-        subset = {'one': 2}
-        expected = 'expected [subset has:{\'one\': 2}, superset has:{\'one\': 1}]'
+        subset = {'one': 2, 'two':2}
+        expected = "expected [subset has:{'one': 2}, superset has:{'one': 1}]"
 
         try:
             assert_dict_subset(subset, superset)
