@@ -4,6 +4,7 @@ from testify import TestCase
 from testify import assertions
 from testify import run
 from testify import assert_between
+from testify import assert_dict_subset
 from testify import assert_equal
 from testify import assert_not_reached
 
@@ -29,17 +30,17 @@ class DiffMessageTestCase(TestCase):
 
 class AssertBetweenTestCase(TestCase):
 
-	def test_argument_order(self):
-		try:
-			assert_between(1, 2, 3)
-		except AssertionError:
-			assert False, "Expected assert_between(1, 2, 3) to pass."
+    def test_argument_order(self):
+        try:
+            assert_between(1, 2, 3)
+        except AssertionError:
+            assert False, "Expected assert_between(1, 2, 3) to pass."
 
-		try:
-			assert_between(2, 1, 3)
-			assert False, "Expected assert_between(2, 1, 3) to fail."
-		except AssertionError:
-			pass
+        try:
+            assert_between(2, 1, 3)
+            assert False, "Expected assert_between(2, 1, 3) to fail."
+        except AssertionError:
+            pass
 
 
 class AssertEqualTestCase(TestCase):
@@ -134,6 +135,38 @@ class AssertRaisesAsCallableTestCase(TestCase):
             raise GoodArguments
         assertions.assert_raises(GoodArguments, check_arguments, arg1, arg2,
                                  kwarg=kwarg)
+
+class AssertDictSubsetTestCase(TestCase):
+
+    def test_passes_with_subset(self):
+        superset = {'one': 1, 'two': 2, 'three': 3}
+        subset = {'one': 1}
+
+        assert_dict_subset(subset, superset)
+
+    def test_fails_with_wrong_key(self):
+        superset = {'one': 1, 'two': 2, 'three': 3}
+        subset = {'four': 4}
+
+        assertions.assert_raises(AssertionError, assert_dict_subset, subset, superset)
+
+    def test_fails_with_wrong_value(self):
+        superset = {'one': 1, 'two': 2, 'three': 3}
+        subset = {'one': 2}
+
+        assertions.assert_raises(AssertionError, assert_dict_subset, superset, subset)
+
+    def test_message_on_fail(self):
+        superset = {'one': 1, 'two': 2, 'three': 3}
+        subset = {'one': 2, 'two':2}
+        expected = "expected [subset has:{'one': 2}, superset has:{'one': 1}]"
+
+        try:
+            assert_dict_subset(subset, superset)
+        except AssertionError, e:
+            assert_equal(expected, e.args[0])
+        else:
+            assert_not_reached('AssertionError should have been raised')
 
 
 if __name__ == '__main__':
