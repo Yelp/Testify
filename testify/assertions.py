@@ -143,6 +143,26 @@ def assert_raises(*args, **kwargs):
         return _assert_raises(*args, **kwargs)
 
 
+def assert_raises_and_contains(expected_exception_class, strings, callable_obj, *args, **kwargs):
+    """Assert an exception is raised by passing in a callable and its
+    arguments and that the string representation of the exception
+    contains the case-insensetive list of passed in strings.
+
+	Args
+		strings -- can be a string or an iterable of strings
+	"""
+    try:
+        callable_obj(*args, **kwargs)
+    except expected_exception_class, e:
+        message = str(e).lower()
+        if isinstance(strings, basestring):
+            strings = [strings]
+        for string in strings:
+            assert_in(string.lower(), message)
+    else:
+        assert_not_reached("No exception was raised (expected %s)" % expected_exception_class)
+
+
 @contextlib.contextmanager
 def _assert_raises_context_manager(exception_class):
     try:
