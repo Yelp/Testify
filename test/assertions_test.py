@@ -133,8 +133,7 @@ class AssertRaisesAsCallableTestCase(TestCase):
             assert_equal((arg1, arg2), args)
             assert_equal({'kwarg': kwarg}, kwargs)
             raise GoodArguments
-        assertions.assert_raises(GoodArguments, check_arguments, arg1, arg2,
-                                 kwarg=kwarg)
+        assertions.assert_raises(GoodArguments, check_arguments, arg1, arg2, kwarg=kwarg)
 
 
 class AssertRaisesAndContainsTestCase(TestCase):
