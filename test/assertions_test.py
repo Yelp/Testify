@@ -165,8 +165,7 @@ class AssertRaisesAndContainsTestCase(TestCase):
             assert_equal((arg1, arg2), args)
             assert_equal({'kwarg': kwarg}, kwargs)
             raise GoodArguments('abc')
-        assertions.assert_raises_and_contains(GoodArguments, 'abc', check_arguments, arg1, arg2,
-                                 kwarg=kwarg)
+        assertions.assert_raises_and_contains(GoodArguments, 'abc', check_arguments, arg1, arg2, kwarg=kwarg)
 
     def test_fails_when_exception_does_not_contain_string(self):
         def raises_value_error():
