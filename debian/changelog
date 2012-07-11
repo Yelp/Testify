@@ -1,3 +1,10 @@
+python-testify (0.3.1) unstable; urgency=low
+
+  * Fix assert_dict_subset failure message.
+  * Add assert_raises_and_contains.
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 10 Jul 2012 15:31:32 -0700
+
 python-testify (0.3.0p1) unstable; urgency=low
 
   * Fix compatability issue with certain versions of Python
