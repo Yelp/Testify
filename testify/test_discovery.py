@@ -15,7 +15,9 @@
 
 import inspect
 import os
+import sys
 import time
+import traceback
 import types
 import unittest
 from test_case import MetaTestCase, TestifiedUnitTest
@@ -76,6 +78,11 @@ def discover(what):
                         test_module = __import__('.'.join(locator.split('.')[:-1]))
                     except (ValueError, ImportError):
                         raise DiscoveryError("Failed to find module %s" % locator)
+            except Exception:
+                raise DiscoveryError("Got unknown error when trying to import %s:\n\n%s" % (
+                    locator,
+                    ''.join(traceback.format_exception(*sys.exc_info()))
+                ))
 
             for part in locator.split('.')[1:]:
                 try:
