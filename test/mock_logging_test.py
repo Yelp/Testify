@@ -12,6 +12,9 @@ from testify.utils.mock_logging import MockHandler, mock_logging
 
 
 class MockHandlerTest(TestCase):
+    """Test and verify behaviour of MockHandler.
+    """
+
     @class_setup
     def setup_logger(self):
         self.log = logging.getLogger('mocklogger_test')
@@ -48,6 +51,8 @@ class MockHandlerTest(TestCase):
 
 
 class MockLoggingTest(TestCase):
+    """Test and verify behaviour of mock_logging context manager.
+    """
     def test_mock_logging(self):
         with mock_logging() as mock_handler:
             logging.info("bananas")

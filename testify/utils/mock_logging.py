@@ -9,54 +9,6 @@ from testify import assert_any_match_regex
 from testify import assert_all_not_match_regex
 
 
-_mock_loggers = 0
-
-
-class MockLogger(object):
-    def __init__(self):
-        global _mock_loggers
-        self.log = logging.getLogger("mock_logger%d" % _mock_loggers)
-        self.log.propagate = 0
-        _mock_loggers += 1
-        self.handler = MockHandler()
-        self.log.handlers = [self.handler]
-        self._fake_handlers = []
-
-    def get(self, level):
-        return self.handler.get(level)
-
-    def clear(self):
-        return self.handler.clear()
-
-    def __getattr__(self, key):
-        return getattr(self.log, key)
-
-    def addHandler(self, handler):
-        self._fake_handlers.append(handler)
-
-    @property
-    def handlers(self):
-        return self._fake_handlers
-
-    @contextmanager
-    def assert_logs(self, *args, **kwargs):
-        with self.handler.assert_logs(*args, **kwargs):
-            yield
-
-    @contextmanager
-    def assert_does_not_log(self, *args, **kwargs):
-        with self.handler.assert_does_not_log(*args, **kwargs):
-            yield
-
-    def assert_logged(self, levels):
-        """Assert that this Logger logged something."""
-        return self.handler.assert_logged(levels)
-
-    def assert_did_not_log(self, levels):
-        """Assert that this Logger logged something."""
-        return self.handler.assert_did_not_log(levels)
-
-
 class MockHandler(logging.Handler):
     def __init__(self, *args, **kwargs):
         # logging.Handler is old-style in 2.6
@@ -65,11 +17,11 @@ class MockHandler(logging.Handler):
 
     @contextmanager
     def assert_logs(self, levels=None, log_regex=".*"):
-        """Asserts that the given block logs something.
+        """Asserts that the given block will log some messages.
 
         Args:
-        levels -- log level to look for. By default, look at all levels
-        log_regex -- regex matching a particular log message to look for. By default,
+          levels -- log level to look for. By default, look at all levels
+          log_regex -- regex matching a particular log message to look for. By default,
             any message will match.
         """
         self.clear()
@@ -77,6 +29,13 @@ class MockHandler(logging.Handler):
         self.assert_logged(levels, log_regex)
 
     def assert_logged(self, levels=None, log_regex=".*"):
+        """Asserts that the mock hander did log some messages.
+
+        Args:
+          levels -- log level to look for. By default, look at all levels
+          log_regex -- regex matching a particular log message to look for. By default,
+            any message will match.
+        """
         if levels:
             for level in levels:
                 assert level in self.buf, 'expected something to be logged in level %r' % level
@@ -87,11 +46,11 @@ class MockHandler(logging.Handler):
 
     @contextmanager
     def assert_does_not_log(self, levels=None, log_regex=".*"):
-        """Asserts that the given block does not log something.
+        """Asserts that the given block will not log some messages.
 
         Args:
-        levels -- log level to look for. By default, look at all levels
-        log_regex -- regex matching a particular log message to look for. By default,
+          levels -- log level to look for. By default, look at all levels
+          log_regex -- regex matching a particular log message to look for. By default,
             any message will match.
         """
         self.clear()
@@ -99,6 +58,13 @@ class MockHandler(logging.Handler):
         self.assert_did_not_log(levels, log_regex)
 
     def assert_did_not_log(self, levels=None, log_regex=".*"):
+        """Asserts that the mock handler did not log some messages.
+
+        Args:
+          levels -- log level to look for. By default, look at all levels
+          log_regex -- regex matching a particular log message to look for. By default,
+            any message will match.
+        """
         if self.buf is None:
             return
         if levels:
@@ -109,12 +75,20 @@ class MockHandler(logging.Handler):
             assert_all_not_match_regex(log_regex, itertools.chain.from_iterable(self.buf.values()))
 
     def clear(self):
+        """Clear all logged messages.
+        """
         self.buf.clear()
 
     def get(self, level):
+        """Get all messages logged for a certain level.
+        Returns a list of messages for the given level.
+        """
         return self.buf.get(level)
 
     def emit(self, record):
+        """Handles emit calls from logging, stores the logged record in an internal list that is
+        accessible via MockHandler.get.
+        """
         msg = self.format(record)
         self.buf.setdefault(record.levelno, [])
         self.buf[record.levelno].append(msg)
@@ -129,6 +103,18 @@ def mock_logging(logger_names=[]):
     Not threadsafe.
 
     Yields a MockHandler object.
+
+    Example;
+
+        with mock_logging() as mock_handler:
+            logging.info("event")
+            assert_equal(["event"], mock_handler.get(logging.INFO))
+
+
+        with mock_logging(['subsystem']) as mock_handler:
+            logging.getLogger('subsystem').info("event")
+            assert_equal(["event"], mock_handler.get(logging.INFO))
+
     """
     if logger_names:
         queue = [logging.getLogger(logger_name) for logger_name in logger_names]
