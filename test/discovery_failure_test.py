@@ -11,7 +11,7 @@ from testify.test_logger import _log
 class BrokenImportTestCase(TestCase):
     __test__ = False
 
-    def create_broken_import_file(self):
+    def create_broken_import_file(self, contents='import non_existent_module'):
         """Write out a test file containing a bad import. This way, a broken
         test isn't lying around to be discovered while running other tests.
         Write the file in the directory containing this test file; otherwise,
@@ -23,7 +23,7 @@ class BrokenImportTestCase(TestCase):
             dir=here,
         )
         with open(self.broken_import_file_path, 'w') as broken_import_file:
-            broken_import_file.write('import non_existent_module')
+            broken_import_file.write(contents)
         self.broken_import_module = 'test.%s' % os.path.splitext(os.path.basename(self.broken_import_file_path))[0]
 
     def delete_broken_import_file(self):
@@ -59,6 +59,22 @@ class DiscoveryFailureTestCase(BrokenImportTestCase):
         else:
             assert False, 'Expected DiscoveryError.'
 
+
+class DiscoveryFailureUnknownErrorTestCase(BrokenImportTestCase):
+    @class_setup
+    def setup_import_file(self):
+        self.create_broken_import_file(contents='raise AttributeError("aaaaa!")')
+
+    def test_discover_test_with_unknown_import_error(self):
+        """Insure that DiscoveryError is raised when a test which raises an unusual exception upon import is discovered."""
+
+        try:
+            discovered_tests = test_discovery.discover(self.broken_import_module)
+            discovered_tests.next()
+        except DiscoveryError, exc:
+            assert_in('Got unknown error when trying to import', str(exc))
+        else:
+            assert False, 'Expected DiscoveryError.'
 
 if __name__ == '__main__':
     run()
