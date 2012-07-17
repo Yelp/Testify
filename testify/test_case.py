@@ -102,8 +102,6 @@ class MetaTestCase(type):
         else:
             return hash(MetaTestCase._cmp_str(self)) % bucket_count
 
-def discovered_test_cases():
-    return [test_case_class for test_case_class in MetaTestCase._test_accumulator if test_case_class != TestCase]
 
 class TestCase(object):
     """The TestCase class defines test methods and fixture methods; it is the meat and potatoes of testing.
