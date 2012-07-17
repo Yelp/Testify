@@ -155,7 +155,16 @@ def discover(what):
 
     discover_set = set()
     time_start = time.time()
+
     for discovery in discover_inner(what):
         yield discovery
+
     time_end = time.time()
     _log.debug("discover: discovered %d test cases in %s" % (len(discover_set), time_end - time_start))
+
+def import_test_class(module_path, class_name):
+    for klass in discover(module_path):
+        if klass.__name__ == class_name:
+            return klass
+
+    raise DiscoveryError(class_name)

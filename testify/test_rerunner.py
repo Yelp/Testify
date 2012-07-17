@@ -1,7 +1,7 @@
 from itertools import groupby
-import logging
 import sys
 
+import test_discovery
 from test_runner import TestRunner
 
 class TestRerunner(TestRunner):
@@ -19,14 +19,8 @@ class TestRerunner(TestRunner):
                 # Skip blank lines
                 continue
             methods = [line.rpartition('.')[2].strip() for line in lines]
+
             module_path, _, class_name = class_path.partition(' ')
 
-            module = __import__(module_path)
-            for part in module_path.split('.')[1:]:
-                try:
-                    module = getattr(module, part)
-                except AttributeError:
-                    logging.error("discovery(%s) failed: module %s has no attribute %r" % (module_path, module, part))
-
-            klass = getattr(module, class_name)
+            klass = test_discovery.import_test_class(module_path, class_name)
             yield klass(name_overrides=methods)

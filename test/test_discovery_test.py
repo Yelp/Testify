@@ -1,5 +1,6 @@
+
 from functools import wraps
-from testify import TestCase, run, test_discovery, assert_length
+from testify import TestCase, run, test_discovery, assert_length, assert_raises
 from os.path import dirname, join, abspath
 from os import getcwd, chdir
 
@@ -54,6 +55,25 @@ class TestDiscoverIgnoreImportedThings(DiscoveryTestCase):
 
         assert_length(discovered_imported, 0)
         assert_length(discovered_actually_defined_in_module, 1)
+
+
+class ImportTestClassCase(DiscoveryTestCase):
+
+    def discover(self, module_path, class_name):
+        return test_discovery.import_test_class(module_path, class_name)
+
+    @relative
+    def test_discover_testify_case(self):
+        assert self.discover('test_suite_subdir.define_testcase', 'DummyTestCase')
+
+    @relative
+    def test_discover_unittest_case(self):
+        assert self.discover('test_suite_subdir.define_unittestcase', 'TestifiedDummyUnitTestCase')
+
+    @relative
+    def test_discover_bad_case(self):
+        assert_raises(test_discovery.DiscoveryError, self.discover, 'bad.subdir', 'DummyTestCase')
+        assert_raises(test_discovery.DiscoveryError, self.discover, 'test_suite_subdir.define_testcase', 'IGNORE ME')
 
 
 if __name__ == '__main__':
