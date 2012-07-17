@@ -2,8 +2,6 @@
 Client-server setup for evenly distributing tests across multiple processes.
 See the test_runner_server module.
 """
-
-from test_runner import TestRunner
 import urllib2
 try:
     import simplejson as json
@@ -13,6 +11,10 @@ except ImportError:
     import json
 import time
 import logging
+
+import test_discovery
+from test_runner import TestRunner
+
 
 class TestRunnerClient(TestRunner):
     def __init__(self, *args, **kwargs):
@@ -38,14 +40,7 @@ class TestRunnerClient(TestRunner):
             if class_path and methods:
                 module_path, _, class_name = class_path.partition(' ')
 
-                module = __import__(module_path)
-                for part in module_path.split('.')[1:]:
-                    try:
-                        module = getattr(module, part)
-                    except AttributeError:
-                        logging.error("discovery(%s) failed: module %s has no attribute %r" % (module_path, module, part))
-
-                klass = getattr(module, class_name)
+                klass = test_discovery.import_test_class(module_path, class_name)
                 yield klass(name_overrides=methods)
 
     def get_next_tests(self, retry_interval=2, retry_limit=0):
