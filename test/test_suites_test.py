@@ -1,6 +1,11 @@
-from testify import TestCase, run, assert_equal, MetaTestCase, suite
+from testify import TestCase, assert_equal, suite
+from testify.test_runner import TestRunner
+
+_suites = ['module-level']
+
 
 class TestSuitesTest(TestCase):
+
     def test_subclass_suites_doesnt_affect_superclass_suites(self):
         """Check that setting _suites in a subclass only affects that subclass, not the superclass.
         Checking https://github.com/Yelp/Testify/issues/53"""
@@ -40,9 +45,40 @@ class TestSuitesTest(TestCase):
             def test_thing(self):
                 pass
 
-
         super_instance = SuperTestCase()
         sub_instance = SubTestCase()
 
         assert_equal(super_instance.test_thing._suites, set(['super']))
         assert_equal(sub_instance.test_thing._suites, set(['sub']))
+
+
+class ListSuitesTestCase(TestCase):
+    _suites = ['external-api']
+
+    def __init__(self, **kwargs):
+        super(ListSuitesTestCase, self).__init__(**kwargs)
+
+        # add a dynamic test to guard against
+        # https://github.com/Yelp/Testify/issues/85
+        from types import MethodType
+        test = MethodType(lambda self: True, self, type(self))
+        setattr(self, 'test_foo', test)
+
+    @suite('disabled', 'crazy', conditions=True)
+    def test_disabled(self): True
+
+    @suite('disabled', reason='blah')
+    def test_also_disabled(self): True
+
+    @suite('not-applied', conditions=False)
+    def test_not_disabled(self): True
+
+    def test_list_suites(self):
+        test_runner = TestRunner(type(self))
+        assert_equal(test_runner.list_suites(), {
+            'disabled': '2 tests',
+            'module-level': '5 tests',
+            'external-api': '5 tests',
+            'crazy': '1 tests',
+        })
+
