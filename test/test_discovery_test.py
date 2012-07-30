@@ -1,7 +1,15 @@
 from functools import wraps
-from testify import TestCase, run, test_discovery, assert_length
-from os.path import dirname, join, abspath
-from os import getcwd, chdir
+from os import chdir
+from os import getcwd
+from os.path import abspath
+from os.path import dirname
+from os.path import join
+
+from testify import assert_length
+from testify import run
+from testify import TestCase
+from testify import test_discovery
+
 
 HERE = dirname(abspath(__file__))
 
