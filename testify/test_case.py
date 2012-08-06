@@ -31,10 +31,10 @@ import sys
 import types
 import unittest
 
-from test_result import TestResult
-import deprecated_assertions
-from testify.utils import class_logger
-from testify.utils import inspection
+from . import deprecated_assertions
+from .test_result import TestResult
+from .utils import class_logger
+from .utils import inspection
 
 # just a useful list to have
 FIXTURE_TYPES = (
