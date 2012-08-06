@@ -24,6 +24,7 @@ __testify = 1
 
 from collections import defaultdict
 from contextlib import contextmanager
+import functools
 import inspect
 from new import instancemethod
 import sys
@@ -658,3 +659,13 @@ class let(object):
     def _reset_value(self):
         self._result = self._unsaved
 
+
+def let_before(func):
+    """Like let(), but instead of being evaluated lazily, the value is evaluated
+    before each test.
+    """
+    @setup
+    @functools.wraps(func)
+    def setup_variable(self):
+        setattr(self, func.func_name, func(self))
+    return setup_variable

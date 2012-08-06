@@ -6,6 +6,7 @@ from testify import class_setup
 from testify import class_setup_teardown
 from testify import class_teardown
 from testify import let
+from testify import let_before
 from testify import run
 from testify import setup
 from testify import setup_teardown
@@ -495,6 +496,7 @@ class LetTest(TestCase):
         assert_equal(self.counter.next(), 0)
         assert_equal(self.counter.next(), 1)
 
+
 class LetWithLambdaTest(TestCase):
 
     counter = let(lambda self: itertools.count(0))
@@ -503,6 +505,27 @@ class LetWithLambdaTest(TestCase):
         assert_equal(self.counter.next(), 0)
 
     def test_subsequent_calls_are_cached(self):
+        assert_equal(self.counter.next(), 0)
+        assert_equal(self.counter.next(), 1)
+
+
+class LetBeforeTest(TestCase):
+
+    _side_effect = False
+
+    @let_before
+    def counter(self):
+        self._side_effect = True
+        return itertools.count(0)
+
+    def test_is_evaluated_before_test_runs(self):
+        assert_equal(self._side_effect, True)
+
+    def test_all_calls_are_cached(self):
+        assert_equal(self.counter.next(), 0)
+        assert_equal(self.counter.next(), 1)
+
+    def test_value_is_reset_between_tests(self):
         assert_equal(self.counter.next(), 0)
         assert_equal(self.counter.next(), 1)
 
