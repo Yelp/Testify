@@ -35,7 +35,6 @@ import deprecated_assertions
 from testify.utils import class_logger
 from testify.utils import inspection
 
-# just a useful list to have
 FIXTURE_TYPES = (
     'class_setup',
     'setup',
@@ -45,10 +44,10 @@ FIXTURE_TYPES = (
     'class_setup_teardown',
 )
 
-# in general, inherited fixtures are applied first unless they are of these
-# types. these fixtures are applied (in order of their definitions) starting
-# with those defined on the current class, and and then those defined on
-# inherited classes (following MRO).
+# In general, inherited fixtures are applied first unless they are of these
+# types. These fixtures are applied (in order of their definitions) starting
+# with those defined on the current class, and then those defined on inherited
+# classes (following MRO).
 REVERSED_FIXTURE_TYPES = (
     'teardown',
     'class_teardown',
@@ -72,7 +71,7 @@ class TwistedFailureError(Exception):
 
 class MetaTestCase(type):
     """This base metaclass is used to collect each TestCase's decorated fixture methods at
-    runtime.  It is implemented as a metaclass so we can determine the order in which
+    runtime. It is implemented as a metaclass so we can determine the order in which
     fixture methods are defined.
     """
     __test__ = False
@@ -101,6 +100,7 @@ class MetaTestCase(type):
             return hash(MetaTestCase._cmp_str(self) + bucket_salt) % bucket_count
         else:
             return hash(MetaTestCase._cmp_str(self)) % bucket_count
+
 
 
 class TestCase(object):
@@ -290,7 +290,6 @@ class TestCase(object):
 
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance"""
-
         self.__run_class_setup_fixtures()
         self.__enter_context_managers(self.class_setup_teardown_fixtures, self.__run_test_methods)
         self.__run_class_teardown_fixtures()
@@ -448,8 +447,8 @@ class TestCase(object):
         self.__callbacks[event].append(callback)
 
     def __execute_block_recording_exceptions(self, block_fxn, result, is_class_level=False):
-        """Excerpted code for executing a block of code that might except and
-        cause us to update a result object.
+        """Excerpted code for executing a block of code that might raise an
+        exception, requiring us to update a result object.
 
         Return value is a boolean describing whether the block was successfully
         executed without exceptions.
@@ -633,6 +632,7 @@ class_teardown = __fixture_decorator_factory('class_teardown')
 setup_teardown = __fixture_decorator_factory('setup_teardown')
 class_setup_teardown = __fixture_decorator_factory('class_setup_teardown')
 
+
 class let(object):
     """Decorator that creates a lazy-evaluated helper property. The value is
     cached across multiple calls in the same test, but not across multiple
@@ -665,3 +665,4 @@ class let(object):
     def _reset_value(self):
         self._result = self._unsaved
 
+# vim: set ts=4 sts=4 sw=4 et:
