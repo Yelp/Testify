@@ -60,14 +60,16 @@ class TestResult(object):
     def end_in_failure(self, exception_info):
         if not self.complete:
             self._complete()
-            self.failure = True
-            self.exception_info = exception_info
+        self.success = False
+        self.failure = True
+        self.exception_info = exception_info
 
     def end_in_error(self, exception_info):
         if not self.complete:
             self._complete()
-            self.error = True
-            self.exception_info = exception_info
+        self.success = False
+        self.error = True
+        self.exception_info = exception_info
 
     def end_in_success(self):
         if not self.complete:
@@ -113,7 +115,7 @@ class TestResult(object):
         return tb_formatter(exctype, value, tb)
 
     def to_dict(self):
-        return {
+        return_me = {
             'previous_run' : self.previous_run,
             'start_time' : time.mktime(self.start_time.timetuple()) if self.start_time else None,
             'end_time' : time.mktime(self.end_time.timetuple()) if self.end_time else None,
@@ -127,11 +129,17 @@ class TestResult(object):
             'exception_info' : self.format_exception_info(),
             'exception_info_pretty' : self.format_exception_info(pretty=True),
             'runner_id' : self.runner_id,
-            'method' : {
-                'module' : self.test_method.im_class.__module__,
-                'class' : self.test_method.im_class.__name__,
-                'name' : self.test_method.__name__,
-                'full_name' : '%s %s.%s' % (self.test_method.im_class.__module__, self.test_method.im_class.__name__, self.test_method.__name__),
-                'fixture_type' : None if not inspection.is_fixture_method(self.test_method) else self.test_method._fixture_type,
-            }
         }
+        if self.test_method.im_class:
+            return_me.update({
+                'method' : {
+                    'module' : self.test_method.im_class.__module__,
+                    'class' : self.test_method.im_class.__name__,
+                    'name' : self.test_method.__name__,
+                    'full_name' : '%s %s.%s' % (self.test_method.im_class.__module__, self.test_method.im_class.__name__, self.test_method.__name__),
+                    'fixture_type' : None if not inspection.is_fixture_method(self.test_method) else self.test_method._fixture_type,
+                }
+            })
+        return return_me
+
+# vim: set ts=4 sts=4 sw=4 et:

@@ -15,7 +15,7 @@
 
 """This module contains the TestCase class and other helper code, like decorators for test methods."""
 
-### TODO: finish doing the retry stuff for the inner clauses
+# TODO: finish doing the retry stuff for the inner clauses
 
 from __future__ import with_statement
 
@@ -327,6 +327,24 @@ class TestCase(object):
 
                 if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
                     result.end_in_success()
+                else:
+                    if self.__class_level_failure:
+                        result.end_in_failure(self.__class_level_failure)
+                    elif self.__class_level_error:
+                        result.end_in_error(self.__class_level_error)
+                    else:
+                        print "### couldn't find a class-level failure or error. wtf?"
+                    import ipdb; ipdb.set_trace()
+                    for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_METHOD]:
+                        callback(result.to_dict())
+###                    for test_method in self.runnable_test_methods():
+###                        ###import ipdb; ipdb.set_trace()
+###                        if self.__class_level_failure:
+###                            result.end_in_failure(self.__class_level_failure)
+###                        elif self.__class_level_error:
+###                            result.end_in_error(self.__class_level_error)
+###                        else:
+###                            print "### couldn't find a class-level failure or error. wtf?"
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_interruption(sys.exc_info())
                 raise
@@ -377,7 +395,6 @@ class TestCase(object):
         for test_method in self.runnable_test_methods():
 
             result = TestResult(test_method)
-            test_method.im_self.test_result = result
 
             try:
                 self._method_level = True # Flag that we're currently running method-level stuff (rather than class-level)
