@@ -371,7 +371,7 @@ class TestCase(object):
         phase, no method-level fixtures or test methods will be run, and we'll eventually
         skip all the way to the class_teardown phase.   If a given test method is marked
         as disabled, neither it nor its fixtures will be run.  If there is an exception
-        during during the setup phase, the test method will not be run and execution
+        during the setup phase, the test method will not be run and execution
         will continue with the teardown phase.
         """
         for test_method in self.runnable_test_methods():
@@ -382,7 +382,7 @@ class TestCase(object):
             try:
                 self._method_level = True # Flag that we're currently running method-level stuff (rather than class-level)
 
-                # run "on-run" callbacks. eg/ print out the test method name
+                # run "on-run" callbacks. e.g. print out the test method name
                 for callback in self.__callbacks[self.EVENT_ON_RUN_TEST_METHOD]:
                     callback(result.to_dict())
                 result.start()
