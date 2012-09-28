@@ -641,6 +641,9 @@ class let(object):
     def __get__(self, test_case, cls):
         if test_case is None:
             return self
+        if not hasattr(self._func, "im_self") or self._func.im_self is None:
+            # Should not try to execute unbounded method
+            return self
         if self._result is self._unsaved:
             self._save_result(self._func(test_case))
             self._register_reset_after_test_completion(test_case)
