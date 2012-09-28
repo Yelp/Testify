@@ -62,7 +62,19 @@ class TestLoggerBase(test_reporter.TestReporter):
 
             self.results.append(result)
 
+    def class_teardown_complete(self, result):
+        ###import ipdb; ipdb.set_trace()
+        if not result['success']:
+            for previous_result in self.results:
+                previous_result['exception_info'] = result['exception_info']
+                previous_result['exception_info_pretty'] = result['exception_info_pretty']
+                previous_result['error'] = True
+                previous_result['success'] = False
+
+            self.report_teardown_failure(result)
+
     def report(self):
+        ###import ipdb; ipdb.set_trace()
         # All the TestCases have been run - now collate results by status and log them
         results_by_status = collections.defaultdict(list)
         for result in self.results:
@@ -88,6 +100,9 @@ class TestLoggerBase(test_reporter.TestReporter):
         pass
 
     def report_test_result(self, result):
+        pass
+
+    def report_teardown_failure(self, result):
         pass
 
     def report_failures(self, failed_results):
@@ -198,6 +213,13 @@ class TextTestLogger(TestLoggerBase):
                     self.writeln("%s in %s" % (self._colorize(status_description, color), result['normalized_run_time']))
                 else:
                     self.writeln(self._colorize(status_description, color))
+
+    def report_teardown_failure(self, result):
+        self.writeln(
+            "class_teardown failed. Marking all test methods from TestCase %s as FAILED (ignore results for these methods reported above)."
+            % result['method']['class']
+        )
+        self.writeln(result['exception_info_pretty'])
 
     def heading(self, *messages):
         self.writeln("")

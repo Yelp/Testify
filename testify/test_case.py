@@ -234,7 +234,7 @@ class TestCase(object):
                 )
 
                 # we grabbed this from the class and need to bind it to us
-                instance_method = instancemethod(unbound_method, self)
+                instance_method = instancemethod(unbound_method, self, self.__class__)
                 self._fixture_methods[instance_method._fixture_type].append(instance_method)
 
         # arrange our fixture buckets appropriately
@@ -331,17 +331,6 @@ class TestCase(object):
                         result.end_in_error(self.__class_level_error)
                     else:
                         print "### couldn't find a class-level failure or error. wtf?"
-                    import ipdb; ipdb.set_trace()
-                    for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_METHOD]:
-                        callback(result.to_dict())
-###                    for test_method in self.runnable_test_methods():
-###                        ###import ipdb; ipdb.set_trace()
-###                        if self.__class_level_failure:
-###                            result.end_in_failure(self.__class_level_failure)
-###                        elif self.__class_level_error:
-###                            result.end_in_error(self.__class_level_error)
-###                        else:
-###                            print "### couldn't find a class-level failure or error. wtf?"
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_interruption(sys.exc_info())
                 raise
