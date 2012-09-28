@@ -254,43 +254,43 @@ class FixtureMethodRegistrationOrderTest(TestCase):
         assert_equal(self.counter, 20)
 
 
-class FakeClassSetupTeardownException(Exception):
-    pass
+class ExceptionInClassFixtureTest(TestCase):
 
-
-### This can't stay here!!!
-class FakeClassSetupTestCase(TestCase):
-    @class_setup
-    def setup_raises_exception(self):
-        raise FakeClassSetupTeardownException
-
-    def test1(self):
-        print "i am test1"
-        pass
-    def test2(self):
-        print "i am test2"
+    class FakeClassFixtureException(Exception):
         pass
 
+    class FakeClassSetupTestCase(TestCase):
+        @class_setup
+        def setup_raises_exception(self):
+            raise ExceptionInClassFixtureTest.FakeClassFixtureException
 
-class FakeClassTeardownTestCase(TestCase):
-    @class_teardown
-    def teardown_raises_exception(self):
-        raise FakeClassSetupTeardownException
+        def test1(self):
+            print "i am test1"
+            pass
+        def test2(self):
+            print "i am test2"
+            pass
 
-    def test1(self):
-        print "i am test1"
+    class FakeClassTeardownTestCase(TestCase):
+        @class_teardown
+        def teardown_raises_exception(self):
+            print "### BOOM teardown ###"
+            raise ExceptionInClassFixtureTest.FakeClassFixtureException
+
+        def test1(self):
+            print "i am test1"
+            pass
+        def test2(self):
+            print "i am test2"
+            pass
+
+    def test_setup(self):
         pass
-    def test2(self):
-        print "i am test2"
-        pass
 
-
-###class ExceptionInClassTeardownTest(TestCase):
-###
-###    def test(self):
-###        runner = test_runner.TestRunner(FakeTestCase)
-###        runner_success = runner.run()
-###        assert_equal(runner_success, False)
+    def test_teardown(self):
+        runner = test_runner.TestRunner(ExceptionInClassFixtureTest.FakeClassTeardownTestCase)
+        runner_success = runner.run()
+        assert_equal(runner_success, False)
 
 
 class OverrideTest(TestCase):
@@ -550,7 +550,6 @@ class LetWithSubclassTest(TestCase):
     pass
 
 
-
 class CallbacksGetCalledTest(TestCase):
     def test_class_fixtures_get_reported(self):
         """Make a test case, register a bunch of callbacks for class fixtures on it, and make sure the callbacks are all run in the right order."""
@@ -608,3 +607,5 @@ class CallbacksGetCalledTest(TestCase):
 
 if __name__ == '__main__':
     run()
+
+# vim: set ts=4 sts=4 sw=4 et:
