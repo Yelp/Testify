@@ -254,45 +254,6 @@ class FixtureMethodRegistrationOrderTest(TestCase):
         assert_equal(self.counter, 20)
 
 
-class ExceptionInClassFixtureTest(TestCase):
-
-    class FakeClassFixtureException(Exception):
-        pass
-
-    class FakeClassSetupTestCase(TestCase):
-        @class_setup
-        def setup_raises_exception(self):
-            raise ExceptionInClassFixtureTest.FakeClassFixtureException
-
-        def test1(self):
-            print "i am test1"
-            pass
-        def test2(self):
-            print "i am test2"
-            pass
-
-    class FakeClassTeardownTestCase(TestCase):
-        @class_teardown
-        def teardown_raises_exception(self):
-            print "### BOOM teardown ###"
-            raise ExceptionInClassFixtureTest.FakeClassFixtureException
-
-        def test1(self):
-            print "i am test1"
-            pass
-        def test2(self):
-            print "i am test2"
-            pass
-
-    def test_setup(self):
-        pass
-
-    def test_teardown(self):
-        runner = test_runner.TestRunner(ExceptionInClassFixtureTest.FakeClassTeardownTestCase)
-        runner_success = runner.run()
-        assert_equal(runner_success, False)
-
-
 class OverrideTest(TestCase):
     def test_method_1(self):
         pass

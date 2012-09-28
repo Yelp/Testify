@@ -63,8 +63,12 @@ class TestLoggerBase(test_reporter.TestReporter):
             self.results.append(result)
 
     def class_teardown_complete(self, result):
-        ###import ipdb; ipdb.set_trace()
         if not result['success']:
+            # class_teardown failed, so update the previously collected
+            # results to reflect the error.
+            ### THIS NEEDS TO augment exception_* rather than clobber it
+            ### because what if one of the test methods failed
+            ### _independently_ of the lights going out (I'm blind!).
             for previous_result in self.results:
                 previous_result['exception_info'] = result['exception_info']
                 previous_result['exception_info_pretty'] = result['exception_info_pretty']
@@ -74,7 +78,6 @@ class TestLoggerBase(test_reporter.TestReporter):
             self.report_teardown_failure(result)
 
     def report(self):
-        ###import ipdb; ipdb.set_trace()
         # All the TestCases have been run - now collate results by status and log them
         results_by_status = collections.defaultdict(list)
         for result in self.results:
@@ -216,8 +219,8 @@ class TextTestLogger(TestLoggerBase):
 
     def report_teardown_failure(self, result):
         self.writeln(
-            "class_teardown failed. Marking all test methods from TestCase %s as FAILED (ignore results for these methods reported above)."
-            % result['method']['class']
+            "class_teardown failed. Marking all test methods from TestCase %s as FAILED (ignore results for these methods reported above)." %
+            result['method']['class']
         )
         self.writeln(result['exception_info_pretty'])
 
