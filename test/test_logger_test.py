@@ -53,12 +53,10 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
             raise TextLoggerExceptionInClassFixtureTestCase.FakeClassFixtureException("class_setup kaboom")
 
         def test1(self):
-            print "i am test1"
-            pass
+            assert False, "test1 should not be reached; class_setup should have aborted."
 
         def test2(self):
-            print "i am test2"
-            pass
+            assert False, "test2 should not be reached; class_setup should have aborted."
 
     class FakeClassTeardownTestCase(TestCase):
         @class_teardown
@@ -71,10 +69,10 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         def test2(self):
             pass
 
-    def _run_tests(self):
+    def _run_tests(self, test_case):
         self.logger = TextTestLogger(self.options, stream=self.stream)
         runner = TestRunner(
-            TextLoggerExceptionInClassFixtureTestCase.FakeClassTeardownTestCase,
+            test_case,
             test_reporters=[self.logger],
         )
         runner_result = runner.run()
@@ -82,11 +80,34 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
 
 
     def test_setup(self):
-        ### Please also fill me out plz kthx.
-        pass
+        self._run_tests(TextLoggerExceptionInClassFixtureTestCase.FakeClassSetupTestCase)
+
+        # The fake test methods will assert if they are called. If we make it
+        # here, then they were not reached and that logic worked.
+
+        for result in self.logger.results:
+            assert_equal(
+                result['success'],
+                False,
+                'Unexpected success for %s' % result['method']['full_name'],
+            )
+            assert_equal(
+                result['error'],
+                True,
+                'Unexpected non-error for %s' % result['method']['full_name'],
+            )
+
+        logger_output = self.stream.getvalue()
+        assert_in('FAILED', logger_output)
+        ### might be useful to make these happen -- provide a clue that
+        ### class_setup was the culprit, analagous with class_teardown
+        ### workflow:
+        ###assert_in('class_setup failed', logger_output)
+        ###assert_in('from TestCase FakeClassTeardownTestCase as FAILED', logger_output)
+
 
     def test_teardown(self):
-        self._run_tests()
+        self._run_tests(TextLoggerExceptionInClassFixtureTestCase.FakeClassTeardownTestCase)
 
         for result in self.logger.results:
             assert_equal(
@@ -118,7 +139,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
             raise FakeTestException("I raise before class_teardown raises")
 
         with patch.object(TextLoggerExceptionInClassFixtureTestCase.FakeClassTeardownTestCase, 'test1', test1_raises):
-            self._run_tests()
+            self._run_tests(TextLoggerExceptionInClassFixtureTestCase.FakeClassTeardownTestCase)
 
             test1_raises_result = self.logger.results[0]
             test2_result = self.logger.results[1]
