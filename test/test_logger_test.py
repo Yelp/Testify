@@ -71,20 +71,24 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         def test2(self):
             pass
 
+    def _run_tests(self):
+        self.logger = TextTestLogger(self.options, stream=self.stream)
+        runner = TestRunner(
+            TextLoggerExceptionInClassFixtureTestCase.FakeClassTeardownTestCase,
+            test_reporters=[self.logger],
+        )
+        runner_result = runner.run()
+        assert_equal(runner_result, False)
+
+
     def test_setup(self):
         ### Please also fill me out plz kthx.
         pass
 
     def test_teardown(self):
-        logger = TextTestLogger(self.options, stream=self.stream)
-        runner = TestRunner(
-            TextLoggerExceptionInClassFixtureTestCase.FakeClassTeardownTestCase,
-            test_reporters=[logger],
-        )
-        runner_result = runner.run()
-        assert_equal(runner_result, False)
+        self._run_tests()
 
-        for result in logger.results:
+        for result in self.logger.results:
             assert_equal(
                 result['success'],
                 False,
@@ -113,17 +117,11 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         def test1_raises(self):
             raise FakeTestException("I raise before class_teardown raises")
 
-        logger = TextTestLogger(self.options, stream=self.stream)
         with patch.object(TextLoggerExceptionInClassFixtureTestCase.FakeClassTeardownTestCase, 'test1', test1_raises):
-            runner = TestRunner(
-                TextLoggerExceptionInClassFixtureTestCase.FakeClassTeardownTestCase,
-                test_reporters=[logger],
-            )
-            runner_result = runner.run()
-            assert_equal(runner_result, False)
+            self._run_tests()
 
-            test1_raises_result = logger.results[0]
-            test2_result = logger.results[1]
+            test1_raises_result = self.logger.results[0]
+            test2_result = self.logger.results[1]
             assert_equal(
                 len(test1_raises_result['exception_info']),
                 2 * len(test2_result['exception_info']),

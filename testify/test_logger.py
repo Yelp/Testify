@@ -85,6 +85,7 @@ class TestLoggerBase(test_reporter.TestReporter):
                 previous_result['error'] = True
                 previous_result['success'] = False
 
+            ### This will stay after the above moves up the stack.
             self.report_teardown_failure(class_teardown_result)
 
     def report(self):
