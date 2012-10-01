@@ -1,5 +1,7 @@
 import cStringIO
 
+from mock import patch
+
 from test.discovery_failure_test import BrokenImportTestCase
 from testify import TestCase, assert_equal, assert_in, class_setup, class_teardown, run, setup, teardown
 from testify.test_logger import TextTestLogger, VERBOSITY_NORMAL
@@ -61,15 +63,12 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
     class FakeClassTeardownTestCase(TestCase):
         @class_teardown
         def class_teardown_raises_exception(self):
-            print "### BOOM teardown ###"
             raise TextLoggerExceptionInClassFixtureTestCase.FakeClassFixtureException
 
         def test1(self):
-            print "i am test1"
             pass
 
         def test2(self):
-            print "i am test2"
             pass
 
     def test_setup(self):
@@ -100,6 +99,37 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         logger_output = self.stream.getvalue()
         assert_in('class_teardown failed', logger_output)
         assert_in('from TestCase FakeClassTeardownTestCase as FAILED', logger_output)
+
+
+    def test_teardown_raises_after_test_raises(self):
+        """Patch our fake test case, replacing test1() with a function that
+        raises its own exception. Make sure that both the method's exception
+        and the class_teardown exception are represented in the results.
+        """
+
+        class FakeTestException(Exception):
+            pass
+
+        def test1_raises(self):
+            raise FakeTestException("I raise before class_teardown raises")
+
+        logger = TextTestLogger(self.options, stream=self.stream)
+        with patch.object(TextLoggerExceptionInClassFixtureTestCase.FakeClassTeardownTestCase, 'test1', test1_raises):
+            runner = TestRunner(
+                TextLoggerExceptionInClassFixtureTestCase.FakeClassTeardownTestCase,
+                test_reporters=[logger],
+            )
+            runner_result = runner.run()
+            assert_equal(runner_result, False)
+
+            test1_raises_result = logger.results[0]
+            test2_result = logger.results[1]
+            assert_equal(
+                len(test1_raises_result['exception_info']),
+                2 * len(test2_result['exception_info']),
+            )
+            assert_in('FakeClassFixtureException', test1_raises_result['exception_info_pretty'])
+            assert_in('FakeTestException', test1_raises_result['exception_info_pretty'])
 
 
 if __name__ == '__main__':

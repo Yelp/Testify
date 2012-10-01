@@ -62,20 +62,26 @@ class TestLoggerBase(test_reporter.TestReporter):
 
             self.results.append(result)
 
-    def class_teardown_complete(self, result):
-        if not result['success']:
+    def class_teardown_complete(self, class_teardown_result):
+        if not class_teardown_result['success']:
             # class_teardown failed, so update the previously collected
-            # results to reflect the error.
-            ### THIS NEEDS TO augment exception_* rather than clobber it
-            ### because what if one of the test methods failed
-            ### _independently_ of the lights going out (I'm blind!).
+            # results to reflect the error. Preserve previous exception_info,
+            # if any.
+
+            ### This feels like the wrong place to update this. Can the test
+            ### methods somehow update themselves? Or whatever runs those? Or maybe
+            ### we went down that road and it didn't work and that's why we're here?
             for previous_result in self.results:
-                previous_result['exception_info'] = result['exception_info']
-                previous_result['exception_info_pretty'] = result['exception_info_pretty']
+                previous_result['exception_info'] = (
+                    (previous_result['exception_info'] or []) + class_teardown_result['exception_info']
+                )
+                previous_result['exception_info_pretty'] = "%s%s" % (
+                    previous_result['exception_info_pretty'],
+                    class_teardown_result['exception_info_pretty'])
                 previous_result['error'] = True
                 previous_result['success'] = False
 
-            self.report_teardown_failure(result)
+            self.report_teardown_failure(class_teardown_result)
 
     def report(self):
         # All the TestCases have been run - now collate results by status and log them
