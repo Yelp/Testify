@@ -50,7 +50,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
     class FakeClassSetupTestCase(TestCase):
         @class_setup
         def class_setup_raises_exception(self):
-            raise TextLoggerExceptionInClassFixtureTestCase.FakeClassFixtureException
+            raise TextLoggerExceptionInClassFixtureTestCase.FakeClassFixtureException("class_setup kaboom")
 
         def test1(self):
             print "i am test1"
@@ -63,7 +63,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
     class FakeClassTeardownTestCase(TestCase):
         @class_teardown
         def class_teardown_raises_exception(self):
-            raise TextLoggerExceptionInClassFixtureTestCase.FakeClassFixtureException
+            raise TextLoggerExceptionInClassFixtureTestCase.FakeClassFixtureException("class_teardown kaboom")
 
         def test1(self):
             pass

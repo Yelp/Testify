@@ -330,7 +330,9 @@ class TestCase(object):
                     elif self.__class_level_error:
                         result.end_in_error(self.__class_level_error)
                     else:
-                        print "### couldn't find a class-level failure or error. wtf?"
+                        raise Exception("Couldn't find a class-level failure or error"
+                            " even though we failed executing a class-level fixture."
+                            " This should not be possible. Aborting.")
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_interruption(sys.exc_info())
                 raise
