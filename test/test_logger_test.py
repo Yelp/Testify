@@ -103,7 +103,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         ### class_setup was the culprit, analagous with class_teardown
         ### workflow:
         ###assert_in('class_setup failed', logger_output)
-        ###assert_in('from TestCase FakeClassTeardownTestCase as FAILED', logger_output)
+        ###assert_in('from TestCase FakeClassSetupTestCase as FAILED', logger_output)
 
 
     def test_teardown(self):

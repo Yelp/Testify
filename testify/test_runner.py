@@ -120,8 +120,8 @@ class TestRunner(object):
         Logging of individual results is accomplished by registering callbacks for
         the TestCase instances to call when they begin and finish running each test.
 
-        At its conclusion, we pass our collected results and to our TestLogger to get
-        testing exceptions and summaries printed out.
+        At its conclusion, we pass our collected results to our TestLogger to
+        print out exceptions and testing summaries.
         """
 
         try:
