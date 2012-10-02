@@ -334,8 +334,8 @@ class TestCase(object):
                         ### Bump failure count?
                         ### Something about failure_limit?
                     else:
-                        raise Exception("Couldn't find a class-level failure or error"
-                            " even though we failed executing a class-level fixture."
+                        raise Exception("Couldn't find a class-level failure or error even"
+                            " though we failed while executing a class-level fixture."
                             " This should not be possible. Aborting.")
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_interruption(sys.exc_info())
