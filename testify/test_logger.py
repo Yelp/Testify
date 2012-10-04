@@ -67,14 +67,6 @@ class TestLoggerBase(test_reporter.TestReporter):
             # class_teardown failed, so update the previously collected
             # results to reflect the error. Preserve previous exception_info,
             # if any.
-
-            ### This feels like the wrong place to update this. Can the test
-            ### methods somehow update themselves? Or whatever runs those? Or maybe
-            ### we went down that road and it didn't work and that's why we're here?
-            ###
-            ### In fact, I think it must move, else places where we don't have
-            ### TextLogger (does this happen? bb runs perhaps?) will not have
-            ### correct behavior.
             for previous_result in self.results:
                 previous_result['exception_info'] = (
                     (previous_result['exception_info'] or []) + class_teardown_result['exception_info']
@@ -85,7 +77,6 @@ class TestLoggerBase(test_reporter.TestReporter):
                 previous_result['error'] = True
                 previous_result['success'] = False
 
-            ### This will stay after the above moves up the stack.
             self.report_teardown_failure(class_teardown_result)
 
     def report(self):
