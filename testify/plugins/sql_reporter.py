@@ -76,6 +76,7 @@ SA.Index('ix_build_test_failure', TestResults.c.build, TestResults.c.test, TestR
 def md5(s):
     return hashlib.md5(s.encode('utf8') if isinstance(s, unicode) else s).hexdigest()
 
+
 class SQLReporter(test_reporter.TestReporter):
     def __init__(self, options, *args, **kwargs):
         dburl = options.reporting_db_url or SA.engine.url.URL(**yaml.safe_load(open(options.reporting_db_config)))
@@ -147,6 +148,19 @@ class SQLReporter(test_reporter.TestReporter):
             }
         ))
 
+    def _canonicalize_exception(self, exception_info):
+        traceback = ''.join(exception_info)
+        error = exception_info[-1].strip()
+        if self.options.sql_traceback_size is not None:
+            truncation_message = " (Exception truncated.)"
+            size_limit = self.options.sql_traceback_size - len(truncation_message)
+            if len(traceback) > self.options.sql_traceback_size:
+                traceback = traceback[:size_limit] + truncation_message
+            if len(error) > self.options.sql_traceback_size:
+                error = error[:size_limit] + truncation_message
+
+        return (traceback, error)
+
     def report_results(self):
         """A worker func that runs in another thread and reports results to the database.
         Create a TestResults row from a test result dict. Also inserts the previous_run row."""
@@ -195,7 +209,11 @@ class SQLReporter(test_reporter.TestReporter):
             """Get the ID of the failure row for the specified exception."""
             if not exception_info:
                 return None
-            exc_hash = md5(''.join(exception_info))
+
+            # Canonicalize the traceback and error for storage.
+            traceback, error = self._canonicalize_exception(exception_info)
+
+            exc_hash = md5(traceback)
 
             query = SA.select(
                 [Failures.c.id],
@@ -208,8 +226,8 @@ class SQLReporter(test_reporter.TestReporter):
                 # We haven't inserted this row yet; insert it and re-query.
                 results = conn.execute(Failures.insert({
                     'hash' : exc_hash,
-                    'error' : exception_info[-1].strip(),
-                    'traceback': ''.join(exception_info),
+                    'error' : error,
+                    'traceback': traceback,
                 }))
                 return results.lastrowid
 
@@ -278,6 +296,7 @@ def add_command_line_options(parser):
     parser.add_option("--build-info", action="store", dest="build_info", type="string", default=None, help="A JSON dictionary of information about this build, to store in the reporting database.")
     parser.add_option("--sql-reporting-frequency", action="store", dest="sql_reporting_frequency", type="float", default=1.0, help="How long to wait between SQL inserts, at a minimum")
     parser.add_option("--sql-batch-size", action="store", dest="sql_batch_size", type="int", default="500", help="Maximum number of rows to insert at any one time")
+    parser.add_option("--sql-traceback-size", action="store", dest="sql_traceback_size", type="int", default="65536", help="Maximum length of traceback to store. Tracebacks longer than this will be truncated.")
 
 def build_test_reporters(options):
     if options.reporting_db_config or options.reporting_db_url:

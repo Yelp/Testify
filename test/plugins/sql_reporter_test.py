@@ -1,3 +1,4 @@
+from mock import patch
 import sqlalchemy as SA
 import time
 from optparse import OptionParser
@@ -11,8 +12,8 @@ except ImportError:
 
 
 from test.discovery_failure_test import BrokenImportTestCase
-from testify import TestCase, setup_teardown, assert_equal, assert_gt, assert_in_range
-from testify.plugins.sql_reporter import SQLReporter, add_command_line_options, Tests, Builds, TestResults
+from testify import TestCase, assert_equal, assert_gt, assert_in,  assert_in_range, setup_teardown
+from testify.plugins.sql_reporter import Builds, Failures, SQLReporter, TestResults, Tests, add_command_line_options
 from testify.test_result import TestResult
 from testify.test_runner import TestRunner
 
@@ -147,6 +148,29 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
 
         for result in test_results:
             assert_equal(result['method_name'], 'test_pass')
+
+    def test_traceback_size_limit(self):
+        """Insert a failure with a long exception and make sure it gets truncated."""
+        conn = self.reporter.conn
+
+        test_case = DummyTestCase()
+        result = TestResult(test_case.test_fail)
+        result.start()
+        result.end_in_failure((type(AssertionError), AssertionError('A' * 200), None))
+
+        with patch.object(self.reporter.options, 'sql_traceback_size', 50):
+            with patch.object(result, 'format_exception_info') as mock_format_exception_info:
+                mock_format_exception_info.return_value = ["AssertionError: %s" % ('A' * 200), 'A' * 200]
+
+                self.reporter.test_complete(result.to_dict())
+
+            assert self.reporter.report()
+
+        failure = conn.execute(Failures.select()).fetchone()
+        assert_equal(len(failure.traceback), 50)
+        assert_equal(len(failure.error), 50)
+        assert_in('Exception truncated.', failure.traceback)
+        assert_in('Exception truncated.', failure.error)
 
 
 class SQLReporterDiscoveryFailureTestCase(SQLReporterBaseTestCase, BrokenImportTestCase):
