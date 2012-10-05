@@ -159,12 +159,16 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         result.end_in_failure((type(AssertionError), AssertionError('A' * 200), None))
 
         with patch.object(self.reporter.options, 'sql_traceback_size', 50):
-            self.reporter.test_complete(result.to_dict())
+            with patch.object(result, 'format_exception_info') as format_exception_info:
+                format_exception_info.return_value = ["AssertionError: %s" % ('A' * 200), 'A' * 200]
+
+                self.reporter.test_complete(result.to_dict())
 
             assert self.reporter.report()
 
         failure = conn.execute(Failures.select()).fetchone()
         assert_equal(len(failure.traceback), 50)
+        assert_equal(len(failure.error), 50)
 
 
 class SQLReporterDiscoveryFailureTestCase(SQLReporterBaseTestCase, BrokenImportTestCase):

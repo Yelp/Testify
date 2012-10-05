@@ -196,10 +196,12 @@ class SQLReporter(test_reporter.TestReporter):
             if not exception_info:
                 return None
 
-            # Canonicalize the traceback for storage/querying.
+            # Canonicalize the traceback and error for storage.
             traceback = ''.join(exception_info)
+            error = exception_info[-1].strip()
             if self.options.sql_traceback_size is not None:
                 traceback = traceback[:self.options.sql_traceback_size]
+                error = error[:self.options.sql_traceback_size]
 
             exc_hash = md5(traceback)
 
@@ -214,7 +216,7 @@ class SQLReporter(test_reporter.TestReporter):
                 # We haven't inserted this row yet; insert it and re-query.
                 results = conn.execute(Failures.insert({
                     'hash' : exc_hash,
-                    'error' : exception_info[-1].strip(),
+                    'error' : error,
                     'traceback': traceback,
                 }))
                 return results.lastrowid
