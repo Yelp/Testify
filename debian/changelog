@@ -1,3 +1,13 @@
+python-testify (0.3.3) unstable; urgency=low
+
+  * Add a test for unknown import errors.
+  * Fix Issue 105: UnitTest test cases kill clients in client-server mode.
+  * Fix --list-suites.
+  * Add length cap for the SQL reporter.
+
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 11 Jul 2012 18:18:48 -0700
+
 python-testify (0.3.2) unstable; urgency=low
 
   * Handle more error cases as discovery failures.
