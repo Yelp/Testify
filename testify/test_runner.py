@@ -169,12 +169,14 @@ class TestRunner(object):
         suites = defaultdict(list)
         for test_instance in self.discover():
             for test_method in test_instance.runnable_test_methods():
-                for suite_name in test_method._suites:
+                for suite_name in test_instance.suites(test_method):
                     suites[suite_name].append(test_method)
         suite_counts = dict((suite_name, "%d tests" % len(suite_members)) for suite_name, suite_members in suites.iteritems())
 
         pp = pprint.PrettyPrinter(indent=2)
         print(pp.pformat(dict(suite_counts)))
+
+        return suite_counts
 
     def list_tests(self, selected_suite_name=None):
         """Lists all tests, optionally scoped to a single suite."""
@@ -186,5 +188,7 @@ class TestRunner(object):
 
         pp = pprint.PrettyPrinter(indent=2)
         print(pp.pformat([self.get_test_method_name(test) for test in test_list]))
+
+        return test_list
 
 # vim: set ts=4 sts=4 sw=4 et:
