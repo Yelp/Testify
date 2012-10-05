@@ -76,6 +76,7 @@ SA.Index('ix_build_test_failure', TestResults.c.build, TestResults.c.test, TestR
 def md5(s):
     return hashlib.md5(s.encode('utf8') if isinstance(s, unicode) else s).hexdigest()
 
+
 class SQLReporter(test_reporter.TestReporter):
     def __init__(self, options, *args, **kwargs):
         dburl = options.reporting_db_url or SA.engine.url.URL(**yaml.safe_load(open(options.reporting_db_config)))
@@ -147,6 +148,19 @@ class SQLReporter(test_reporter.TestReporter):
             }
         ))
 
+    def _canonicalize_exception(self, exception_info):
+        traceback = ''.join(exception_info)
+        error = exception_info[-1].strip()
+        if self.options.sql_traceback_size is not None:
+            truncation_message = " (Exception truncated.)"
+            size_limit = self.options.sql_traceback_size - len(truncation_message)
+            if len(traceback) > self.options.sql_traceback_size:
+                traceback = traceback[:size_limit] + truncation_message
+            if len(error) > self.options.sql_traceback_size:
+                error = error[:size_limit] + truncation_message
+
+        return (traceback, error)
+
     def report_results(self):
         """A worker func that runs in another thread and reports results to the database.
         Create a TestResults row from a test result dict. Also inserts the previous_run row."""
@@ -197,11 +211,7 @@ class SQLReporter(test_reporter.TestReporter):
                 return None
 
             # Canonicalize the traceback and error for storage.
-            traceback = ''.join(exception_info)
-            error = exception_info[-1].strip()
-            if self.options.sql_traceback_size is not None:
-                traceback = traceback[:self.options.sql_traceback_size]
-                error = error[:self.options.sql_traceback_size]
+            traceback, error = self._canonicalize_exception(exception_info)
 
             exc_hash = md5(traceback)
 
