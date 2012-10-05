@@ -271,7 +271,9 @@ class TestCase(object):
             member = getattr(self, member_name)
             if not inspect.ismethod(member):
                 continue
-            member_suites = getattr(member, '_suites', set()) | set(getattr(self, '_suites', []))
+
+            member_suites = self.suites(member)
+
             # if there are any exclude suites, exclude methods under them
             if self.__suites_exclude and self.__suites_exclude & member_suites:
                 continue
@@ -337,6 +339,13 @@ class TestCase(object):
     def in_suite(cls, method, suite_name):
         """Return a bool denoting whether the given method is in the given suite."""
         return suite_name in getattr(method, '_suites', set())
+
+    def suites(self, method=None):
+        """Returns the suites associated with this test case and, optionally, the given method."""
+        suites = set(getattr(self, '_suites', []))
+        if method is not None:
+            suites |= getattr(method, '_suites', set())
+        return suites
 
     def method_excluded(self, method):
         """Given this TestCase's included/excluded suites, is this test method excluded?
