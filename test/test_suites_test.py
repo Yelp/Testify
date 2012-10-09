@@ -92,6 +92,7 @@ class ListSuitesMixin(object):
 
 
 class ListSuitesTestCase(TestCase, ListSuitesMixin):
+	"""Test that suites are correctly applied to Testify TestCases."""
 	pass
 
 
