@@ -1,3 +1,4 @@
+import unittest
 from types import MethodType
 
 from testify import TestCase, assert_equal, suite
@@ -54,14 +55,14 @@ class TestSuitesTestCase(TestCase):
         assert_equal(sub_instance.test_thing._suites, set(['sub']))
 
 
-class ListSuitesTestCase(TestCase):
+class ListSuitesMixin(object):
     """Test that we pick up the correct suites when using --list-suites."""
 
 	# applied to test_foo, test_disabled, test_also.., test_not.., and test_list..
     _suites = ['class-level-suite']
 
     def __init__(self, **kwargs):
-        super(ListSuitesTestCase, self).__init__(**kwargs)
+        super(ListSuitesMixin, self).__init__(**kwargs)
 
         # add a dynamic test to guard against
         # https://github.com/Yelp/Testify/issues/85
@@ -88,4 +89,13 @@ class ListSuitesTestCase(TestCase):
             'class-level-suite': '%d tests' % num_tests,
             'crazy': '1 tests',
         })
+
+
+class ListSuitesTestCase(TestCase, ListSuitesMixin):
+	pass
+
+
+class ListSuitesUnittestCase(unittest.TestCase, ListSuitesMixin):
+	"""Test that suites are correctly applied to UnitTests."""
+	pass
 
