@@ -73,7 +73,8 @@ class TestLoggerBase(test_reporter.TestReporter):
                 )
                 previous_result['exception_info_pretty'] = "%s%s" % (
                     previous_result['exception_info_pretty'],
-                    class_teardown_result['exception_info_pretty'])
+                    class_teardown_result['exception_info_pretty'],
+                )
                 previous_result['error'] = True
                 previous_result['success'] = False
 
