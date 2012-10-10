@@ -84,8 +84,8 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
     def test_setup(self):
         self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeClassSetupTestCase)
 
-        # The fake test methods will assert if they are called. If we make it
-        # here, then they were not reached and that logic worked.
+        # The fake test methods assert if they are called. If we make it here,
+        # then execution never reached those methods and we are happy.
 
         for result in self.logger.results:
             assert_equal(
