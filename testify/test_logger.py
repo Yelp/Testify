@@ -64,20 +64,7 @@ class TestLoggerBase(test_reporter.TestReporter):
 
     def class_teardown_complete(self, class_teardown_result):
         if not class_teardown_result['success']:
-            # class_teardown failed, so update the previously collected
-            # results to reflect the error. Preserve previous exception_info,
-            # if any.
-            for previous_result in self.results:
-                previous_result['exception_info'] = (
-                    (previous_result['exception_info'] or []) + class_teardown_result['exception_info']
-                )
-                previous_result['exception_info_pretty'] = "%s%s" % (
-                    previous_result['exception_info_pretty'],
-                    class_teardown_result['exception_info_pretty'],
-                )
-                previous_result['error'] = True
-                previous_result['success'] = False
-
+            self.results.append(class_teardown_result)
             self.report_teardown_failure(class_teardown_result)
 
     def report(self):
@@ -222,8 +209,7 @@ class TextTestLogger(TestLoggerBase):
 
     def report_teardown_failure(self, result):
         self.writeln(
-            "class_teardown failed. Marking all test methods from TestCase %s as FAILED (ignore results for these methods reported above)." %
-            result['method']['class']
+            "class_teardown FAILED for TestCase %s" % result['method']['class']
         )
         self.writeln(result['exception_info_pretty'])
 

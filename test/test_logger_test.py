@@ -45,18 +45,18 @@ class TestReporterExceptionInClassFixtureSampleTests(TestCase):
     class FakeClassSetupTestCase(TestCase):
         @class_setup
         def class_setup_raises_exception(self):
-            raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException("class_setup kaboom")
+            raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup kaboom')
 
         def test1(self):
-            assert False, "test1 should not be reached; class_setup should have aborted."
+            assert False, 'test1 should not be reached; class_setup should have aborted.'
 
         def test2(self):
-            assert False, "test2 should not be reached; class_setup should have aborted."
+            assert False, 'test2 should not be reached; class_setup should have aborted.'
 
     class FakeClassTeardownTestCase(TestCase):
         @class_teardown
         def class_teardown_raises_exception(self):
-            raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException("class_teardown kaboom")
+            raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_teardown kaboom')
 
         def test1(self):
             pass
@@ -110,22 +110,23 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
 
     def test_teardown(self):
         self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase)
+        assert_equal(len(self.logger.results), 3)
 
-        for result in self.logger.results:
-            assert_equal(
-                result['success'],
-                False,
-                'Unexpected success for %s' % result['method']['full_name'],
-            )
-            assert_equal(
-                result['error'],
-                True,
-                'Unexpected non-error for %s' % result['method']['full_name'],
-            )
+        class_teardown_result = self.logger.results[-1]
+        assert_equal(
+            class_teardown_result['success'],
+            False,
+            'Unexpected success for %s' % class_teardown_result['method']['full_name'],
+        )
+        assert_equal(
+            class_teardown_result['error'],
+            True,
+            'Unexpected non-error for %s' % class_teardown_result['method']['full_name'],
+        )
 
         logger_output = self.stream.getvalue()
-        assert_in('class_teardown failed', logger_output)
-        assert_in('from TestCase FakeClassTeardownTestCase as FAILED', logger_output)
+        assert_in('class_teardown FAILED', logger_output)
+        assert_in('for TestCase FakeClassTeardownTestCase', logger_output)
 
 
     def test_teardown_raises_after_test_raises(self):
@@ -138,19 +139,16 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
             pass
 
         def test1_raises(self):
-            raise FakeTestException("I raise before class_teardown raises")
+            raise FakeTestException('I raise before class_teardown raises')
 
         with patch.object(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, 'test1', test1_raises):
             self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase)
 
+            assert_equal(len(self.logger.results), 3)
             test1_raises_result = self.logger.results[0]
-            test2_result = self.logger.results[1]
-            assert_equal(
-                len(test1_raises_result['exception_info']),
-                2 * len(test2_result['exception_info']),
-            )
-            assert_in('FakeClassFixtureException', test1_raises_result['exception_info_pretty'])
+            class_teardown_result = self.logger.results[-1]
             assert_in('FakeTestException', test1_raises_result['exception_info_pretty'])
+            assert_in('FakeClassFixtureException', class_teardown_result['exception_info_pretty'])
 
 
 if __name__ == '__main__':
