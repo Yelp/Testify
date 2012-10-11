@@ -53,19 +53,11 @@ class TestLoggerBase(test_reporter.TestReporter):
     def fixture_start(self, result):
         self.test_case_classes.add((result['method']['module'], result['method']['class']))
 
-    def fixture_complete(self, result):
-        if result['method']['fixture_type'] == 'class_teardown' and (result['failure'] or result['error']):
-            # For a class_teardown failure, log the name too (since it wouldn't have
-            # already been logged by on_run_test_method).
+    def class_teardown_complete(self, result):
+        if not result['success']:
             self.report_test_name(result['method'])
             self.report_test_result(result)
-
             self.results.append(result)
-
-    def class_teardown_complete(self, class_teardown_result):
-        if not class_teardown_result['success']:
-            self.results.append(class_teardown_result)
-            self.report_teardown_failure(class_teardown_result)
 
     def report(self):
         # All the TestCases have been run - now collate results by status and log them
@@ -93,9 +85,6 @@ class TestLoggerBase(test_reporter.TestReporter):
         pass
 
     def report_test_result(self, result):
-        pass
-
-    def report_teardown_failure(self, result):
         pass
 
     def report_failures(self, failed_results):
@@ -196,7 +185,34 @@ class TextTestLogger(TestLoggerBase):
 
             if status in ('fail', 'error'):
                 _log.error("%s: %s\n%s", status, self._format_test_method_name(result['method']), ''.join(result['exception_info']))
+                ### This results in double-printing of fail and error results!
+                ###
+                # That's because it relies on _log.error to write to both the
+                # log and the console. Other methods in this class make
+                # separate calls to _log.[info|debug] and self.writeln.
+                #
+                # I want self.writeln to be called so that self.stream is
+                # updated since self.stream is the seam I'm using for testing
+                # this class.
+                #
+                # Some possible solutions:
+                #
+                # - Rather than passing in a stream for testing (even though
+                # this is presumably supposed to work), mock out _log.error()
+                # and get the output that way.
+                #
+                # - Configure logging (in testing only?) to use self.stream --
+                # logging.basicConfig(stream=self.stream) ??
+                #
+                # - Refactor so that writing to console and using the logger
+                # are separate TestReporters.
+                #
+                # Some probably bad solutions:
+                #
+                # - Get rid of logging? Does anyone use it? :)
+                self.writeln("%s: %s\n%s" % (status, self._format_test_method_name(result['method']), ''.join(result['exception_info'])))
             else:
+                ### This looks like a duplicate of report_test_name. Remove?
                 _log.info("%s: %s", status, self._format_test_method_name(result['method']))
 
             if self.options.verbosity == VERBOSITY_NORMAL:
@@ -206,12 +222,6 @@ class TextTestLogger(TestLoggerBase):
                     self.writeln("%s in %s" % (self._colorize(status_description, color), result['normalized_run_time']))
                 else:
                     self.writeln(self._colorize(status_description, color))
-
-    def report_teardown_failure(self, result):
-        self.writeln(
-            "class_teardown FAILED for TestCase %s" % result['method']['class']
-        )
-        self.writeln(result['exception_info_pretty'])
 
     def heading(self, *messages):
         self.writeln("")

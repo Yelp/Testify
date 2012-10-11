@@ -125,8 +125,8 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         )
 
         logger_output = self.stream.getvalue()
-        assert_in('class_teardown FAILED', logger_output)
-        assert_in('for TestCase FakeClassTeardownTestCase', logger_output)
+        assert_in('error', logger_output)
+        assert_in('FakeClassTeardownTestCase.class_teardown_raises_exception', logger_output)
 
 
     def test_teardown_raises_after_test_raises(self):
