@@ -195,17 +195,18 @@ class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
         runner.run()
 
         conn = self.reporter.conn
-        (build,) = list(conn.execute(Builds.select()))
 
         test_results = self._get_test_results(conn)
-        for result in test_results:
-            pass
-###            # This assertion is (probably) not what I want but it constitutes an example of how to do a few things.
-###            assert_equal(
-###                result['failure'],
-###                True,
-###                'Unexpected success for %s.%s' % (result['class_name'], result['method_name'])
-###            )
-            ### TODO: check Failures.traceback for expected exception
+        assert_equal(len(test_results), 3)
+
+        class_teardown_result = test_results[-1]
+        assert_equal(
+            class_teardown_result['failure'],
+            True,
+            'Unexpected success for %s.%s' % (class_teardown_result['class_name'], class_teardown_result['method_name'])
+        )
+
+        failure = conn.execute(Failures.select()).fetchone()
+        assert_in('in class_teardown_raises_exception', failure.traceback)
 
 # vim: set ts=4 sts=4 sw=4 et:
