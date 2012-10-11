@@ -100,12 +100,9 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
             )
 
         logger_output = self.stream.getvalue()
-        assert_in('FAILED', logger_output)
-        ### might be useful to make these happen -- provide a clue that
-        ### class_setup was the culprit, analagous with class_teardown
-        ### workflow:
-        ###assert_in('class_setup failed', logger_output)
-        ###assert_in('from TestCase FakeClassSetupTestCase as FAILED', logger_output)
+        assert_in('error', logger_output)
+        assert_in('FakeClassSetupTestCase.test1', logger_output)
+        assert_in('FakeClassSetupTestCase.test2', logger_output)
 
 
     def test_teardown(self):
