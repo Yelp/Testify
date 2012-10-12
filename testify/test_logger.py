@@ -24,10 +24,6 @@ import sys
 
 from testify import test_reporter
 
-# Beyond the nicely formatted test output provided by the test logger classes, we
-# also want to make basic test running /result info available via standard python logger
-_log = logging.getLogger('testify')
-
 VERBOSITY_SILENT    = 0  # Don't say anything, just exit with a status code
 VERBOSITY_NORMAL    = 1  # Output dots for each test method run
 VERBOSITY_VERBOSE   = 2  # Output method names and timing information
@@ -126,7 +122,7 @@ class TextTestLogger(TestLoggerBase):
                 if int(output.strip()) >= 8:
                     self.use_color = True
             except Exception, e:
-                _log.debug("Failed to find color support: %r", e)
+                self.writeln("Failed to find color support: %r" % e)
 
     def write(self, message):
         """Write a message to the output stream, no trailing newline"""
@@ -154,7 +150,6 @@ class TextTestLogger(TestLoggerBase):
         self.writeln(str(exc))
 
     def report_test_name(self, test_method):
-        _log.info("running: %s", self._format_test_method_name(test_method))
         if self.options.verbosity >= VERBOSITY_VERBOSE:
             self.write("%s ... " % self._format_test_method_name(test_method))
 
@@ -184,36 +179,7 @@ class TextTestLogger(TestLoggerBase):
             }[status]
 
             if status in ('fail', 'error'):
-                _log.error("%s: %s\n%s", status, self._format_test_method_name(result['method']), ''.join(result['exception_info']))
-                ### This results in double-printing of fail and error results!
-                ###
-                # That's because it relies on _log.error to write to both the
-                # log and the console. Other methods in this class make
-                # separate calls to _log.[info|debug] and self.writeln.
-                #
-                # I want self.writeln to be called so that self.stream is
-                # updated since self.stream is the seam I'm using for testing
-                # this class.
-                #
-                # Some possible solutions:
-                #
-                # - Rather than passing in a stream for testing (even though
-                # this is presumably supposed to work), mock out _log.error()
-                # and get the output that way.
-                #
-                # - Configure logging (in testing only?) to use self.stream --
-                # logging.basicConfig(stream=self.stream) ??
-                #
-                # - Refactor so that writing to console and using the logger
-                # are separate TestReporters.
-                #
-                # Some probably bad solutions:
-                #
-                # - Get rid of logging? Does anyone use it? :)
                 self.writeln("%s: %s\n%s" % (status, self._format_test_method_name(result['method']), ''.join(result['exception_info'])))
-            else:
-                ### This looks like a duplicate of report_test_name. Remove?
-                _log.info("%s: %s", status, self._format_test_method_name(result['method']))
 
             if self.options.verbosity == VERBOSITY_NORMAL:
                 self.write(self._colorize(status_letter, color))
