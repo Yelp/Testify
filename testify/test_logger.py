@@ -122,7 +122,8 @@ class TextTestLogger(TestLoggerBase):
                 if int(output.strip()) >= 8:
                     self.use_color = True
             except Exception, e:
-                self.writeln("Failed to find color support: %r" % e)
+                if self.options.verbosity >= VERBOSITY_VERBOSE:
+                    self.writeln("Failed to find color support: %r" % e)
 
     def write(self, message):
         """Write a message to the output stream, no trailing newline"""
