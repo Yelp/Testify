@@ -129,14 +129,27 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
             test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
             lambda result: self.server.report_result(runner_id, result)
         )
+        test_instance.register_callback(
+            test_case.TestCase.EVENT_ON_COMPLETE_TEST_CASE,
+            lambda result: self.server.report_result(runner_id, result)
+        )
         test_instance.run()
+
+    ### Separate into on_complete_test_method_should_pass and on_complete_test_case_should_pass
+    ###
+    ### And then, write a test below that does this with a class_teardown that raises.
+    ###
+    ### That will make all existing tests fail. So tests need to know about the extra test_case_complete result.
+    ###
+    ### And the server needs to know about these extras. Refactor so that check_in_class is only run when test_case_complete happens.
+
 
     def test_passing_tests_run_only_once(self):
         """Start a server with one test case to run. Make sure it hands out that test, report it as success, then make sure it gives us nothing else."""
         first_test = get_test(self.server, 'runner1')
 
         assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(first_test['methods'], ['test'])
+        assert_equal(first_test['methods'], ['test', 'run'])
 
         self.run_test('runner1')
 
@@ -147,13 +160,13 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         """Start a server with one test case to run. Make sure it hands out that test, report it as failure, then make sure it gives us the same one, then nothing else."""
         first_test = get_test(self.server, 'runner1')
         assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(first_test['methods'], ['test'])
+        assert_equal(first_test['methods'], ['test', 'run'])
 
         self.run_test('runner1', should_pass=False)
 
         second_test = get_test(self.server, 'runner2')
         assert_equal(second_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(second_test['methods'], ['test'])
+        assert_equal(second_test['methods'], ['test', 'run'])
 
         self.run_test('runner2', should_pass=False)
 

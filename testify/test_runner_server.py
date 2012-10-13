@@ -161,6 +161,8 @@ class TestRunnerServer(TestRunner):
         self.test_queue.get(0, callback, runner=runner_id)
 
     def report_result(self, runner_id, result):
+        if result['method']['name'] == 'run':
+            pass
         class_path = '%s %s' % (result['method']['module'], result['method']['class'])
         d = self.checked_out.get(class_path)
 
@@ -263,6 +265,11 @@ class TestRunnerServer(TestRunner):
                 }
 
                 if test_dict['methods']:
+                    # When the client has finished running the entire TestCase,
+                    # it will signal us by sending back a result with method
+                    # name 'run'. Add this results to the list we expect to get
+                    # back from the client.
+                    test_dict['methods'].append('run')
                     self.test_queue.put(0, test_dict)
 
             # Start an HTTP server.
@@ -332,7 +339,7 @@ class TestRunnerServer(TestRunner):
                 reporter.test_start(result_dict)
                 reporter.test_complete(result_dict)
 
-        #Requeue failed tests
+        # Requeue failed tests
         requeue_dict = {
             'last_runner' : runner,
             'class_path' : d['class_path'],
@@ -345,6 +352,13 @@ class TestRunnerServer(TestRunner):
                 self.failed_rerun_methods.add((class_path, method))
                 result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
                 self.previous_run_results[(class_path, method)] = result_dict
+
+        if requeue_dict['methods']:
+            # When the client has finished running the entire TestCase,
+            # it will signal us by sending back a result with method
+            # name 'run'. Add this results to the list we expect to get
+            # back from the client.
+            requeue_dict['methods'].append('run')
 
         if finished:
             if len(d['methods']) != 0:
