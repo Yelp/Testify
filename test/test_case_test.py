@@ -566,7 +566,7 @@ class CallbacksGetCalledTest(TestCase):
             (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, 'classTearDown'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, 'classTearDown'),
 
-            (TestCase.EVENT_ON_COMPLETE_TEST_CASE, None),
+            (TestCase.EVENT_ON_COMPLETE_TEST_CASE, 'run'),
         ])
 
 if __name__ == '__main__':

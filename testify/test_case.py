@@ -291,12 +291,15 @@ class TestCase(object):
 
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance"""
+        test_case_result = TestResult(self.run)
+        test_case_result.start()
+
         self.__run_class_setup_fixtures()
         self.__enter_class_context_managers(self.class_setup_teardown_fixtures, self.__run_test_methods)
         self.__run_class_teardown_fixtures()
-        ### fugly
-        for callback in self.__callbacks[self.EVENT_ON_COMPLETE_TEST_CASE]:
-            callback(None)
+
+        test_case_result.end_in_success()
+        self.fire_event(self.EVENT_ON_COMPLETE_TEST_CASE, test_case_result)
 
     def __run_class_setup_fixtures(self):
         """Running the class's class_setup method chain."""
