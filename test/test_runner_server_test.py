@@ -139,7 +139,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
     ###
     ### And then, write a test below that does this with a class_teardown that raises.
     ###
-    ### That will make all existing tests fail. So tests need to know about the extra test_case_complete result.
+    ### DONE(?): That will make all existing tests fail. So tests need to know about the extra test_case_complete result.
     ###
     ### And the server needs to know about these extras. Refactor so that check_in_class is only run when test_case_complete happens.
 
