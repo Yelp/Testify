@@ -2,6 +2,7 @@ import threading
 import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
+from test_logger_test import TestReporterExceptionInClassFixtureSampleTests
 from testify import assert_equal, class_setup, setup, teardown, test_case, test_runner_server
 from testify.test_discovery import _log
 from testify.utils import turtle
@@ -38,6 +39,18 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
                 assert self_.should_pass
 
         self.dummy_test_case = DummyTestCase
+
+    def run_test(self, runner_id, should_pass=True):
+        test_instance = self.dummy_test_case(should_pass=should_pass)
+        test_instance.register_callback(
+            test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
+            lambda result: self.server.report_result(runner_id, result)
+        )
+        test_instance.register_callback(
+            test_case.TestCase.EVENT_ON_COMPLETE_TEST_CASE,
+            lambda result: self.server.report_result(runner_id, result)
+        )
+        test_instance.run()
 
     def start_server(self, test_reporters=None):
         if test_reporters is None:
@@ -122,18 +135,6 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
     def timeout_class(self, runner, test):
         assert test
         tornado.ioloop.IOLoop.instance().add_callback(lambda: self.server.check_in_class(runner, test['class_path'], timed_out=True))
-
-    def run_test(self, runner_id, should_pass=True):
-        test_instance = self.dummy_test_case(should_pass=should_pass)
-        test_instance.register_callback(
-            test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
-            lambda result: self.server.report_result(runner_id, result)
-        )
-        test_instance.register_callback(
-            test_case.TestCase.EVENT_ON_COMPLETE_TEST_CASE,
-            lambda result: self.server.report_result(runner_id, result)
-        )
-        test_instance.run()
 
     ### Separate into on_complete_test_method_should_pass and on_complete_test_case_should_pass
     ###
@@ -267,5 +268,20 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
 
         if failures:
             raise Exception(' '.join(failures))
+
+
+class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCase):
+    def build_test_case(self):
+        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase
+
+    def test_exception_during_class_teardown(self):
+        # Pull and run the tests, thereby causing class_teardown to run.
+        first_test = get_test(self.server, 'runner')
+        self.run_test('runner')
+        second_test = get_test(self.server, 'runner')
+        self.run_test('runner')
+
+        # Hush pyflakes
+        del first_test, second_test
 
 # vim: set ts=4 sts=4 sw=4 et:
