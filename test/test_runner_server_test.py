@@ -275,7 +275,7 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
         self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase
 
     def test_exception_during_class_teardown(self):
-        # Pull and run the test, thereby causing class_teardown to run.
+        # Pull and run the test case, thereby causing class_teardown to run.
         test_case = get_test(self.server, 'runner')
         self.run_test('runner')
 
