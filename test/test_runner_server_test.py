@@ -275,13 +275,11 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
         self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase
 
     def test_exception_during_class_teardown(self):
-        # Pull and run the tests, thereby causing class_teardown to run.
-        first_test = get_test(self.server, 'runner')
-        self.run_test('runner')
-        second_test = get_test(self.server, 'runner')
+        # Pull and run the test, thereby causing class_teardown to run.
+        test_case = get_test(self.server, 'runner')
         self.run_test('runner')
 
         # Hush pyflakes
-        del first_test, second_test
+        del test_case
 
 # vim: set ts=4 sts=4 sw=4 et:
