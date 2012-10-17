@@ -278,8 +278,6 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
         # Pull and run the test case, thereby causing class_teardown to run.
         test_case = get_test(self.server, 'runner')
         self.run_test('runner')
-
-        # Hush pyflakes
-        del test_case
+        del test_case # Hush pyflakes
 
 # vim: set ts=4 sts=4 sw=4 et:
