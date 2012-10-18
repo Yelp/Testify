@@ -24,6 +24,7 @@ def get_test(server, runner_id):
     server.get_next_test(runner_id, inner, inner_empty)
     sem.acquire()
 
+    # Verify only one test was received.
     (test_received,) = tests_received
     return test_received
 
@@ -42,14 +43,16 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
 
     def run_test(self, runner_id, should_pass=True):
         test_instance = self.dummy_test_case(should_pass=should_pass)
-        test_instance.register_callback(
+        for event in [
             test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
-            lambda result: self.server.report_result(runner_id, result)
-        )
-        test_instance.register_callback(
+            test_case.TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
             test_case.TestCase.EVENT_ON_COMPLETE_TEST_CASE,
-            lambda result: self.server.report_result(runner_id, result)
-        )
+        ]:
+            test_instance.register_callback(
+                event,
+                lambda result: self.server.report_result(runner_id, result),
+            )
+
         test_instance.run()
 
     def start_server(self, test_reporters=None):
@@ -274,10 +277,31 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
     def build_test_case(self):
         self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase
 
+    @setup
+    def setup_server(self):
+        """Override parent's setup_server so we can pass in a test_reporter."""
+        self.test_reporter = turtle.Turtle()
+        test_reporters = [self.test_reporter]
+        self.start_server(test_reporters=test_reporters)
+
     def test_exception_during_class_teardown(self):
         # Pull and run the test case, thereby causing class_teardown to run.
         test_case = get_test(self.server, 'runner')
+        assert_equal(len(test_case['methods']), 3)
+        assert_equal(test_case['methods'][-1], 'run')
+
         self.run_test('runner')
-        del test_case # Hush pyflakes
+
+        expected_methods = set(['test1', 'test2', 'class_teardown_raises_exception', 'classTearDown', 'run'])
+        seen_methods = set()
+
+        test_complete_calls= self.test_reporter.test_complete.calls
+        for call in test_complete_calls:
+            args = call[0]
+            first_arg = args[0]
+            first_method_name = first_arg['method']['name']
+            seen_methods.add(first_method_name)
+        assert_equal(expected_methods.symmetric_difference(seen_methods), set())
+
 
 # vim: set ts=4 sts=4 sw=4 et:

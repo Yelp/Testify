@@ -161,8 +161,6 @@ class TestRunnerServer(TestRunner):
         self.test_queue.get(0, callback, runner=runner_id)
 
     def report_result(self, runner_id, result):
-        if result['method']['name'] == 'run':
-            pass
         class_path = '%s %s' % (result['method']['module'], result['method']['class'])
         d = self.checked_out.get(class_path)
 
@@ -171,7 +169,13 @@ class TestRunnerServer(TestRunner):
         if d['runner'] != runner_id:
             raise ValueError("Class %s checked out by runner %s, not %s" % (class_path, d['runner'], runner_id))
         if result['method']['name'] not in d['methods']:
-            raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
+            # If class_teardown failed, the client will send us a result to let us
+            # know. If that happens, don't worry about the apparently un-checked
+            # out test method.
+            if result['method']['fixture_type'] == 'class_teardown':
+                pass
+            else:
+                raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
         if result['success']:
             d['passed_methods'][result['method']['name']] = result
@@ -184,11 +188,18 @@ class TestRunnerServer(TestRunner):
 
         d['timeout_time'] = time.time() + self.runner_timeout
 
-        d['methods'].remove(result['method']['name'])
+        # class_teardowns are special.
+        if result['method']['fixture_type'] != 'class_teardown':
+            d['methods'].remove(result['method']['name'])
+
+        ###
+        from pprint import pprint
+        print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
+        pprint(d)
+        ###
 
         if not d['methods']:
             self.check_in_class(runner_id, class_path, finished=True)
-
 
     def run(self):
         class TestsHandler(tornado.web.RequestHandler):
@@ -330,10 +341,13 @@ class TestRunnerServer(TestRunner):
 
         d = self.checked_out.pop(class_path)
 
-        for method, result_dict in itertools.chain(
-                    d['passed_methods'].iteritems(),
-                    ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown or (class_path, method) in self.failed_rerun_methods),
-                ):
+        tests_to_report = itertools.chain(
+            d['passed_methods'].iteritems(),
+            ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown),
+            ((method, result) for (method, result) in d['failed_methods'].iteritems() if (class_path, method) in self.failed_rerun_methods),
+            ((method, result) for (method, result) in d['failed_methods'].iteritems() if result['method']['fixture_type'] == 'class_teardown'),
+        )
+        for method, result_dict in tests_to_report:
             for reporter in self.test_reporters:
                 result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
                 reporter.test_start(result_dict)
