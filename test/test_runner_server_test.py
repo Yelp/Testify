@@ -139,15 +139,6 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         assert test
         tornado.ioloop.IOLoop.instance().add_callback(lambda: self.server.check_in_class(runner, test['class_path'], timed_out=True))
 
-    ### Separate into on_complete_test_method_should_pass and on_complete_test_case_should_pass
-    ###
-    ### And then, write a test below that does this with a class_teardown that raises.
-    ###
-    ### DONE(?): That will make all existing tests fail. So tests need to know about the extra test_case_complete result.
-    ###
-    ### And the server needs to know about these extras. Refactor so that check_in_class is only run when test_case_complete happens.
-
-
     def test_passing_tests_run_only_once(self):
         """Start a server with one test case to run. Make sure it hands out that test, report it as success, then make sure it gives us nothing else."""
         first_test = get_test(self.server, 'runner1')
@@ -302,6 +293,9 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
             first_method_name = first_arg['method']['name']
             seen_methods.add(first_method_name)
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
+
+        # Verify the failed class_teardown method is not re-queued for running.
+        assert_equal(self.server.test_queue.empty(), True)
 
 
 # vim: set ts=4 sts=4 sw=4 et:

@@ -361,7 +361,7 @@ class TestRunnerServer(TestRunner):
         }
 
         for method, result_dict in d['failed_methods'].iteritems():
-            if (class_path, method) not in self.failed_rerun_methods:
+            if ((class_path, method) not in self.failed_rerun_methods) and (result_dict['method']['fixture_type'] != 'class_teardown'):
                 requeue_dict['methods'].append(method)
                 self.failed_rerun_methods.add((class_path, method))
                 result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
