@@ -24,9 +24,6 @@ import unittest
 from test_case import MetaTestCase, TestifiedUnitTest
 from errors import TestifyError
 
-# This used to live in -- and get imported from -- test_logger. Some tests did
-# the same. I'm not ready to remove it from everything yet, so for now I moved
-# it here and updated all the importers.
 _log = logging.getLogger('testify')
 
 class DiscoveryError(TestifyError): pass

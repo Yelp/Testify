@@ -1,12 +1,13 @@
+import logging
 import threading
 import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
 from test_logger_test import TestReporterExceptionInClassFixtureSampleTests
 from testify import assert_equal, class_setup, setup, teardown, test_case, test_runner_server
-from testify.test_discovery import _log
 from testify.utils import turtle
 
+_log = logging.getLogger('testify')
 
 def get_test(server, runner_id):
     """A blocking function to request a test from a TestRunnerServer."""

@@ -8,11 +8,14 @@ The server keeps track of the overall status of the run and manages timeouts and
 
 from __future__ import with_statement
 
-from test_discovery import _log
+import logging
+
 from test_runner import TestRunner
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
+
+_log = logging.getLogger('testify')
 
 try:
     import simplejson as json
