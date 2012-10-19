@@ -348,13 +348,12 @@ def assert_not_empty(iterable, message=None):
         iterable - any iterable object
         message - str or None, message to print if the iterable doesn't yield
     """
-    found_something = False
     for value in iterable:
-        found_something = True
         break
-
-    assert found_something, (message if message else 
-        "iterable %s is unexpectedly empty" % iterable)
+    else:
+        # the else clause of a for loop is reached iff you break out of the loop 
+        raise AssertionError(message if message else 
+            "iterable %s is unexpectedly empty" % iterable)
 
 
 def assert_length(sequence, expected, message=None):
