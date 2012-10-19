@@ -8,7 +8,7 @@ The server keeps track of the overall status of the run and manages timeouts and
 
 from __future__ import with_statement
 
-from test_logger import _log
+from test_discovery import _log
 from test_runner import TestRunner
 import tornado.httpserver
 import tornado.ioloop

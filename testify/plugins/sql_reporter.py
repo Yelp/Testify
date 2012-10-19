@@ -134,6 +134,13 @@ class SQLReporter(test_reporter.TestReporter):
             }
         ))
 
+    def class_teardown_complete(self, result):
+        """If there was an error during class_teardown, insert the result
+        containing the error into the queue that report_results pulls from.
+        """
+        if not result['success']:
+            self.result_queue.put(result)
+
     def test_complete(self, result):
         """Insert a result into the queue that report_results pulls from."""
         self.result_queue.put(result)

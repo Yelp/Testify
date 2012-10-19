@@ -511,5 +511,62 @@ class LetWithSubclassTest(LetWithLambdaTest):
     pass
 
 
+class CallbacksGetCalledTest(TestCase):
+    def test_class_fixtures_get_reported(self):
+        """Make a test case, register a bunch of callbacks for class fixtures on it, and make sure the callbacks are all run in the right order."""
+        class InnerTestCase(TestCase):
+            def classSetUp(self):
+                pass
+
+            def classTearDown(self):
+                pass
+
+            @class_setup_teardown
+            def __class_setup_teardown(self):
+                yield
+
+            def test_things(self):
+                pass
+
+        inner_test_case = InnerTestCase()
+        events = (
+            TestCase.EVENT_ON_RUN_TEST_METHOD,
+            TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
+            TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD,
+            TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
+            TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
+            TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
+        )
+
+        calls_to_callback = []
+        def make_callback(event):
+            def callback(result):
+                calls_to_callback.append((event, result['method']['name']))
+            return callback
+
+        for event in events:
+            inner_test_case.register_callback(event, make_callback(event))
+
+        inner_test_case.run()
+
+        assert_equal(calls_to_callback, [
+            (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, 'classSetUp'),
+            (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, 'classSetUp'),
+
+            (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, '__class_setup_teardown'),
+            (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, '__class_setup_teardown'),
+
+            (TestCase.EVENT_ON_RUN_TEST_METHOD, 'test_things'),
+            (TestCase.EVENT_ON_COMPLETE_TEST_METHOD, 'test_things'),
+
+            (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, '__class_setup_teardown'),
+            (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, '__class_setup_teardown'),
+
+            (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, 'classTearDown'),
+            (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, 'classTearDown'),
+        ])
+
 if __name__ == '__main__':
     run()
+
+# vim: set ts=4 sts=4 sw=4 et:

@@ -40,6 +40,21 @@ class TestReporter(object):
 
     def test_discovery_failure(self, exc):
         """Called when there was a failure during test discovery. exc is the exception object generated during the error."""
+
+    def class_setup_start(self, result):
+        """Called when a class_setup or the first half of a class_setup_teardown starts"""
+        pass
+
+    def class_setup_complete(self, result):
+        """Called when a class_setup or the first half of a class_setup_teardown finishes"""
+        pass
+
+    def class_teardown_start(self, result):
+        """Called when a class_teardown or the second half of a class_setup_teardown starts"""
+        pass
+
+    def class_teardown_complete(self, result):
+        """Called when a class_teardown or the second half of a class_setup_teardown finishes"""
         pass
 
     def report(self):

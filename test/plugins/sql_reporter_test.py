@@ -12,6 +12,7 @@ except ImportError:
 
 
 from test.discovery_failure_test import BrokenImportTestCase
+from test.test_logger_test import TestReporterExceptionInClassFixtureSampleTests
 from testify import TestCase, assert_equal, assert_gt, assert_in,  assert_in_range, setup_teardown
 from testify.plugins.sql_reporter import Builds, Failures, SQLReporter, TestResults, Tests, add_command_line_options
 from testify.test_result import TestResult
@@ -55,6 +56,13 @@ class SQLReporterBaseTestCase(TestCase):
 
         # no teardown.
 
+    def _get_test_results(self, conn):
+        """Return a list of tests and their results from SA connection `conn`."""
+        return list(conn.execute(SA.select(
+            columns=TestResults.columns + Tests.columns,
+            from_obj=TestResults.join(Tests, TestResults.c.test == Tests.c.id)
+        )))
+
 
 class SQLReporterTestCase(SQLReporterBaseTestCase):
     def test_integration(self):
@@ -92,11 +100,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         assert_equal(build['discovery_failure'], False)
 
         # Check that we have one failure and one pass, and that they're the right tests.
-        test_results = list(conn.execute(SA.select(
-            columns=TestResults.columns + Tests.columns,
-            from_obj=TestResults.join(Tests, TestResults.c.test == Tests.c.id)
-        )))
-
+        test_results = self._get_test_results(conn)
         assert_equal(len(test_results), 2)
         (passed_test,) = [r for r in test_results if not r['failure']]
         (failed_test,) = [r for r in test_results if r['failure']]
@@ -139,11 +143,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
 
         assert self.reporter.report() # Make sure all results are inserted.
 
-        test_results = list(conn.execute(SA.select(
-            columns=TestResults.columns + Tests.columns,
-            from_obj=TestResults.join(Tests, TestResults.c.test == Tests.c.id)
-        )))
-
+        test_results = self._get_test_results(conn)
         assert_equal(len(test_results), 3)
 
         for result in test_results:
@@ -183,5 +183,30 @@ class SQLReporterDiscoveryFailureTestCase(SQLReporterBaseTestCase, BrokenImportT
 
         assert_equal(build['discovery_failure'], True)
         assert_equal(build['method_count'], 0)
+
+
+class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
+    def test_setup(self):
+        ### TODO: write setup test!
+        pass
+
+    def test_teardown(self):
+        runner = TestRunner(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, test_reporters=[self.reporter])
+        runner.run()
+
+        conn = self.reporter.conn
+
+        test_results = self._get_test_results(conn)
+        assert_equal(len(test_results), 3)
+
+        class_teardown_result = test_results[-1]
+        assert_equal(
+            class_teardown_result['failure'],
+            True,
+            'Unexpected success for %s.%s' % (class_teardown_result['class_name'], class_teardown_result['method_name'])
+        )
+
+        failure = conn.execute(Failures.select()).fetchone()
+        assert_in('in class_teardown_raises_exception', failure.traceback)
 
 # vim: set ts=4 sts=4 sw=4 et:
