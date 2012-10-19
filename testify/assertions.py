@@ -13,9 +13,9 @@
 # limitations under the License.
 from __future__ import with_statement
 
-import re
-
 import contextlib
+from itertools import islice
+import re
 
 from .utils import stringdiffer
 
@@ -326,19 +326,36 @@ def assert_rows_equal(rows1, rows2):
     assert_equal(norm_rows(rows1), norm_rows(rows2))
 
 
-def assert_empty(iterable, message=None):
+def assert_empty(iterable, max_values_to_print=None, message=None):
     """
     Assert that an iterable contains no values.
 
     Args:
         iterable - any iterable object
+        max_values_to_print - int or None, maximum number of elements from
+            iterable to include in the error message (by default, includes all 
+            elements from iterables with a len() and 10 elements otherwise)
         message - str or None, message to print if the iterable yields
     """
-    for value in iterable:
-        raise AssertionError(message if message else 
-            "iterable %s, asserted to be empty, unexpectedly yielded %s" % 
-            (iterable, value))
+    try:
+        total_length = len(iterable)
+    except TypeError:
+        total_length = None
+        if max_values_to_print is None:
+            max_values_to_print = 10
 
+    # get the first max_values_to_print items from iterable
+    samples = list(islice(iterable, 0, max_values_to_print))
+
+    if len(samples) != 0:
+        # make it clear whether or not the printed sample is the whole iterable
+        if len(samples) == total_length or len(samples) < max_values_to_print:
+            sample_message = "elements"
+        else:
+            sample_message = "first %s elements" % len(samples)
+
+        raise AssertionError("iterable %s was unexpectedly non-empty. %s: %s" %
+            (iterable, sample_message, samples))
 
 def assert_not_empty(iterable, message=None):
     """
