@@ -341,11 +341,29 @@ class TestRunnerServer(TestRunner):
 
         d = self.checked_out.pop(class_path)
 
+        passed_methods = list(d['passed_methods'].items())
+        failed_methods = list(d['failed_methods'].items())
+        early_shutdown_methods = []
+        failed_methods_already_rerun = []
+        failed_class_teardown_methods = []
+        requeue_methods = []
+
+        for method, result in failed_methods:
+            if (class_path, method) in self.failed_rerun_methods:
+                failed_methods_already_rerun.append((method, result))
+            elif result['method']['fixture_type'] == 'class_teardown':
+                failed_class_teardown_methods.append((method, result))
+            elif early_shutdown:
+                early_shutdown_methods.append((method, result))
+                requeue_methods.append((method, result))
+            else:
+                requeue_methods.append((method, result))
+
         tests_to_report = itertools.chain(
-            d['passed_methods'].iteritems(),
-            ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown),
-            ((method, result) for (method, result) in d['failed_methods'].iteritems() if (class_path, method) in self.failed_rerun_methods),
-            ((method, result) for (method, result) in d['failed_methods'].iteritems() if result['method']['fixture_type'] == 'class_teardown'),
+            passed_methods,
+            early_shutdown_methods,
+            failed_methods_already_rerun,
+            failed_class_teardown_methods,
         )
         for method, result_dict in tests_to_report:
             for reporter in self.test_reporters:
@@ -360,12 +378,11 @@ class TestRunnerServer(TestRunner):
             'methods' : [],
         }
 
-        for method, result_dict in d['failed_methods'].iteritems():
-            if ((class_path, method) not in self.failed_rerun_methods) and (result_dict['method']['fixture_type'] != 'class_teardown'):
-                requeue_dict['methods'].append(method)
-                self.failed_rerun_methods.add((class_path, method))
-                result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
-                self.previous_run_results[(class_path, method)] = result_dict
+        for method, result_dict in requeue_methods:
+            requeue_dict['methods'].append(method)
+            self.failed_rerun_methods.add((class_path, method))
+            result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
+            self.previous_run_results[(class_path, method)] = result_dict
 
         if requeue_dict['methods']:
             # When the client has finished running the entire TestCase,
