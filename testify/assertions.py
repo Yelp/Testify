@@ -326,6 +326,37 @@ def assert_rows_equal(rows1, rows2):
     assert_equal(norm_rows(rows1), norm_rows(rows2))
 
 
+def assert_empty(iterable, message=None):
+    """
+    Assert that an iterable contains no values.
+
+    Args:
+        iterable - any iterable object
+        message - str or None, message to print if the iterable yields
+    """
+    for value in iterable:
+        raise AssertionError(message if message else 
+            "iterable %s, asserted to be empty, unexpectedly yielded %s" % 
+            (iterable, value))
+
+
+def assert_not_empty(iterable, message=None):
+    """
+    Assert that an iterable is not empty (by trying to loop over it).
+
+    Args:
+        iterable - any iterable object
+        message - str or None, message to print if the iterable doesn't yield
+    """
+    found_something = False
+    for value in iterable:
+        found_something = True
+        break
+
+    assert found_something, (message if message else 
+        "iterable %s is unexpectedly empty" % iterable)
+
+
 def assert_length(sequence, expected, message=None):
     """Assert a sequence or iterable has an expected length."""
     message = message or "%(sequence)s has length %(length)s expected %(expected)s"

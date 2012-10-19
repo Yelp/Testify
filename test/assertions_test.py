@@ -234,6 +234,62 @@ class AssertDictSubsetTestCase(TestCase):
         else:
             assert_not_reached('AssertionError should have been raised')
 
+class AssertEmptyTestCase(TestCase):
+
+    def test_passes_on_empty_list(self):
+        """Test that assert_empty passes on an empty list."""
+        assertions.assert_empty([])
+
+    def test_passes_on_unyielding_generator(self):
+        """Test that assert_empty passes on an 'empty' generator."""
+        def yield_nothing():
+            if False:
+                yield 0
+  
+        assertions.assert_empty(yield_nothing())
+
+    def test_fails_on_nonempty_list(self):
+        """Test that assert_empty fails on a nonempty list."""
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_empty([0])
+
+    def test_fails_on_infinite_generator(self):
+        """Tests that assert_empty fails on an infinite generator."""
+        def yes():
+            while True:
+                yield 'y'
+
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_empty(yes())
+
+class AssertNotEmptyTestCase(TestCase):
+    
+    def test_fails_on_empty_list(self):
+        """Test that assert_not_empty fails on an empty list."""
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_not_empty([])
+
+    def test_fails_on_unyielding_generator(self):
+        """Test that assert_not_empty fails on an 'empty' generator."""
+        def yield_nothing():
+            if False:
+                yield 0
+
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_not_empty(yield_nothing())
+
+    def test_passes_on_nonempty_list(self):
+        """Test that assert_not_empty passes on a nonempty list."""
+        assertions.assert_not_empty([0])
+
+    def test_passes_on_infinite_generator(self):
+        """Tests that assert_not_empty fails on an infinite generator."""
+        def yes():
+            while True:
+                yield 'y'
+
+        assertions.assert_not_empty(yes())
+
 
 if __name__ == '__main__':
     run()
