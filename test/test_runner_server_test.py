@@ -3,7 +3,7 @@ import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
 from testify import assert_equal, class_setup, setup, teardown, test_case, test_runner_server
-from testify.test_logger import _log
+from testify.test_discovery import _log
 from testify.utils import turtle
 
 

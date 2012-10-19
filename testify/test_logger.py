@@ -24,10 +24,6 @@ import sys
 
 from testify import test_reporter
 
-# Beyond the nicely formatted test output provided by the test logger classes, we
-# also want to make basic test running /result info available via standard python logger
-_log = logging.getLogger('testify')
-
 VERBOSITY_SILENT    = 0  # Don't say anything, just exit with a status code
 VERBOSITY_NORMAL    = 1  # Output dots for each test method run
 VERBOSITY_VERBOSE   = 2  # Output method names and timing information
@@ -53,13 +49,10 @@ class TestLoggerBase(test_reporter.TestReporter):
     def fixture_start(self, result):
         self.test_case_classes.add((result['method']['module'], result['method']['class']))
 
-    def fixture_complete(self, result):
-        if result['method']['fixture_type'] == 'class_teardown' and (result['failure'] or result['error']):
-            # For a class_teardown failure, log the name too (since it wouldn't have
-            # already been logged by on_run_test_method).
+    def class_teardown_complete(self, result):
+        if not result['success']:
             self.report_test_name(result['method'])
             self.report_test_result(result)
-
             self.results.append(result)
 
     def report(self):
@@ -129,7 +122,8 @@ class TextTestLogger(TestLoggerBase):
                 if int(output.strip()) >= 8:
                     self.use_color = True
             except Exception, e:
-                _log.debug("Failed to find color support: %r", e)
+                if self.options.verbosity >= VERBOSITY_VERBOSE:
+                    self.writeln("Failed to find color support: %r" % e)
 
     def write(self, message):
         """Write a message to the output stream, no trailing newline"""
@@ -157,7 +151,6 @@ class TextTestLogger(TestLoggerBase):
         self.writeln(str(exc))
 
     def report_test_name(self, test_method):
-        _log.info("running: %s", self._format_test_method_name(test_method))
         if self.options.verbosity >= VERBOSITY_VERBOSE:
             self.write("%s ... " % self._format_test_method_name(test_method))
 
@@ -187,9 +180,7 @@ class TextTestLogger(TestLoggerBase):
             }[status]
 
             if status in ('fail', 'error'):
-                _log.error("%s: %s\n%s", status, self._format_test_method_name(result['method']), ''.join(result['exception_info']))
-            else:
-                _log.info("%s: %s", status, self._format_test_method_name(result['method']))
+                self.writeln("%s: %s\n%s" % (status, self._format_test_method_name(result['method']), ''.join(result['exception_info'])))
 
             if self.options.verbosity == VERBOSITY_NORMAL:
                 self.write(self._colorize(status_letter, color))

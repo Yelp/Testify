@@ -120,8 +120,8 @@ class TestRunner(object):
         Logging of individual results is accomplished by registering callbacks for
         the TestCase instances to call when they begin and finish running each test.
 
-        At its conclusion, we pass our collected results and to our TestLogger to get
-        testing exceptions and summaries printed out.
+        At its conclusion, we pass our collected results to our TestLogger to
+        print out exceptions and testing summaries.
         """
 
         try:
@@ -144,6 +144,12 @@ class TestRunner(object):
                 for reporter in self.test_reporters:
                     test_case.register_callback(test_case.EVENT_ON_RUN_TEST_METHOD, reporter.test_start)
                     test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, reporter.test_complete)
+
+                    test_case.register_callback(test_case.EVENT_ON_RUN_CLASS_SETUP_METHOD, reporter.class_setup_start)
+                    test_case.register_callback(test_case.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, reporter.class_setup_complete)
+
+                    test_case.register_callback(test_case.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, reporter.class_teardown_start)
+                    test_case.register_callback(test_case.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, reporter.class_teardown_complete)
 
                 test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, failure_counter)
 
