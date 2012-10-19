@@ -192,12 +192,6 @@ class TestRunnerServer(TestRunner):
         if result['method']['fixture_type'] != 'class_teardown':
             d['methods'].remove(result['method']['name'])
 
-        ###
-        from pprint import pprint
-        print "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
-        pprint(d)
-        ###
-
         if not d['methods']:
             self.check_in_class(runner_id, class_path, finished=True)
 
