@@ -33,28 +33,21 @@ try:
 except (ImportError, NameError), ex:
     coverage = None
 
-started = False
 coverage_instance = None
 
 def start(testcase_name = None):
-    global started
     global coverage_instance
-    assert not started
     if coverage is not None:
-        coverage_instance = coverage.coverage(data_file="coverage_file.", data_suffix=testcase_name, auto_data=True)
+        coverage_instance = coverage.coverage(data_file=".coverage", data_suffix=testcase_name, auto_data=True)
     else:
         coverage_instance = FakeCoverage()
 
     coverage_instance.start()
-    started = True
 
 def stop():
-    global started
     global coverage_instance
-    assert started
     coverage_instance.stop()
     coverage_instance.save()
-    started = False
 
 if __name__ == "__main__":
     if coverage is None:
