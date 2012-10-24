@@ -142,15 +142,47 @@ def assert_raises(*args, **kwargs):
     else:
         return _assert_raises(*args, **kwargs)
 
+def assert_raises_particular_exception(exception_class, exception_test=lambda e: e, callable_obj=None, *args, **kwargs):
+    """
+    Assert an exception is raised and passes an exception_test, either in a
+    with statement via a context manager or while calling a given callable on
+    given arguments.
+
+    Arguments:
+        exception_class - class corresponding to the expected exception
+        excepton_test - a callable which takes an exception instance and 
+            asserts things about it
+        callable_obj, *args, **kwargs - optional, a callable object and 
+            arguments to pass into it which when used are expected to raise the
+            particular exception.  if not provided, this function returns a 
+            context manager which will check that the assertion is raised 
+            within the context (the body of the with statement).
+    
+    As a context manager:
+    >>> exception_says_whatever = lambda e: assert_equal(str(e), "whatever")
+    >>> with assert_raises_particular_exception(Exception, exception_says_whatever):
+    ...     raise Exception("whatever")
+
+    Pass in a callable:
+    >>> exception_says_whatever = lambda e: assert_equal(str(e), "whatever")
+    >>> def raise_exception(arg, kwarg=None):
+    ...     raise Exception("whatever")
+    >>> assert_raises_particular_exception(Exception, exception_says_whatever, raise_exception, 1, kwarg=234)
+    """
+    if callable_obj is None:
+        return _assert_raises_context_manager(exception_class, exception_test)
+    else:
+        with _assert_raises_context_manager(exception_class, exception_test):
+            callable_obj(*args, **kwargs)
 
 def assert_raises_and_contains(expected_exception_class, strings, callable_obj, *args, **kwargs):
     """Assert an exception is raised by passing in a callable and its
     arguments and that the string representation of the exception
-    contains the case-insensetive list of passed in strings.
+    contains the case-insensitive list of passed in strings.
 
-	Args
-		strings -- can be a string or an iterable of strings
-	"""
+    Args
+        strings -- can be a string or an iterable of strings
+    """
     try:
         callable_obj(*args, **kwargs)
     except expected_exception_class, e:
@@ -162,13 +194,19 @@ def assert_raises_and_contains(expected_exception_class, strings, callable_obj, 
     else:
         assert_not_reached("No exception was raised (expected %s)" % expected_exception_class)
 
-
 @contextlib.contextmanager
-def _assert_raises_context_manager(exception_class):
+def _assert_raises_context_manager(exception_class, exception_test=lambda e: e):
+    """Builds a context manager for testing that code raises an assertion.
+
+    Args:
+        exception_class - a subclass of Exception
+        exception_test - optional, a function to apply to the exception (to 
+            test something about it)
+    """
     try:
         yield
-    except exception_class:
-        return
+    except exception_class as e:
+        exception_test(e)
     else:
         assert_not_reached("No exception was raised (expected %r)" %
                            exception_class)
@@ -326,36 +364,49 @@ def assert_rows_equal(rows1, rows2):
     assert_equal(norm_rows(rows1), norm_rows(rows2))
 
 
-def assert_empty(iterable, max_values_to_print=None, message=None):
+def assert_empty(iterable, max_elements_to_print=None, message=None):
     """
     Assert that an iterable contains no values.
 
     Args:
         iterable - any iterable object
-        max_values_to_print - int or None, maximum number of elements from
-            iterable to include in the error message (by default, includes all 
-            elements from iterables with a len() and 10 elements otherwise)
-        message - str or None, message to print if the iterable yields
+        max_elements_to_print - int or None, maximum number of elements from
+            iterable to include in the error message. by default, includes all 
+            elements from iterables with a len(), and 10 elements otherwise.
+            if max_elements_to_print is 0, no sample is printed.
+        message - str or None, custom message to print if the iterable yields.
+            a sample is appended to the end unless max_elements_to_print is 0.
     """
+    # determine whether or not we can print all of iterable, which could be 
+    # an infinite (or very slow) generator. 
     try:
         total_length = len(iterable)
+        if max_elements_to_print is None:
+            max_elements_to_print = total_length
     except TypeError:
-        total_length = None
-        if max_values_to_print is None:
-            max_values_to_print = 10
+        if max_elements_to_print is None:
+            max_elements_to_print = 10
 
-    # get the first max_values_to_print items from iterable
-    samples = list(islice(iterable, 0, max_values_to_print))
+    message = message or "iterable %s was unexpectedly non-empty." % iterable
 
-    if len(samples) != 0:
-        # make it clear whether or not the printed sample is the whole iterable
-        if len(samples) == total_length or len(samples) < max_values_to_print:
-            sample_message = "elements"
+    if max_elements_to_print == 0:
+        sample = list(islice(iterable, 0, 1))
+    else:
+        # get the first max_elements_to_print + 1 items from iterable, or just
+        # the first item if max_elements_to_print is 0.  trying to get an 
+        # extra item by adding 1 to max_elements_to_print lets us tell whether
+        # we got everything in iterator, regardless of if it has len() defined
+        sample_plus_extra = list(islice(iterable, 0, max_elements_to_print + 1))
+        sample_is_whole_iterable = len(sample_plus_extra) <= max_elements_to_print
+        sample = sample_plus_extra[:max_elements_to_print]
+
+        if sample_is_whole_iterable:
+            message += ' elements: %s' % sample
         else:
-            sample_message = "first %s elements" % len(samples)
+            message += ' first %s elements: %s' % (len(sample), sample)
 
-        raise AssertionError("iterable %s was unexpectedly non-empty. %s: %s" %
-            (iterable, sample_message, samples))
+    assert len(sample) == 0, message
+
 
 def assert_not_empty(iterable, message=None):
     """
