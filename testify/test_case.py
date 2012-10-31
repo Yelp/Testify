@@ -290,7 +290,17 @@ class TestCase(object):
                 yield member
 
     def run(self):
-        """Delegator method encapsulating the flow for executing a TestCase instance"""
+        """Delegator method encapsulating the flow for executing a TestCase instance.
+
+        This method tracks its progress in a TestResult with test_method 'run'.
+        This TestResult is used as a signal when running in client/server mode:
+        when the client is done with a TestCase -- including running its
+        various fixtures -- it sends this TestResult to the server during the
+        EVENT_ON_COMPLETE_TEST_CASE phase.
+
+        This approach is hacky, but a more correct solution would involve
+        significant refactoring, so here we are.
+        """
         test_case_result = TestResult(self.run)
         test_case_result.start()
 
