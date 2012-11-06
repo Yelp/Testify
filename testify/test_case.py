@@ -149,6 +149,7 @@ class TestCase(object):
     EVENT_ON_RUN_FIXTURE_METHOD = 7
     EVENT_ON_COMPLETE_FIXTURE_METHOD = 8
     EVENT_ON_COMPLETE_TEST_CASE = 9
+    EVENT_ON_RUN_TEST_CASE = 10
 
     log = class_logger.ClassLogger()
 
@@ -303,6 +304,7 @@ class TestCase(object):
         """
         test_case_result = TestResult(self.run)
         test_case_result.start()
+        self.fire_event(self.EVENT_ON_RUN_TEST_CASE, test_case_result)
 
         self.__run_class_setup_fixtures()
         self.__enter_class_context_managers(self.class_setup_teardown_fixtures, self.__run_test_methods)
