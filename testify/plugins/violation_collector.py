@@ -10,24 +10,27 @@ except ImportError:
     pass
 
 from testify import test_reporter
+from testify import test_logger
 
 
 VIOLATOR_DESC_END = "#END#"
 MAX_VIOLATOR_LINE = 1024 * 10
 
+verbosity = test_logger.VERBOSITY_NORMAL
 violation_logger = None
 violations = defaultdict(list)
+last_violator = ("UndefinedTestCase", "UndefinedMethod", "UndefinedPath")
+
 violations_read_fd, violations_write_fd = os.pipe()
 epoll = select.epoll()
 epoll.register(violations_read_fd, select.EPOLLIN | select.EPOLLET)
 
-last_violator = ("UndefinedTestCase", "UndefinedMethod", "UndefinedPath")
-
 def _log(msg):
-    global violation_logger
+    global violation_logger, verbosity
     if violation_logger:
         violation_logger.warning(msg)
-    else:
+
+    if verbosity != test_logger.VERBOSITY_SILENT:
         sys.stderr.write(msg + '\n')
 
 def get_violator():
@@ -55,17 +58,17 @@ def collect(operation, path, resolved_path):
         _log("CATBOX_VIOLATION: %s.%s %r" % (test_case, method, violation))
     except Exception, e:
 		# No way to recover in here, just report error and violation
-        _log("Error collecting violation data: %r" % e)
-        _log("CATBOX_VIOLATION: " + str((operation, resolved_path)))
+        _log("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
 
 
 class ViolationReporter(test_reporter.TestReporter):
     def __init__(self, options, logger=None):
-        global violation_logger, violations_write_fd
+        global violation_logger, violations_write_fd, verbosity
         self.options = options
         self.violations_write_fd = violations_write_fd
         if logger:
             violation_logger = logger
+        verbosity = options.verbosity
         super(ViolationReporter, self).__init__(self)
 
     def set_violator(self, test_case_name, method_name, module_path):
