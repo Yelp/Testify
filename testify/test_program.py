@@ -273,6 +273,11 @@ class TestProgram(object):
                 salt_info =  (' [salt: %s]' % other_opts.bucket_salt) if other_opts.bucket_salt else ''
                 bucket_text = " (bucket %d of %d%s)" % (other_opts.bucket, other_opts.bucket_count, salt_info)
             log.info("starting test run%s%s", label_text, bucket_text)
+
+            for plugin_mod in test_runner_args['plugin_modules']:
+                    if hasattr(plugin_mod, "prepare_test_runner"):
+                        plugin_mod.prepare_test_runner(test_runner_args['options'], runner)
+
             result = runner.run()
             sys.exit(not result)
 
