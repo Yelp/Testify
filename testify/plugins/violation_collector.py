@@ -13,73 +13,74 @@ from testify import test_reporter
 from testify import test_logger
 
 
-VIOLATOR_DESC_END = "#END#"
-MAX_VIOLATOR_LINE = 1024 * 10
+class ViolationCollector:
+    VIOLATOR_DESC_END = "#END#"
+    MAX_VIOLATOR_LINE = 1024
 
-verbosity = test_logger.VERBOSITY_NORMAL
-violation_stream = None
-violations = defaultdict(list)
-last_violator = ("UndefinedTestCase", "UndefinedMethod", "UndefinedPath")
+    stream = None
+    verbosity = test_logger.VERBOSITY_NORMAL
+    violations = defaultdict(list)
+    last_violator = ("UndefinedTestCase", "UndefinedMethod", "UndefinedPath")
 
-violations_read_fd, violations_write_fd = os.pipe()
-epoll = select.epoll()
-epoll.register(violations_read_fd, select.EPOLLIN | select.EPOLLET)
+    violations_read_fd, violations_write_fd = os.pipe()
+    epoll = select.epoll()
+    epoll.register(violations_read_fd, select.EPOLLIN | select.EPOLLET)
 
-def writeln(msg):
-    global violation_stream, verbosity
-    if violation_stream and verbosity != test_logger.VERBOSITY_SILENT:
-        msg = msg.encode('utf8') if isinstance(msg, unicode) else msg + '\n'
-        violation_stream.write(msg)
-        violation_stream.flush()
+    def writeln(self, msg):
+        if self.stream and self.verbosity != test_logger.VERBOSITY_SILENT:
+            msg = msg.encode('utf8') if isinstance(msg, unicode) else msg + '\n'
+            self.stream.write(msg)
+            self.stream.flush()
 
-def report_violation(violator, violation):
-    test_case, method, module = violator
-    syscall, resolved_path = violation
-    writeln("CATBOX_VIOLATION: %s.%s %r" % (test_case, method, violation))
+    def report_violation(self, violator, violation):
+        test_case, method, module = violator
+        syscall, resolved_path = violation
+        self.writeln("CATBOX_VIOLATION: %s.%s %r" % (test_case, method, violation))
 
-def get_violator():
-    global last_violator
-    events = epoll.poll(.01)
-    violator_line = ""
-    if events:
-        read = os.read(events[0][0], MAX_VIOLATOR_LINE)
-        if read:
-            # get last non empty string as violator line
-            violator_line = read.split(VIOLATOR_DESC_END)[-2]
-            last_violator = tuple(violator_line.split(','))
-    return last_violator
+    def get_violator(self):
+        events = self.epoll.poll(.01)
+        violator_line = ""
+        if events:
+            read = os.read(events[0][0], self.MAX_VIOLATOR_LINE)
+            if read:
+                # get last non empty string as violator line
+                violator_line = read.split(self.VIOLATOR_DESC_END)[-2]
+                self.last_violator = tuple(violator_line.split(','))
+        return self.last_violator
+
+collector = ViolationCollector()
 
 def collect(operation, path, resolved_path):
     """This is the 'logger' method passed to catbox. This method
     will be triggered at each catbox violation.
     """
-    global violations, last_violator
+    global collector
     try:
-        violator = get_violator()
+        violator = collector.get_violator()
         violation = (operation, resolved_path)
-        violations[violator].append(violation)
-        report_violation(violator, violation)
+        collector.violations[violator].append(violation)
+        collector.report_violation(violator, violation)
     except Exception, e:
 		# No way to recover in here, just report error and violation
-        writeln("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
+        collector.writeln("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
 
 
 class ViolationReporter(test_reporter.TestReporter):
     def __init__(self, options, stream=sys.stdout):
-        global violation_stream, violations_write_fd, verbosity
+        global collector
+        self.collector = collector
         self.options = options
-        self.violations_write_fd = violations_write_fd
+        self.violations_write_fd = self.collector.violations_write_fd
         if stream:
-            violation_stream = stream
-        verbosity = options.verbosity
+            self.collector.stream = stream
+        self.collector.verbosity = options.verbosity
         super(ViolationReporter, self).__init__(self)
 
     def set_violator(self, test_case_name, method_name, module_path):
         violator_line = ','.join([test_case_name, method_name, module_path])
-        os.write(self.violations_write_fd, violator_line + VIOLATOR_DESC_END)
+        os.write(self.violations_write_fd, violator_line + self.collector.VIOLATOR_DESC_END)
 
     def __update_violator(self, result):
-        global set_violator
         method = result['method']
         test_case_name = method['class']
         test_method_name = method['name']
@@ -89,20 +90,30 @@ class ViolationReporter(test_reporter.TestReporter):
     def test_case_start(self, result):
         self.__update_violator(result)
 
+    def test_case_complete(self, result):
+        self.collector.get_violator()
+
     def test_start(self, result):
         self.__update_violator(result)
+
+    def test_complete(self, result):
+        self.collector.get_violator()
 
     def test_setup_start(self, result):
         self.__update_violator(result)
 
+    def test_setup_complete(self, result):
+        self.collector.get_violator()
+
     def test_teardown_start(self, result):
         self.__update_violator(result)
 
+    def test_teardown_complete(self, result):
+        self.collector.get_violator()
+
     def report(self):
-        global violations
-        writeln("VIOLATION REPORT")
-        for key, value in violations.iteritems():
-			writeln(key + ":" + value)
+        # TODO: fetch violations from DB and report here
+        pass
         
 
 def run_in_catbox(method):
