@@ -4,7 +4,6 @@ import os
 import Queue
 import select
 import sys
-import threading
 import time
 
 catbox = None
@@ -29,7 +28,7 @@ Violations = SA.Table(
     SA.Column('method_name', SA.String(255), nullable=False),
     SA.Column('syscall', SA.String(20), index=True, nullable=False),
     SA.Column('syscall_args', SA.String(255), nullable=True),
-    SA.Column('start_time', SA.Integer, index=True, nullable=False),
+    SA.Column('start_time', SA.Integer, nullable=False),
 )
 SA.Index('ix_individual_test', Violations.c.module, Violations.c.class_name, Violations.c.method_name, unique=False)
 SA.Index('ix_syscall_signature', Violations.c.syscall, Violations.c.syscall_args, unique=False)
@@ -47,12 +46,12 @@ class ViolationStore:
         self.options = options
         self.dburl = self.options.violation_dburl or SA.engine.url.URL(**yaml.safe_load(open(self.options.violation_dbconfig)))
         if is_sqliteurl(self.dburl):
-            if self.dburl.find(":memory:") > -1:
-                raise ValueError("Can not use sqlite memory database for ViolationStore")
             dbpath = sqlite_dbpath(self.dburl)
             if os.path.exists(dbpath):
                 os.unlink(dbpath)
         self.engine, self.conn = self.connect()
+        self.violation_queue = []
+        self.flush_count = 10
 
     def connect(self):
         engine = SA.create_engine(self.dburl)
@@ -60,42 +59,23 @@ class ViolationStore:
         metadata.create_all(engine)
         return engine, conn
 
-    def start_daemon(self):
-        self.violation_queue = Queue.Queue()
-        self.db_thread = threading.Thread(target=self.flush_queue)
-        self.db_thread.daemon = True
-        self.db_thread.start()
-
     def add_violation(self, violation):
-        self.violation_queue.put(violation)
+        self.violation_queue.append(violation)
+        if len(self.violation_queue) >= self.flush_count:
+            self.flush_queue()
 
-    def flush_queue(self, daemon=True):
-        if daemon:
-            engine, conn = self.connect()
-        else:
-            engine, conn = self.engine, self.conn
-        while True:
-            violations = []
-            if daemon:
-                violations.append(self.violation_queue.get())
-            try:
-                while True:
-                    violations.append(self.violation_queue.get_nowait())
-            except Queue.Empty:
-                pass
-            try:
-                if violations:
-                    conn.execute(Violations.insert(), violations)
-            except Exception, e:
-                logging.error("Exception inserting violations: %r" % e)
-            finally:
-                for _ in xrange(len(violations)):
-                    self.violation_queue.task_done()
-            if not daemon:
-                return
+    def flush_queue(self):
+        try:
+            if self.violation_queue:
+                self.conn.execute(Violations.insert(), self.violation_queue)
+        except Exception, e:
+            print self.violations
+            logging.error("Exception inserting violations: %r" % e)
+        finally:
+            self.violation_queue = []
 
     def violation_counts_by_syscall(self):
-        self.flush_queue(daemon=False)
+        self.flush_queue()
 
         query = SA.sql.select([
             Violations.c.syscall,
@@ -105,6 +85,9 @@ class ViolationStore:
         violations = []
         for row in result:
             violations.append((row['syscall'], row['count']))
+
+        print self.violation_queue
+
         return violations
 
 class ViolationCollector:
@@ -183,7 +166,6 @@ class ViolationReporter(test_reporter.TestReporter):
             self.collector.stream = stream
         self.collector.verbosity = options.verbosity
         self.collector.store = ViolationStore(options)
-        self.collector.store.start_daemon()
         super(ViolationReporter, self).__init__(self)
 
     def set_violator(self, test_case_name, method_name, module_path):
@@ -223,7 +205,6 @@ class ViolationReporter(test_reporter.TestReporter):
 
     def report(self):
         violations = self.collector.store.violation_counts_by_syscall()
-        # TODO: do we need to use collector to write?
         self.collector.writeln("")
         self.collector.writeln("=" * 72)
         self.collector.writeln("VIOLATIONS (syscall, count):")
