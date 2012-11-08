@@ -1,7 +1,6 @@
 from collections import defaultdict
 import logging
 import os
-import Queue
 import select
 import sys
 import time
@@ -46,37 +45,30 @@ class ViolationStore:
         self.options = options
         self.dburl = self.options.violation_dburl or SA.engine.url.URL(**yaml.safe_load(open(self.options.violation_dbconfig)))
         if is_sqliteurl(self.dburl):
+            if self.dburl.find(":memory:") > -1:
+                raise ValueError("Can not use sqlite memory database for ViolationStore")
             dbpath = sqlite_dbpath(self.dburl)
             if os.path.exists(dbpath):
                 os.unlink(dbpath)
         self.engine, self.conn = self.connect()
-        self.violation_queue = []
-        self.flush_count = 10
 
     def connect(self):
         engine = SA.create_engine(self.dburl)
         conn = engine.connect()
+        if is_sqliteurl(self.dburl):
+            conn.execute("PRAGMA journal_mode = MEMORY;")
         metadata.create_all(engine)
         return engine, conn
 
     def add_violation(self, violation):
-        self.violation_queue.append(violation)
-        if len(self.violation_queue) >= self.flush_count:
-            self.flush_queue()
-
-    def flush_queue(self):
         try:
-            if self.violation_queue:
-                self.conn.execute(Violations.insert(), self.violation_queue)
+            self.conn.execute(Violations.insert(), violation)
         except Exception, e:
-            print self.violations
             logging.error("Exception inserting violations: %r" % e)
         finally:
             self.violation_queue = []
 
     def violation_counts_by_syscall(self):
-        self.flush_queue()
-
         query = SA.sql.select([
             Violations.c.syscall,
             SA.sql.func.count(Violations.c.syscall).label("count")
@@ -85,9 +77,6 @@ class ViolationStore:
         violations = []
         for row in result:
             violations.append((row['syscall'], row['count']))
-
-        print self.violation_queue
-
         return violations
 
 class ViolationCollector:
@@ -239,7 +228,7 @@ def add_command_line_options(parser):
     parser.add_option(
         "--violation-db-url",
         dest="violation_dburl",
-        default="sqlite:///test_violations.sqlite",
+        default="sqlite:///violations.sqlite",
         help="URL of the SQL database to store violations."
     )
     parser.add_option(
