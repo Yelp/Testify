@@ -239,6 +239,10 @@ def add_command_line_options(parser):
 
 def build_test_reporters(options):
     if options.catbox_violations:
+        if not catbox:
+            raise Exception, "Violation collection requires catbox. You do not have catbox install in your path."
+        if not catbox.has_pcre():
+            raise Exception, "Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support."
         return [ViolationReporter(options)]
     return []
 
