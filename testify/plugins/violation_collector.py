@@ -247,9 +247,9 @@ def build_test_reporters(options):
     return []
 
 
-def prepare_test_runner(options, runner):
+def prepare_test_program(options, program):
     if options.catbox_violations:
         def _run():
-            return run_in_catbox(runner.__original_run__, options)
-        runner.__original_run__ = runner.run
-        runner.run = _run
+            return run_in_catbox(program.__original_run__, options)
+        program.__original_run__ = program.run
+        program.run = _run

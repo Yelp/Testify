@@ -216,67 +216,75 @@ class TestProgram(object):
         """Initialize and run the test with the given command_line_args
             command_line_args will be passed to parser.parse_args
         """
+        self.plugin_modules = load_plugins()
         command_line_args = command_line_args or sys.argv[1:]
+        self.runner_action, self.test_path, self.test_runner_args, self.other_opts = parse_test_runner_command_line_args(
+            self.plugin_modules,
+            command_line_args
+        )
 
-        plugin_modules = load_plugins()
+        for plugin_mod in self.plugin_modules:
+            if hasattr(plugin_mod, "prepare_test_program"):
+                plugin_mod.prepare_test_program(self.other_opts, self)
 
-        runner_action, test_path, test_runner_args, other_opts = parse_test_runner_command_line_args(plugin_modules, command_line_args)
+		self.run()
 
-        self.setup_logging(other_opts)
+    def run(self):
+        self.setup_logging(self.other_opts)
 
         bucket_overrides = {}
-        if other_opts.bucket_overrides_file:
-            bucket_overrides = get_bucket_overrides(other_opts.bucket_overrides_file)
+        if self.other_opts.bucket_overrides_file:
+            bucket_overrides = get_bucket_overrides(self.other_opts.bucket_overrides_file)
 
-        if other_opts.serve_port:
+        if self.other_opts.serve_port:
             from test_runner_server import TestRunnerServer
             test_runner_class = TestRunnerServer
-            test_runner_args['serve_port'] = other_opts.serve_port
-        elif other_opts.connect_addr:
+            self.test_runner_args['serve_port'] = self.other_opts.serve_port
+        elif self.other_opts.connect_addr:
             from test_runner_client import TestRunnerClient
             test_runner_class = TestRunnerClient
-            test_runner_args['connect_addr'] = other_opts.connect_addr
-            test_runner_args['runner_id'] = other_opts.runner_id
-        elif other_opts.replay_json or other_opts.replay_json_inline:
+            self.test_runner_args['connect_addr'] = self.other_opts.connect_addr
+            self.test_runner_args['runner_id'] = self.other_opts.runner_id
+        elif self.other_opts.replay_json or self.other_opts.replay_json_inline:
             from test_runner_json_replay import TestRunnerJSONReplay
             test_runner_class = TestRunnerJSONReplay
-            test_runner_args['replay_json'] = other_opts.replay_json
-            test_runner_args['replay_json_inline'] = other_opts.replay_json_inline
-        elif other_opts.rerun_test_file:
+            self.test_runner_args['replay_json'] = self.other_opts.replay_json
+            self.test_runner_args['replay_json_inline'] = self.other_opts.replay_json_inline
+        elif self.other_opts.rerun_test_file:
             from test_rerunner import TestRerunner
             test_runner_class = TestRerunner
-            test_runner_args['rerun_test_file'] = other_opts.rerun_test_file
+            self.test_runner_args['rerun_test_file'] = self.other_opts.rerun_test_file
         else:
             test_runner_class = TestRunner
 
         runner = test_runner_class(
-            test_path,
+            self.test_path,
             bucket_overrides=bucket_overrides,
-            bucket_count=other_opts.bucket_count,
-            bucket_salt=other_opts.bucket_salt,
-            bucket=other_opts.bucket,
-            **test_runner_args
+            bucket_count=self.other_opts.bucket_count,
+            bucket_salt=self.other_opts.bucket_salt,
+            bucket=self.other_opts.bucket,
+            **self.test_runner_args
         )
 
-        if runner_action == ACTION_LIST_SUITES:
+        if self.runner_action == ACTION_LIST_SUITES:
             runner.list_suites()
             sys.exit(0)
-        elif runner_action == ACTION_LIST_TESTS:
+        elif self.runner_action == ACTION_LIST_TESTS:
             runner.list_tests()
             sys.exit(0)
-        elif runner_action == ACTION_RUN_TESTS:
+        elif self.runner_action == ACTION_RUN_TESTS:
             label_text = ""
             bucket_text = ""
-            if other_opts.label:
-                label_text = " " + other_opts.label
-            if other_opts.bucket_count:
-                salt_info =  (' [salt: %s]' % other_opts.bucket_salt) if other_opts.bucket_salt else ''
-                bucket_text = " (bucket %d of %d%s)" % (other_opts.bucket, other_opts.bucket_count, salt_info)
+            if self.other_opts.label:
+                label_text = " " + self.other_opts.label
+            if self.other_opts.bucket_count:
+                salt_info =  (' [salt: %s]' % self.other_opts.bucket_salt) if self.other_opts.bucket_salt else ''
+                bucket_text = " (bucket %d of %d%s)" % (self.other_opts.bucket, self.other_opts.bucket_count, salt_info)
             log.info("starting test run%s%s", label_text, bucket_text)
 
-            for plugin_mod in test_runner_args['plugin_modules']:
+            for plugin_mod in self.test_runner_args['plugin_modules']:
                     if hasattr(plugin_mod, "prepare_test_runner"):
-                        plugin_mod.prepare_test_runner(test_runner_args['options'], runner)
+                        plugin_mod.prepare_test_runner(self.test_runner_args['options'], runner)
 
             result = runner.run()
             sys.exit(not result)
