@@ -222,12 +222,7 @@ class TestProgram(object):
             self.plugin_modules,
             command_line_args
         )
-
-        for plugin_mod in self.plugin_modules:
-            if hasattr(plugin_mod, "prepare_test_program"):
-                plugin_mod.prepare_test_program(self.other_opts, self)
-
-		self.run()
+        self.run()
 
     def run(self):
         self.setup_logging(self.other_opts)
