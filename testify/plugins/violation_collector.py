@@ -1,4 +1,5 @@
 from collections import defaultdict
+import json
 import logging
 import os
 import select
@@ -22,15 +23,18 @@ metadata = SA.MetaData()
 Violations = SA.Table(
     'violations', metadata,
     SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+    SA.Column('branch', SA.String(255)),
+    SA.Column('revision', SA.String(255)),
+    SA.Column('submitstamp', SA.Integer),
     SA.Column('module', SA.String(255), nullable=False),
     SA.Column('class_name', SA.String(255), nullable=False),
     SA.Column('method_name', SA.String(255), nullable=False),
     SA.Column('syscall', SA.String(20), index=True, nullable=False),
     SA.Column('syscall_args', SA.String(255), nullable=True),
-    SA.Column('start_time', SA.Integer, nullable=False),
 )
-SA.Index('ix_individual_test', Violations.c.module, Violations.c.class_name, Violations.c.method_name, unique=False)
-SA.Index('ix_syscall_signature', Violations.c.syscall, Violations.c.syscall_args, unique=False)
+SA.Index('ix_unique_build', Violations.c.branch, Violations.c.revision, Violations.c.submitstamp)
+SA.Index('ix_individual_test', Violations.c.module, Violations.c.class_name, Violations.c.method_name)
+SA.Index('ix_syscall_signature', Violations.c.syscall, Violations.c.syscall_args)
 
 def is_sqliteurl(dburl):
     return dburl.startswith("sqlite:///")
@@ -40,16 +44,29 @@ def sqlite_dbpath(dburl):
         return os.path.abspath(dburl[len("sqlite:///"):])
     return None
 
+def cleandict(dictionary, allowed_keys):
+    new_dict = {}
+    for key in dictionary.iterkeys():
+        new_dict[key] = dictionary[key]
+    return new_dict
+
 class ViolationStore:
     def __init__(self, options):
         self.options = options
         self.dburl = self.options.violation_dburl or SA.engine.url.URL(**yaml.safe_load(open(self.options.violation_dbconfig)))
+        if options.build_info:
+            info = json.loads(options.build_info)
+            self.info = cleandict(info, ['branch', 'revision', 'submitstamp'])
+        else:
+            self.info = {'branch': "", 'revision': "", 'submitstamp': time.time()}
+
         if is_sqliteurl(self.dburl):
             if self.dburl.find(":memory:") > -1:
                 raise ValueError("Can not use sqlite memory database for ViolationStore")
             dbpath = sqlite_dbpath(self.dburl)
             if os.path.exists(dbpath):
                 os.unlink(dbpath)
+
         self.engine, self.conn = self.connect()
 
     def connect(self):
@@ -62,6 +79,7 @@ class ViolationStore:
 
     def add_violation(self, violation):
         try:
+            violation.update(self.info)
             self.conn.execute(Violations.insert(), violation)
         except Exception, e:
             logging.error("Exception inserting violations: %r" % e)
@@ -79,6 +97,7 @@ class ViolationStore:
             violations.append((row['syscall'], row['count']))
         return violations
 
+
 class ViolationCollector:
     VIOLATOR_DESC_END = "#END#"
     MAX_VIOLATOR_LINE = 1024
@@ -93,8 +112,10 @@ class ViolationCollector:
     epoll = select.epoll()
     epoll.register(violations_read_fd, select.EPOLLIN | select.EPOLLET)
 
-    def writeln(self, msg):
-        if self.stream and self.verbosity != test_logger.VERBOSITY_SILENT:
+    def writeln(self, msg, verbosity=None):
+        if not verbosity:
+            verbosity = self.verbosity
+        if self.stream and verbosity <= self.verbosity:
             msg = msg.encode('utf8') if isinstance(msg, unicode) else msg
             self.stream.write(msg + '\n')
             self.stream.flush()
@@ -102,7 +123,10 @@ class ViolationCollector:
     def report_violation(self, violator, violation):
         test_case, method, module = violator
         syscall, resolved_path = violation
-        self.writeln("CATBOX_VIOLATION: %s.%s %r" % (test_case, method, violation))
+        self.writeln(
+            "CATBOX_VIOLATION: %s.%s %r" % (test_case, method, violation),
+            test_logger.VERBOSITY_VERBOSE
+        )
         self.store.add_violation({
                 "module": module,
                 "class_name": test_case,
@@ -125,8 +149,8 @@ class ViolationCollector:
 
 
 """We'll have two copies of this collector instance, one in parent
-(collection syscall violations) and one in the child running TestCases
-(and reporing active module/test case class/test method."""
+(collecting syscall violations) and one in the child running TestCases
+(and reporting active module/test_case/test_method."""
 collector = ViolationCollector()
 
 
@@ -140,6 +164,7 @@ def collect(operation, path, resolved_path):
         violation = (operation, resolved_path)
         collector.violations[violator].append(violation)
         collector.report_violation(violator, violation)
+
     except Exception, e:
         # No way to recover in here, just report error and violation
         collector.writeln("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
@@ -194,11 +219,12 @@ class ViolationReporter(test_reporter.TestReporter):
 
     def report(self):
         violations = self.collector.store.violation_counts_by_syscall()
-        self.collector.writeln("")
-        self.collector.writeln("=" * 72)
-        self.collector.writeln("VIOLATIONS (syscall, count):")
+        verbosity = test_logger.VERBOSITY_SILENT
+        self.collector.writeln("", verbosity)
+        self.collector.writeln("=" * 72, verbosity)
+        self.collector.writeln("VIOLATIONS (syscall, count):", verbosity)
         for syscall, count in violations:
-            self.collector.writeln("%s\t%s" % (syscall, count))
+            self.collector.writeln("%s\t%s" % (syscall, count), verbosity)
 
 def run_in_catbox(method, options):
     if not catbox:
