@@ -6,8 +6,8 @@ Based around a differ borrowed from Review Board.
 from difflib import SequenceMatcher
 
 
-LEFT_HIGHLIGHT_CHARACTER = '<'
-RIGHT_HIGHLIGHT_CHARACTER = '>'
+LEFT_HIGHLIGHT_CHARACTER = '\033[1;31m'
+RIGHT_HIGHLIGHT_CHARACTER = '\033[0m'
 
 
 # Borrowed from
