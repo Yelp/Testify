@@ -1,10 +1,10 @@
 import cStringIO
 
 from test.discovery_failure_test import BrokenImportTestCase
-from testify import assert_in, run, setup, teardown
-from testify.test_logger import TextTestLogger, VERBOSITY_NORMAL
+from testify import TestCase, assert_equal, assert_in, run, setup, teardown
+from testify.test_logger import ColorlessTextTestLogger, TextTestLogger, VERBOSITY_NORMAL
 from testify.test_runner import TestRunner
-from testify.utils import turtle
+from testify.utils import stringdiffer, turtle
 
 
 class TestTextLoggerDiscoveryFailureTestCase(BrokenImportTestCase):
@@ -32,6 +32,24 @@ class TestTextLoggerDiscoveryFailureTestCase(BrokenImportTestCase):
         runner.run()
         logger_output = self.stream.getvalue()
         assert_in('DISCOVERY FAILURE!', logger_output)
+
+
+class ColorlessTextTestLoggerTestCase(TestCase):
+
+    class MockOptionsColor(object):
+        no_color = False
+
+    class MockOptionsNoColor(object):
+        no_color = True
+
+    def test_highlight_marker(self):
+        ColorlessTextTestLogger(self.MockOptionsColor())
+        colored_highlight_marker = stringdiffer.HighlightMarker()
+        assert_equal(colored_highlight_marker.color, True)
+
+        ColorlessTextTestLogger(self.MockOptionsNoColor())
+        colorless_highlight_marker = stringdiffer.HighlightMarker()
+        assert_equal(colorless_highlight_marker.color, False)
 
 
 if __name__ == '__main__':
