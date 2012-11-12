@@ -1,6 +1,8 @@
 from collections import defaultdict
+import itertools
 import json
 import logging
+import operator
 import os
 import select
 import sys
@@ -86,15 +88,17 @@ class ViolationStore:
         finally:
             self.violation_queue = []
 
-    def violation_counts_by_syscall(self):
+    def violation_counts(self):
         query = SA.sql.select([
+            Violations.c.class_name,
+            Violations.c.method_name,
             Violations.c.syscall,
             SA.sql.func.count(Violations.c.syscall).label("count")
-        ]).group_by(Violations.c.syscall).order_by("count DESC")
+        ]).group_by(Violations.c.class_name, Violations.c.method_name, Violations.c.syscall).order_by("count DESC")
         result = self.conn.execute(query)
         violations = []
         for row in result:
-            violations.append((row['syscall'], row['count']))
+            violations.append((row['class_name'], row['method_name'], row['syscall'], row['count']))
         return violations
 
 
@@ -217,14 +221,32 @@ class ViolationReporter(test_reporter.TestReporter):
     def test_teardown_complete(self, result):
         self.collector.get_violator()
 
+    def get_syscall_count(self, violations):
+        syscall_violations = []
+        for syscall, violators in itertools.groupby(sorted(violations, key=operator.itemgetter(2)), operator.itemgetter(2)):
+            count = sum(violator[3] for violator in violators)
+            syscall_violations.append((syscall, count))
+        return sorted(syscall_violations, key=operator.itemgetter(1))
+
     def report(self):
-        violations = self.collector.store.violation_counts_by_syscall()
+        violations = self.collector.store.violation_counts()
         verbosity = test_logger.VERBOSITY_SILENT
         self.collector.writeln("", verbosity)
         self.collector.writeln("=" * 72, verbosity)
-        self.collector.writeln("VIOLATIONS (syscall, count):", verbosity)
-        for syscall, count in violations:
+
+        if not len(violations):
+            self.collector.writeln("No unit test violations! \o/\n", verbosity)
+            return
+
+        self.collector.writeln("VIOLATIONS:", verbosity)
+        self.collector.writeln("", verbosity)
+        for syscall, count in self.get_syscall_count(violations):
             self.collector.writeln("%s\t%s" % (syscall, count), verbosity)
+
+        self.collector.writeln("")
+
+        for class_name, test_method, syscall, count in violations:
+            self.collector.writeln("%s.%s\t%s\t%s" % (class_name, test_method, syscall, count), verbosity)
 
 def run_in_catbox(method, options):
     if not catbox:
