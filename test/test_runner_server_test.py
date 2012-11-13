@@ -327,7 +327,7 @@ class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase):
         test_reporters = [self.test_reporter]
         self.start_server(test_reporters=test_reporters)
 
-    def run_test(self, runner_id, should_pass=True):
+    def run_test(self, runner_id):
         """Override parent's run_test since it uses report_result(), a method
         which makes it difficult to get at the actual test results I want to
         inspect and which does extra work I'm not interested in testing
