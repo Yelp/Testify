@@ -344,9 +344,28 @@ class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase):
 
         test_instance.run()
 
-    def test(self):
+    def test_methods_are_not_run_after_failure_limit_reached(self):
         get_test(self.server, 'runner')
-        self.check_in_class = turtle.Turtle()
+        self.run_test('runner')
+
+        # Due to failure_limit, only the first two tests should run.
+        expected_methods = set(['test1', 'test2'])
+        seen_methods = set()
+
+        test_method_complete_calls = self.test_reporter.on_complete_test_method.calls
+        for call in test_method_complete_calls:
+            args = call[0]
+            first_arg = args[0]
+            first_method_name = first_arg['method']['name']
+            seen_methods.add(first_method_name)
+        assert_equal(expected_methods.symmetric_difference(seen_methods), set())
+
+        # Verify the failed class_teardown method is not re-queued for running.
+        assert_equal(self.server.test_queue.empty(), True)
+
+
+    def test_class_teardown_counted_as_failure_after_limit_reached(self):
+        get_test(self.server, 'runner')
         self.run_test('runner')
 
         # Due to failure_limit, only the first two tests should run.
