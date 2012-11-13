@@ -328,6 +328,11 @@ class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase):
         self.start_server(test_reporters=test_reporters)
 
     def run_test(self, runner_id, should_pass=True):
+        """Override parent's run_test since it uses report_result(), a method
+        which makes it difficult to get at the actual test results I want to
+        inspect and which does extra work I'm not interested in testing
+        here.
+        """
         test_instance = self.dummy_test_case()
         for event in [
             test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
@@ -338,6 +343,7 @@ class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase):
             )
 
         test_instance.run()
+
     def test(self):
         get_test(self.server, 'runner')
         self.check_in_class = turtle.Turtle()
