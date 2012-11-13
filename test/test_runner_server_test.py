@@ -58,7 +58,8 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
 
     def start_server(self, test_reporters=None):
         if test_reporters is None:
-            test_reporters = []
+            self.test_reporter = turtle.Turtle()
+            test_reporters = [self.test_reporter]
 
         self.server = test_runner_server.TestRunnerServer(
             self.dummy_test_case,
@@ -269,13 +270,6 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
     def build_test_case(self):
         self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase
 
-    @setup
-    def setup_server(self):
-        """Override parent's setup_server so we can pass in a test_reporter."""
-        self.test_reporter = turtle.Turtle()
-        test_reporters = [self.test_reporter]
-        self.start_server(test_reporters=test_reporters)
-
     def test_exception_during_class_teardown(self):
         # Pull and run the test case, thereby causing class_teardown to run.
         test_case = get_test(self.server, 'runner')
@@ -319,13 +313,6 @@ class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase):
                 assert False, "This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit)
 
         self.dummy_test_case = FailureLimitTestCase
-
-    @setup
-    def setup_server(self):
-        """Override parent's setup_server so we can pass in a test_reporter."""
-        self.test_reporter = turtle.Turtle()
-        test_reporters = [self.test_reporter]
-        self.start_server(test_reporters=test_reporters)
 
     def run_test(self, runner_id):
         """Override parent's run_test since it uses report_result(), a method
