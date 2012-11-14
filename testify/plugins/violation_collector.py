@@ -22,6 +22,7 @@ from testify import test_logger
 
 metadata = SA.MetaData()
 
+# TODO: We should probably normalize these tables, but good for now.
 Violations = SA.Table(
     'violations', metadata,
     SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
@@ -34,9 +35,20 @@ Violations = SA.Table(
     SA.Column('syscall', SA.String(20), index=True, nullable=False),
     SA.Column('syscall_args', SA.String(255), nullable=True),
 )
-SA.Index('ix_unique_build', Violations.c.branch, Violations.c.revision, Violations.c.submitstamp)
+SA.Index('ix_build', Violations.c.branch, Violations.c.revision, Violations.c.submitstamp)
 SA.Index('ix_individual_test', Violations.c.module, Violations.c.class_name, Violations.c.method_name)
 SA.Index('ix_syscall_signature', Violations.c.syscall, Violations.c.syscall_args)
+
+Tests = SA.Table(
+    'tests', metadata,
+    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+    SA.Column('branch', SA.String(255)),
+    SA.Column('revision', SA.String(255)),
+    SA.Column('submitstamp', SA.Integer),
+    SA.Column('module', SA.String(255), nullable=False),
+    SA.Column('class_name', SA.String(255), nullable=False),
+    SA.Column('method_name', SA.String(255), nullable=False),
+)
 
 def is_sqliteurl(dburl):
     return dburl.startswith("sqlite:///")
@@ -79,14 +91,19 @@ class ViolationStore:
         metadata.create_all(engine)
         return engine, conn
 
+    def add_test(self, testinfo):
+        try:
+            testinfo.update(self.info)
+            self.conn.execute(Tests.insert(), testinfo)
+        except Exception, e:
+            logging.error("Exception inserting testinfo: %r" % e)
+
     def add_violation(self, violation):
         try:
             violation.update(self.info)
             self.conn.execute(Violations.insert(), violation)
         except Exception, e:
             logging.error("Exception inserting violations: %r" % e)
-        finally:
-            self.violation_queue = []
 
     def violation_counts(self):
         query = SA.sql.select([
@@ -110,7 +127,9 @@ class ViolationCollector:
     stream = None
     verbosity = test_logger.VERBOSITY_NORMAL
     violations = defaultdict(list)
-    last_violator = ("UndefinedTestCase", "UndefinedMethod", "UndefinedPath")
+
+    UNDEFINED_VIOLATOR = ("UndefinedTestCase", "UndefinedMethod", "UndefinedPath")
+    last_violator = UNDEFINED_VIOLATOR
 
     violations_read_fd, violations_write_fd = os.pipe()
     epoll = select.epoll()
@@ -125,6 +144,10 @@ class ViolationCollector:
             self.stream.flush()
 
     def report_violation(self, violator, violation):
+        if violator == self.UNDEFINED_VIOLATOR:
+            # This is coming from Testify, not from a TestCase. Ignoring.
+            return
+
         test_case, method, module = violator
         syscall, resolved_path = violation
         self.writeln(
@@ -196,6 +219,12 @@ class ViolationReporter(test_reporter.TestReporter):
         test_method_name = method['name']
         module_path = method['module']
         self.set_violator(test_case_name, test_method_name, module_path)
+        self.collector.store.add_test({
+                'method_name' : test_method_name,
+                'class_name' : test_case_name,
+                'module' : module_path
+        })
+                
 
     def test_case_start(self, result):
         self.__update_violator(result)
@@ -252,7 +281,7 @@ def run_in_catbox(method, options):
     if not catbox:
         return method()
 
-    paths = ["~.*pyc$", "~.*\/logs\/app.log$", "/dev/null"]
+    paths = ["~.*pyc$", "/dev/null"]
     if is_sqliteurl(options.violation_dburl):
         paths.append("~%s.*$" % sqlite_dbpath(options.violation_dburl))
 
