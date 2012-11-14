@@ -214,19 +214,6 @@ class TestProgram(object):
         )
         self.run()
 
-    def get_reporters(self, options, plugin_modules):
-        reporters = []
-        if options.disable_color:
-            reporters.append(test_logger.ColorlessTextTestLogger(options))
-        else:
-            reporters.append(test_logger.TextTestLogger(options))
-    
-        for plugin in plugin_modules:
-            if hasattr(plugin, "build_test_reporters"):
-                reporters += plugin.build_test_reporters(options)
-
-        return reporters
-
     def run(self):
         self.setup_logging(self.other_opts)
 
@@ -254,11 +241,6 @@ class TestProgram(object):
             self.test_runner_args['rerun_test_file'] = self.other_opts.rerun_test_file
         else:
             test_runner_class = TestRunner
-
-        # initialize reporters 
-        self.test_runner_args['test_reporters'] = self.get_reporters(
-            self.other_opts, self.test_runner_args['plugin_modules']
-        )
 
         runner = test_runner_class(
             self.test_path,

@@ -24,6 +24,7 @@ import sys
 
 from test_case import MetaTestCase, TestCase
 import test_discovery
+import test_logger
 
 
 class TestRunner(object):
@@ -66,11 +67,24 @@ class TestRunner(object):
         self.options = options
 
         self.plugin_modules = plugin_modules or []
-        self.test_reporters = test_reporters or []
+        self.test_reporters = test_reporters or self.get_reporters()
         self.module_method_overrides = module_method_overrides if module_method_overrides is not None else {}
 
         self.failure_limit = failure_limit
         self.failure_count = 0
+
+    def get_reporters(self):
+        reporters = []
+        if self.options.disable_color:
+            reporters.append(test_logger.ColorlessTextTestLogger(self.options))
+        else:
+            reporters.append(test_logger.TextTestLogger(self.options))
+    
+        for plugin in self.plugin_modules:
+            if hasattr(plugin, "build_test_reporters"):
+                reporters += plugin.build_test_reporters(self.options)
+
+        return reporters
 
     @classmethod
     def get_test_method_name(cls, test_method):
