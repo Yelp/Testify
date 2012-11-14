@@ -178,7 +178,7 @@ class ViolationCollector:
 """We'll have two copies of this collector instance, one in parent
 (collecting syscall violations) and one in the child running TestCases
 (and reporting active module/test_case/test_method."""
-collector = ViolationCollector()
+collector = None
 
 
 def collect(operation, path, resolved_path):
@@ -191,22 +191,17 @@ def collect(operation, path, resolved_path):
         violation = (operation, resolved_path)
         collector.violations[violator].append(violation)
         collector.report_violation(violator, violation)
-
     except Exception, e:
         # No way to recover in here, just report error and violation
         collector.writeln("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
 
 
 class ViolationReporter(test_reporter.TestReporter):
-    def __init__(self, options, stream=sys.stdout):
+    def __init__(self, options):
         global collector
         self.collector = collector
         self.options = options
         self.violations_write_fd = self.collector.violations_write_fd
-        if stream:
-            self.collector.stream = stream
-        self.collector.verbosity = options.verbosity
-        self.collector.store = ViolationStore(options)
         super(ViolationReporter, self).__init__(self)
 
     def set_violator(self, test_case_name, method_name, module_path):
@@ -324,9 +319,14 @@ def build_test_reporters(options):
     return []
 
 
-def prepare_test_runner(options, runner):
+def prepare_test_program(options, program):
+    global collector
     if options.catbox_violations:
+        collector = ViolationCollector()
+        collector.store = ViolationStore(options)
+        collector.verbosity = options.verbosity
+        collector.stream = sys.stderr # TODO: Use logger?
         def _run():
-            return run_in_catbox(runner.__original_run__, options)
-        runner.__original_run__ = runner.run
-        runner.run = _run
+            return run_in_catbox(program.__original_run__, options)
+        program.__original_run__ = program.run
+        program.run = _run

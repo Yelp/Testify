@@ -212,6 +212,12 @@ class TestProgram(object):
             self.plugin_modules,
             command_line_args
         )
+
+        # allow plugins to modify test program
+        for plugin_mod in self.plugin_modules:
+            if hasattr(plugin_mod, "prepare_test_program"):
+                plugin_mod.prepare_test_program(self.other_opts, self)
+
         self.run()
 
     def get_reporters(self, options, plugin_modules):
@@ -220,6 +226,10 @@ class TestProgram(object):
             reporters.append(test_logger.ColorlessTextTestLogger(options))
         else:
             reporters.append(test_logger.TextTestLogger(options))
+
+        for plugin in plugin_modules:
+            if hasattr(plugin, "build_test_reporters"):
+                reporters += plugin.build_test_reporters(options)
         return reporters
 
     def run(self):
@@ -280,9 +290,10 @@ class TestProgram(object):
                 bucket_text = " (bucket %d of %d%s)" % (self.other_opts.bucket, self.other_opts.bucket_count, salt_info)
             log.info("starting test run%s%s", label_text, bucket_text)
 
+            # Allow plugins to modify the test runner.
             for plugin_mod in self.test_runner_args['plugin_modules']:
-                    if hasattr(plugin_mod, "prepare_test_runner"):
-                        plugin_mod.prepare_test_runner(self.test_runner_args['options'], runner)
+                if hasattr(plugin_mod, "prepare_test_runner"):
+                    plugin_mod.prepare_test_runner(self.test_runner_args['options'], runner)
 
             result = runner.run()
             sys.exit(not result)
