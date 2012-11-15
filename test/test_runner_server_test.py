@@ -4,7 +4,7 @@ import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
 from test_logger_test import TestReporterExceptionInClassFixtureSampleTests
-from testify import assert_equal, class_setup, setup, teardown, test_case, test_runner_server
+from testify import assert_equal, class_setup, class_teardown, setup, teardown, test_case, test_runner_server
 from testify.utils import turtle
 
 _log = logging.getLogger('testify')
@@ -56,7 +56,7 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
 
         test_instance.run()
 
-    def start_server(self, test_reporters=None):
+    def start_server(self, test_reporters=None, failure_limit=None):
         if test_reporters is None:
             self.test_reporter = turtle.Turtle()
             test_reporters = [self.test_reporter]
@@ -73,6 +73,7 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
             serve_port=0,
             test_reporters=test_reporters,
             plugin_modules=[],
+            failure_limit=failure_limit,
         );
 
         def catch_exceptions_in_thread():
@@ -301,12 +302,47 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
 
 
 class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase):
+    """Verify that test methods are not run after TestCase.failure_limit is
+    reached.
+    """
     def build_test_case(self):
         class FailureLimitTestCase(test_case.TestCase):
-            def __init__(self, *args, **kwargs):
-                super(FailureLimitTestCase, self).__init__(*args, **kwargs)
-                self.failure_limit = 2
+            def test1(self):
+                print "in test1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+                assert False, "I am the first failure. failure_limit is %s" % self.failure_limit
 
+            def test2(self):
+                print "in test2. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+                assert False, "I am the second (and last) failure. failure_limit is %s" % self.failure_limit
+
+            def test3(self):
+                print "in test3. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+                ### raise exception instead to make it clearer that something has gone wrong
+                assert False, "This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit)
+
+        self.dummy_test_case = FailureLimitTestCase
+
+    def start_server(self):
+        """Call parent's start_server but with a failure_limit."""
+         ### unhardcode
+        super(TestRunnerServerFailureLimitTestCase, self).start_server(failure_limit=2)
+
+    def test_methods_are_not_run_after_failure_limit_reached(self):
+        assert_equal(self.server.failure_count, 0)
+        get_test(self.server, 'runner')
+        self.run_test('runner')
+        # Verify that only N failing tests are run, where N is the test case's
+        # failure_limit.
+        ### un"hard"code
+        assert_equal(self.server.failure_count, self.dummy_test_case.FAILURE_LIMIT)
+
+class TestRunnerServerFailureLimitClassTeardownTestCase(TestRunnerServerBaseTestCase):
+    """Verify that test methods are not run after TestCase.failure_limit is
+    reached, but class_teardown methods (which might continue to bump
+    failure_count) are still run.
+    """
+    def build_test_case(self):
+        class FailureLimitClassTeardownTestCase(test_case.TestCase):
             def test1(self):
                 print "in test1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
                 assert False, "I am the first failure. failure_limit is %s" % self.failure_limit
@@ -319,63 +355,23 @@ class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase):
                 print "in test3. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
                 assert False, "This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit)
 
-        self.dummy_test_case = FailureLimitTestCase
+            @class_teardown
+            def teardown(self):
+                print "in teardown. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+                raise Exception("I am the failure beyond the last failure. failure_limit is %s" % self.failure_limit)
 
-    def run_test(self, runner_id):
-        """Override parent's run_test since it uses report_result(), a method
-        which makes it difficult to get at the actual test results I want to
-        inspect and which does extra work I'm not interested in testing
-        here.
-        """
-        test_instance = self.dummy_test_case()
-        for event in [
-            test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
-        ]:
-            test_instance.register_callback(
-                event,
-                lambda result: self.test_reporter.on_complete_test_method(result)
-            )
+        self.dummy_test_case = FailureLimitClassTeardownTestCase
 
-        test_instance.run()
-
-    def test_methods_are_not_run_after_failure_limit_reached(self):
-        get_test(self.server, 'runner')
-        self.run_test('runner')
-
-        # Due to failure_limit, only the first two tests should run.
-        expected_methods = set(['test1', 'test2'])
-        seen_methods = set()
-
-        test_method_complete_calls = self.test_reporter.on_complete_test_method.calls
-        for call in test_method_complete_calls:
-            args = call[0]
-            first_arg = args[0]
-            first_method_name = first_arg['method']['name']
-            seen_methods.add(first_method_name)
-        assert_equal(expected_methods.symmetric_difference(seen_methods), set())
-
-        # Verify the failed class_teardown method is not re-queued for running.
-        assert_equal(self.server.test_queue.empty(), True)
-
+    ### override start_server, as above
 
     def test_class_teardown_counted_as_failure_after_limit_reached(self):
         get_test(self.server, 'runner')
+
+        assert_equal(self.server.failure_count, 0)
         self.run_test('runner')
-
-        # Due to failure_limit, only the first two tests should run.
-        expected_methods = set(['test1', 'test2'])
-        seen_methods = set()
-
-        test_method_complete_calls = self.test_reporter.on_complete_test_method.calls
-        for call in test_method_complete_calls:
-            args = call[0]
-            first_arg = args[0]
-            first_method_name = first_arg['method']['name']
-            seen_methods.add(first_method_name)
-        assert_equal(expected_methods.symmetric_difference(seen_methods), set())
-
-        # Verify the failed class_teardown method is not re-queued for running.
-        assert_equal(self.server.test_queue.empty(), True)
+        # failure_count should be equal to the pre-determined failure_limit,
+        # plus one additional failure at class_teardown time.
+        assert_equal(self.server.failure_count, self.dummy_test_case.FAILURE_LIMIT + 1)
 
 
 # vim: set ts=4 sts=4 sw=4 et:
