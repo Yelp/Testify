@@ -43,18 +43,18 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
         self.dummy_test_case = DummyTestCase
 
     def run_test(self, runner_id, should_pass=True):
-        test_instance = self.dummy_test_case(should_pass=should_pass)
+        self.test_instance = self.dummy_test_case(should_pass=should_pass)
         for event in [
             test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
             test_case.TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
             test_case.TestCase.EVENT_ON_COMPLETE_TEST_CASE,
         ]:
-            test_instance.register_callback(
+            self.test_instance.register_callback(
                 event,
                 lambda result: self.server.report_result(runner_id, result),
             )
 
-        test_instance.run()
+        self.test_instance.run()
 
     def start_server(self, test_reporters=None, failure_limit=None):
         if test_reporters is None:
@@ -301,15 +301,18 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
         assert_equal(self.server.test_queue.empty(), True)
 
 
-class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase):
+class TestCaseFailureLimitTestCase(TestRunnerServerBaseTestCase):
     """Verify that test methods are not run after TestCase.failure_limit is
     reached.
     """
-
-    FAILURE_LIMIT = 2
-
     def build_test_case(self):
         class FailureLimitTestCase(test_case.TestCase):
+            FAILURE_LIMIT = 2
+
+            def __init__(self, *args, **kwargs):
+                super(FailureLimitTestCase, self).__init__(*args, **kwargs)
+                self.failure_limit = FailureLimitTestCase.FAILURE_LIMIT
+
             def test1(self):
                 print "in test1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
                 assert False, "I am the first failure. failure_limit is %s" % self.failure_limit
@@ -320,32 +323,30 @@ class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase):
 
             def test3(self):
                 print "in test3. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
-                raise Exception("This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit))
+                assert False, "This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit)
 
         self.dummy_test_case = FailureLimitTestCase
 
-    def start_server(self):
-        """Call parent's start_server but with a failure_limit."""
-        super(TestRunnerServerFailureLimitTestCase, self).start_server(failure_limit=TestRunnerServerFailureLimitTestCase.FAILURE_LIMIT)
-
     def test_methods_are_not_run_after_failure_limit_reached(self):
-        assert_equal(self.server.failure_count, 0)
         get_test(self.server, 'runner')
         self.run_test('runner')
         # Verify that only N failing tests are run, where N is the test case's
         # failure_limit.
-        assert_equal(self.server.failure_count, TestRunnerServerFailureLimitTestCase.FAILURE_LIMIT)
+        assert_equal(self.test_instance.failure_count, self.dummy_test_case.FAILURE_LIMIT)
 
-class TestRunnerServerFailureLimitClassTeardownTestCase(TestRunnerServerBaseTestCase):
+
+class TestCaseFailureLimitClassTeardownTestCase(TestRunnerServerBaseTestCase):
     """Verify that test methods are not run after TestCase.failure_limit is
-    reached, but class_teardown methods (which might continue to bump
-    failure_count) are still run.
+    reached.
     """
-
-    FAILURE_LIMIT = 2
-
     def build_test_case(self):
         class FailureLimitClassTeardownTestCase(test_case.TestCase):
+            FAILURE_LIMIT = 2
+
+            def __init__(self, *args, **kwargs):
+                super(FailureLimitClassTeardownTestCase, self).__init__(*args, **kwargs)
+                self.failure_limit = FailureLimitClassTeardownTestCase.FAILURE_LIMIT
+
             def test1(self):
                 print "in test1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
                 assert False, "I am the first failure. failure_limit is %s" % self.failure_limit
@@ -361,22 +362,95 @@ class TestRunnerServerFailureLimitClassTeardownTestCase(TestRunnerServerBaseTest
             @class_teardown
             def teardown(self):
                 print "in teardown. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
-                raise Exception("I am the failure beyond the last failure. failure_limit is %s" % self.failure_limit)
+                #raise Exception("I am the failure beyond the last failure. failure_limit is %s" % self.failure_limit)
+                assert False, "waaaaaaaaaaaat"
 
         self.dummy_test_case = FailureLimitClassTeardownTestCase
 
-    def start_server(self):
-        """Call parent's start_server but with a failure_limit."""
-        super(TestRunnerServerFailureLimitClassTeardownTestCase, self).start_server(failure_limit=TestRunnerServerFailureLimitClassTeardownTestCase.FAILURE_LIMIT)
-
-    def test_class_teardown_counted_as_failure_after_limit_reached(self):
+    def test_methods_are_not_run_after_failure_limit_reached(self):
         get_test(self.server, 'runner')
-
-        assert_equal(self.server.failure_count, 0)
         self.run_test('runner')
-        # failure_count should be equal to the pre-determined failure_limit,
-        # plus one additional failure at class_teardown time.
-        assert_equal(self.server.failure_count, TestRunnerServerFailureLimitClassTeardownTestCase.FAILURE_LIMIT + 1)
+        # Verify that only N failing tests are run, where N is the test case's
+        # failure_limit.
+        assert_equal(self.test_instance.failure_count, self.dummy_test_case.FAILURE_LIMIT + 1)
+
+
+###class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase):
+###    """Verify that test methods are not run after TestCase.failure_limit is
+###    reached.
+###    """
+###
+###    FAILURE_LIMIT = 2
+###
+###    def build_test_case(self):
+###        class FailureLimitTestCase(test_case.TestCase):
+###            def test1(self):
+###                print "in test1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+###                assert False, "I am the first failure. failure_limit is %s" % self.failure_limit
+###
+###            def test2(self):
+###                print "in test2. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+###                assert False, "I am the second (and last) failure. failure_limit is %s" % self.failure_limit
+###
+###            def test3(self):
+###                print "in test3. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+###                raise Exception("This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit))
+###
+###        self.dummy_test_case = FailureLimitTestCase
+###
+###    def start_server(self):
+###        """Call parent's start_server but with a failure_limit."""
+###        super(TestRunnerServerFailureLimitTestCase, self).start_server(failure_limit=TestRunnerServerFailureLimitTestCase.FAILURE_LIMIT)
+###
+###    def test_methods_are_not_run_after_failure_limit_reached(self):
+###        assert_equal(self.server.failure_count, 0)
+###        get_test(self.server, 'runner')
+###        self.run_test('runner')
+###        # Verify that only N failing tests are run, where N is the test case's
+###        # failure_limit.
+###        assert_equal(self.server.failure_count, TestRunnerServerFailureLimitTestCase.FAILURE_LIMIT)
+###
+###class TestRunnerServerFailureLimitClassTeardownTestCase(TestRunnerServerBaseTestCase):
+###    """Verify that test methods are not run after TestCase.failure_limit is
+###    reached, but class_teardown methods (which might continue to bump
+###    failure_count) are still run.
+###    """
+###
+###    FAILURE_LIMIT = 2
+###
+###    def build_test_case(self):
+###        class FailureLimitClassTeardownTestCase(test_case.TestCase):
+###            def test1(self):
+###                print "in test1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+###                assert False, "I am the first failure. failure_limit is %s" % self.failure_limit
+###
+###            def test2(self):
+###                print "in test2. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+###                assert False, "I am the second (and last) failure. failure_limit is %s" % self.failure_limit
+###
+###            def test3(self):
+###                print "in test3. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+###                assert False, "This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit)
+###
+###            @class_teardown
+###            def teardown(self):
+###                print "in teardown. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
+###                raise Exception("I am the failure beyond the last failure. failure_limit is %s" % self.failure_limit)
+###
+###        self.dummy_test_case = FailureLimitClassTeardownTestCase
+###
+###    def start_server(self):
+###        """Call parent's start_server but with a failure_limit."""
+###        super(TestRunnerServerFailureLimitClassTeardownTestCase, self).start_server(failure_limit=TestRunnerServerFailureLimitClassTeardownTestCase.FAILURE_LIMIT)
+###
+###    def test_class_teardown_counted_as_failure_after_limit_reached(self):
+###        get_test(self.server, 'runner')
+###
+###        assert_equal(self.server.failure_count, 0)
+###        self.run_test('runner')
+###        # failure_count should be equal to the pre-determined failure_limit,
+###        # plus one additional failure at class_teardown time.
+###        assert_equal(self.server.failure_count, TestRunnerServerFailureLimitClassTeardownTestCase.FAILURE_LIMIT + 1)
 
 
 # vim: set ts=4 sts=4 sw=4 et:
