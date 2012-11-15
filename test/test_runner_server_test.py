@@ -274,10 +274,14 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
         # Pull and run the test case, thereby causing class_teardown to run.
         test_case = get_test(self.server, 'runner')
         assert_equal(len(test_case['methods']), 3)
+        # The last method will be the special 'run' method which signals the
+        # entire test case is complete (including class_teardown).
         assert_equal(test_case['methods'][-1], 'run')
 
         self.run_test('runner')
 
+        # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
+        # don't especially care about it, but it's in there.
         expected_methods = set(['test1', 'test2', 'class_teardown_raises_exception', 'classTearDown', 'run'])
         seen_methods = set()
 
@@ -287,9 +291,12 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
             first_arg = args[0]
             first_method_name = first_arg['method']['name']
             seen_methods.add(first_method_name)
+        # This produces a clearer diff than simply asserting the sets are
+        # equal.
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
 
-        # Verify the failed class_teardown method is not re-queued for running.
+        # Verify the failed class_teardown method is not re-queued for running
+        # -- it doesn't make sense to re-run a "flakey" class_teardown.
         assert_equal(self.server.test_queue.empty(), True)
 
 
