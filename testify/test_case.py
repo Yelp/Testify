@@ -346,10 +346,18 @@ class TestCase(object):
                         result.end_in_failure(self.__class_level_failure)
                         ### Bump failure count?
                         ### Something about failure_limit?
+                        ### HYPOTHESIS: class_teardown result is created and goes through workflow, so it's counted in there and we shouldn't do anything here.
+                        ### i expected this to double-count class_teardown exceptions but it doesn't seem to?!??
+                        ###self.failure_count += 1
+                        print "testcase class_level_failure !!!!!!!!!!!!!!!!!!!!!!!!!!!!! about to bump failure count from %s" % self.failure_count
                     elif self.__class_level_error:
                         result.end_in_error(self.__class_level_error)
                         ### Bump failure count?
                         ### Something about failure_limit?
+                        ### HYPOTHESIS: class_teardown result is created and goes through workflow, so it's counted in there and we shouldn't do anything here.
+                        ### i expected this to double-count class_teardown exceptions but it doesn't seem to?!??
+                        ###self.failure_count += 1
+                        print "testcase class_level_error !!!!!!!!!!!!!!!!!!!!!!!!!!!!! about to bump failure count from %s" % self.failure_count
                     else:
                         raise Exception("Couldn't find a class-level failure or error even"
                             " though we failed while executing a class-level fixture."
@@ -481,6 +489,7 @@ class TestCase(object):
 
                 if not result.success:
                     self.failure_count += 1
+                    print "!!!!!!!!!!!!!!! testcase failure_count increased to %s" % self.failure_count
                     if self.failure_limit and self.failure_count >= self.failure_limit:
                         return
 
