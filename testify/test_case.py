@@ -346,12 +346,10 @@ class TestCase(object):
                 else:
                     if self.__class_level_failure:
                         result.end_in_failure(self.__class_level_failure)
-                        ### Bump failure count?
-                        ### Something about failure_limit?
+                        self.failure_count += 1
                     elif self.__class_level_error:
                         result.end_in_error(self.__class_level_error)
-                        ### Bump failure count?
-                        ### Something about failure_limit?
+                        self.failure_count += 1
                     else:
                         raise Exception("Couldn't find a class-level failure or error even"
                             " though we failed while executing a class-level fixture."
