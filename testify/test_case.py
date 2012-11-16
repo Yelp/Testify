@@ -479,7 +479,6 @@ class TestCase(object):
 
                 if not result.success:
                     self.failure_count += 1
-                    print "!!!!!!!!!!!!!!! testcase failure_count increased to %s" % self.failure_count
                     if self.failure_limit and self.failure_count >= self.failure_limit:
                         return
 
