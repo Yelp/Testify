@@ -448,6 +448,15 @@ class TestRunnerServerFailureLimitClassTeardownFailureTestCase(TestRunnerServerB
     def test_class_teardown_counted_as_failure_after_limit_reached(self):
         assert_equal(self.server.failure_count, 0)
         get_test(self.server, 'runner')
+
+        # The following behavior is bad because it doesn't allow clients to
+        # report class_teardown failures (which they are contractually
+        # obligated to run regardless of any failure limit). See
+        # https://github.com/Yelp/Testify/issues/120 for ideas about how to fix
+        # this.
+        #
+        # For now, we write this test to pin down the existing behavior and
+        # notice if it changes.
         test_case_name = self.dummy_test_case.__name__
         assert_raises_and_contains(
             ValueError,
@@ -458,15 +467,8 @@ class TestRunnerServerFailureLimitClassTeardownFailureTestCase(TestRunnerServerB
         # Verify that only N failing tests are run, where N is the server's
         # failure_limit.
         #
-        # This behavior is bad because it doesn't allow the client to report
-        # class_teardown failures (which they are contractually obligated to
-        # run regardless of any failure limit). See
-        # https://github.com/Yelp/Testify/issues/120 for ideas about how to fix
-        # it.
-        #
-        # For now, we write this test to specify the existing behavior and
-        # notice if it changes. Once issue #120 is fixed, the failure count
-        # should (probably) be FAILURE_LIMIT + CLASS_TEARDOWN_FAILURES.
+        # Once issue #120 is fixed, the failure count should (probably) be
+        # FAILURE_LIMIT + CLASS_TEARDOWN_FAILURES.
         assert_equal(self.server.failure_count, self.FAILURE_LIMIT)
 
 
@@ -474,9 +476,11 @@ class TestRunnerServerFailureLimitClassTeardownErrorTestCase(TestRunnerServerFai
     """Verify that test methods are not run after TestRunnerServer.failure_limit is
     reached, but class_teardown methods (which might continue to bump
     failure_count) are still run.
-    """
 
-    FAILURE_LIMIT = 2
+    We modify the dummy test case to have class_teardown methods which raise
+    exceptions and let the test methods from the parent class do the
+    verification.
+    """
 
     def build_test_case(self):
         self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitClassTeardownErrorTestCase
