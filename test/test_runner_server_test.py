@@ -305,6 +305,7 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
 class FailureLimitTestCaseMixin(object):
     """A mixin containing dummy test cases for verifying failure limit behavior."""
     class FailureLimitTestCase(test_case.TestCase):
+
         FAILURE_LIMIT = 2
 
         def __init__(self, *args, **kwargs):
@@ -371,7 +372,9 @@ class TestCaseFailureLimitTestCase(TestRunnerServerBaseTestCase, FailureLimitTes
 
 
 class TestCaseFailureLimitClassTeardownFailureTestCase(TestRunnerServerBaseTestCase, FailureLimitTestCaseMixin):
-    """Verify that failures in class_teardown methods are counted."""
+    """Verify that failures in class_teardown methods are counted even after
+    failure_limit is reached.
+    """
 
     def build_test_case(self):
         self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitClassTeardownFailureTestCase
@@ -387,10 +390,11 @@ class TestCaseFailureLimitClassTeardownFailureTestCase(TestRunnerServerBaseTestC
 
 
 class TestCaseFailureLimitClassTeardownErrorTestCase(TestCaseFailureLimitClassTeardownFailureTestCase):
-    """Verify that errors in class_teardown methods are counted.
+    """Verify that errors in class_teardown methods are counted even after
+    failure_limit is reached.
 
-    We just modify the dummy test case to have class_teardown methods which
-    raise exceptions and let the test methods from the parent class do the
+    We modify the dummy test case to have class_teardown methods which raise
+    exceptions and let the test methods from the parent class do the
     verification.
     """
 
@@ -426,40 +430,28 @@ class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase, Failure
         assert_equal(self.server.failure_count, TestRunnerServerFailureLimitTestCase.FAILURE_LIMIT)
 
 
-class TestRunnerServerFailureLimitClassTeardownTestCase(TestRunnerServerBaseTestCase, FailureLimitTestCaseMixin):
+class TestRunnerServerFailureLimitClassTeardownFailureTestCase(TestRunnerServerBaseTestCase, FailureLimitTestCaseMixin):
     """Verify that test methods are not run after TestRunnerServer.failure_limit is
     reached, but class_teardown methods (which might continue to bump
     failure_count) are still run.
     """
 
     FAILURE_LIMIT = 2
-    CLASS_TEARDOWN_FAILURES = 2
 
     def build_test_case(self):
-        class FailureLimitClassTeardownFailureTestCase(FailureLimitTestCaseMixin.FailureLimitTestCase):
-            """Add failing class_teardown methods to FailureLimitTestCase."""
-            @class_teardown
-            def teardown_1(self):
-                print "in teardown 1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
-                assert False, "I am the failure beyond the last failure. failure_limit is %s" % self.failure_limit
-
-            @class_teardown
-            def teardown_2(self):
-                print "in teardown 2. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
-                assert False, "I am the second failure beyond the last failure. failure_limit is %s" % self.failure_limit
-
-        self.dummy_test_case = FailureLimitClassTeardownFailureTestCase
+        self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitClassTeardownFailureTestCase
 
     def start_server(self):
         """Call parent's start_server but with a failure_limit."""
-        super(TestRunnerServerFailureLimitClassTeardownTestCase, self).start_server(failure_limit=TestRunnerServerFailureLimitClassTeardownTestCase.FAILURE_LIMIT)
+        super(TestRunnerServerFailureLimitClassTeardownFailureTestCase, self).start_server(failure_limit=self.FAILURE_LIMIT)
 
     def test_class_teardown_counted_as_failure_after_limit_reached(self):
         assert_equal(self.server.failure_count, 0)
         get_test(self.server, 'runner')
+        test_case_name = self.dummy_test_case.__name__
         assert_raises_and_contains(
             ValueError,
-            'FailureLimitClassTeardownFailureTestCase not checked out.',
+            '%s not checked out.' % test_case_name,
             self.run_test,
             'runner',
         )
@@ -475,7 +467,19 @@ class TestRunnerServerFailureLimitClassTeardownTestCase(TestRunnerServerBaseTest
         # For now, we write this test to specify the existing behavior and
         # notice if it changes. Once issue #120 is fixed, the failure count
         # should (probably) be FAILURE_LIMIT + CLASS_TEARDOWN_FAILURES.
-        assert_equal(self.server.failure_count, TestRunnerServerFailureLimitClassTeardownTestCase.FAILURE_LIMIT)
+        assert_equal(self.server.failure_count, self.FAILURE_LIMIT)
+
+
+class TestRunnerServerFailureLimitClassTeardownErrorTestCase(TestRunnerServerFailureLimitClassTeardownFailureTestCase):
+    """Verify that test methods are not run after TestRunnerServer.failure_limit is
+    reached, but class_teardown methods (which might continue to bump
+    failure_count) are still run.
+    """
+
+    FAILURE_LIMIT = 2
+
+    def build_test_case(self):
+        self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitClassTeardownErrorTestCase
 
 
 # vim: set ts=4 sts=4 sw=4 et:
