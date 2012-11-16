@@ -287,7 +287,7 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
         expected_methods = set(['test1', 'test2', 'class_teardown_raises_exception', 'classTearDown', 'run'])
         seen_methods = set()
 
-        test_complete_calls= self.test_reporter.test_complete.calls
+        test_complete_calls = self.test_reporter.test_complete.calls
         for call in test_complete_calls:
             args = call[0]
             first_arg = args[0]
@@ -304,9 +304,10 @@ class TestRunnerServerExceptionInClassFixtureTestCase(TestRunnerServerBaseTestCa
 
 class FailureLimitTestCaseMixin(object):
     """A mixin containing dummy test cases for verifying failure limit behavior."""
-    class FailureLimitTestCase(test_case.TestCase):
 
-        FAILURE_LIMIT = 2
+    class FailureLimitTestCase(test_case.TestCase):
+        """Basic test case containing test methods which fail."""
+        FAILURE_LIMIT = 0
 
         def __init__(self, *args, **kwargs):
             test_case.TestCase.__init__(self, *args, **kwargs)
@@ -324,23 +325,29 @@ class FailureLimitTestCaseMixin(object):
             print "in test3. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             assert False, "This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit)
 
+    class TestCaseFailureLimitTestCase(FailureLimitTestCase):
+        FAILURE_LIMIT = 2
+
     class FailureLimitClassTeardownFailureTestCase(FailureLimitTestCase):
         """Add failing class_teardown methods to FailureLimitTestCase."""
 
         CLASS_TEARDOWN_FAILURES = 2
 
         @class_teardown
-        def teardown_1(self):
+        def teardown1(self):
             print "in teardown 1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             assert False, "I am the failure beyond the last failure. failure_limit is %s" % self.failure_limit
 
         @class_teardown
-        def teardown_2(self):
+        def teardown2(self):
             print "in teardown 2. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             assert False, "I am the second failure beyond the last failure. failure_limit is %s" % self.failure_limit
 
+    class TestCaseFailureLimitClassTeardownFailureTestCase(FailureLimitClassTeardownFailureTestCase):
+        FAILURE_LIMIT = 2
+
     class FailureLimitClassTeardownErrorTestCase(FailureLimitTestCase):
-        """Add a class_teardown method to FailureLimitTestCase which raises an exception."""
+        """Add to FailureLimitTestCase class_teardown methods which raises exceptions."""
 
         CLASS_TEARDOWN_FAILURES = 2
 
@@ -354,6 +361,9 @@ class FailureLimitTestCaseMixin(object):
             print "in teardown 2. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             raise Exception("I am the second failure beyond the last failure. failure_limit is %s" % self.failure_limit)
 
+    class TestCaseFailureLimitClassTeardownErrorTestCase(FailureLimitClassTeardownErrorTestCase):
+        FAILURE_LIMIT = 2
+
 
 class TestCaseFailureLimitTestCase(TestRunnerServerBaseTestCase, FailureLimitTestCaseMixin):
     """Verify that test methods are not run after TestCase.failure_limit is
@@ -361,7 +371,7 @@ class TestCaseFailureLimitTestCase(TestRunnerServerBaseTestCase, FailureLimitTes
     """
 
     def build_test_case(self):
-        self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitTestCase
+        self.dummy_test_case = FailureLimitTestCaseMixin.TestCaseFailureLimitTestCase
 
     def test_methods_are_not_run_after_failure_limit_reached(self):
         get_test(self.server, 'runner')
@@ -377,7 +387,7 @@ class TestCaseFailureLimitClassTeardownFailureTestCase(TestRunnerServerBaseTestC
     """
 
     def build_test_case(self):
-        self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitClassTeardownFailureTestCase
+        self.dummy_test_case = FailureLimitTestCaseMixin.TestCaseFailureLimitClassTeardownFailureTestCase
 
     def test_methods_are_not_run_after_failure_limit_reached(self):
         get_test(self.server, 'runner')
@@ -399,7 +409,7 @@ class TestCaseFailureLimitClassTeardownErrorTestCase(TestCaseFailureLimitClassTe
     """
 
     def build_test_case(self):
-        self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitClassTeardownErrorTestCase
+        self.dummy_test_case = FailureLimitTestCaseMixin.TestCaseFailureLimitClassTeardownErrorTestCase
 
 
 class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase, FailureLimitTestCaseMixin):
