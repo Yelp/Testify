@@ -209,4 +209,16 @@ class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
         failure = conn.execute(Failures.select()).fetchone()
         assert_in('in class_teardown_raises_exception', failure.traceback)
 
+
+class SQLReporterTestCompleteIgnoresResultsForRun(SQLReporterBaseTestCase):
+    def test_test_complete(self):
+        assert_equal(self.reporter.result_queue.qsize(), 0)
+
+        test_case = DummyTestCase()
+        fake_test_result = TestResult(test_case.run)
+        self.reporter.test_complete(fake_test_result.to_dict())
+
+        assert_equal(self.reporter.result_queue.qsize(), 0)
+
+
 # vim: set ts=4 sts=4 sw=4 et:
