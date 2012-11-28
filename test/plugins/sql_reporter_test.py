@@ -187,8 +187,27 @@ class SQLReporterDiscoveryFailureTestCase(SQLReporterBaseTestCase, BrokenImportT
 
 class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
     def test_setup(self):
-        ### TODO: write setup test!
-        pass
+        runner = TestRunner(TestReporterExceptionInClassFixtureSampleTests.FakeClassSetupTestCase, test_reporters=[self.reporter])
+        runner.run()
+
+        conn = self.reporter.conn
+
+        test_results = self._get_test_results(conn)
+        assert_equal(len(test_results), 2)
+
+        # Errors in class_setup methods manifest as errors in the test case's
+        # test methods.
+        for result in test_results:
+            assert_equal(
+                result['failure'],
+                True,
+                'Unexpected success for %s.%s' % (result['class_name'], result['method_name'])
+            )
+
+        failures = conn.execute(Failures.select()).fetchall()
+        for failure in failures:
+            assert_in('in class_setup_raises_exception', failure.traceback)
+
 
     def test_teardown(self):
         runner = TestRunner(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, test_reporters=[self.reporter])
@@ -199,6 +218,8 @@ class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
         test_results = self._get_test_results(conn)
         assert_equal(len(test_results), 3)
 
+        # Errors in class_teardown methods manifest as an additional test
+        # result.
         class_teardown_result = test_results[-1]
         assert_equal(
             class_teardown_result['failure'],
@@ -208,5 +229,17 @@ class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
 
         failure = conn.execute(Failures.select()).fetchone()
         assert_in('in class_teardown_raises_exception', failure.traceback)
+
+
+class SQLReporterTestCompleteIgnoresResultsForRun(SQLReporterBaseTestCase):
+    def test_test_complete(self):
+        assert_equal(self.reporter.result_queue.qsize(), 0)
+
+        test_case = DummyTestCase()
+        fake_test_result = TestResult(test_case.run)
+        self.reporter.test_complete(fake_test_result.to_dict())
+
+        assert_equal(self.reporter.result_queue.qsize(), 0)
+
 
 # vim: set ts=4 sts=4 sw=4 et:

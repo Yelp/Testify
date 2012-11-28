@@ -275,7 +275,7 @@ class TestRunnerServer(TestRunner):
                 if test_dict['methods']:
                     # When the client has finished running the entire TestCase,
                     # it will signal us by sending back a result with method
-                    # name 'run'. Add this results to the list we expect to get
+                    # name 'run'. Add this result to the list we expect to get
                     # back from the client.
                     test_dict['methods'].append('run')
                     self.test_queue.put(0, test_dict)
@@ -384,7 +384,7 @@ class TestRunnerServer(TestRunner):
         if requeue_dict['methods']:
             # When the client has finished running the entire TestCase,
             # it will signal us by sending back a result with method
-            # name 'run'. Add this results to the list we expect to get
+            # name 'run'. Add this result to the list we expect to get
             # back from the client.
             requeue_dict['methods'].append('run')
 

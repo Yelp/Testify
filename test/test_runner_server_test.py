@@ -314,15 +314,12 @@ class FailureLimitTestCaseMixin(object):
             self.failure_limit = self.TEST_CASE_FAILURE_LIMIT
 
         def test1(self):
-            print "in test1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             assert False, "I am the first failure. failure_limit is %s" % self.failure_limit
 
         def test2(self):
-            print "in test2. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             assert False, "I am the second (and last) failure. failure_limit is %s" % self.failure_limit
 
         def test3(self):
-            print "in test3. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             assert False, "This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit)
 
     class TestCaseFailureLimitTestCase(FailureLimitTestCase):
@@ -335,12 +332,10 @@ class FailureLimitTestCaseMixin(object):
 
         @class_teardown
         def teardown1(self):
-            print "in teardown 1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             assert False, "I am the failure beyond the last failure. failure_limit is %s" % self.failure_limit
 
         @class_teardown
         def teardown2(self):
-            print "in teardown 2. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             assert False, "I am the second failure beyond the last failure. failure_limit is %s" % self.failure_limit
 
     class TestCaseFailureLimitClassTeardownFailureTestCase(FailureLimitClassTeardownFailureTestCase):
@@ -353,12 +348,10 @@ class FailureLimitTestCaseMixin(object):
 
         @class_teardown
         def teardown_1(self):
-            print "in teardown 1. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             raise Exception("I am the failure beyond the last failure. failure_limit is %s" % self.failure_limit)
 
         @class_teardown
         def teardown_2(self):
-            print "in teardown 2. limit: %s. count: %s." % (self.failure_limit, self.failure_count)
             raise Exception("I am the second failure beyond the last failure. failure_limit is %s" % self.failure_limit)
 
     class TestCaseFailureLimitClassTeardownErrorTestCase(FailureLimitClassTeardownErrorTestCase):
