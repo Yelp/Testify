@@ -302,7 +302,8 @@ class TestCase(object):
         TestResult object. See XXX.
         """
         # The TestResult constructor wants an actual method, which it inspects
-        # to determine the method name. self.run is as good a method as any.
+        # to determine the method name (and class name, so it must be a method
+        # and not a function!). self.run is as good a method as any.
         test_case_result = TestResult(self.run)
         test_case_result.start()
 
