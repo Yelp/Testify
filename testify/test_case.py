@@ -298,9 +298,10 @@ class TestCase(object):
         this TestResult to the server during the EVENT_ON_COMPLETE_TEST_CASE
         phase.
 
-        It would be clearer if this situation were represented by a flag on the
-        TestResult object. See XXX.
+        This could be handled better. See
+        https://github.com/Yelp/Testify/issues/121.
         """
+
         # The TestResult constructor wants an actual method, which it inspects
         # to determine the method name (and class name, so it must be a method
         # and not a function!). self.run is as good a method as any.
