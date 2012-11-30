@@ -58,6 +58,7 @@ class TestReporter(object):
         pass
 
     def test_case_complete(self, result):
+        """Called when a test case and all of its fixtures have been run."""
         pass
 
     def report(self):
