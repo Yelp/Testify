@@ -283,6 +283,10 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
     __test__ = False
 
     def test_exception_in_setup_phase(self):
+        """If a class_setup method raises an exception, this exception is
+        reported as an error in all of the test methods in the test case. The
+        methods are then treated as flakes and re-run.
+        """
         # Pull and run the test case, thereby causing class_setup to run.
         test_case = get_test(self.server, 'runner')
         assert_equal(len(test_case['methods']), 3)
@@ -301,7 +305,7 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         ### the class_setup_teardown setup phase behavior is broken (i thought
         ### maybe due to is_class_level=True being wrong, but removing that
         ### breaks other stuff; need to investigate this more).
-        expected_methods = set([self.setup_method_name, 'classTearDown', 'run'])
+        expected_methods = set(['classTearDown', 'run'])
         seen_methods = set()
 
         test_complete_calls = self.test_reporter.test_complete.calls
@@ -319,10 +323,26 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         requeued_test_case = get_test(self.server, 'runner2')
         assert_in(self.dummy_test_case.__name__, requeued_test_case['class_path'])
 
-        ### now run requeued_test_case so the 'flakes' are re-run and check
-        ### that set (i think this is test1, test2, and the boilerplate, and
-        ### NOT class_setup_raises_exception). (i'm not sure the best way
-        ### to reset the calls on self.test_reporter.)
+        # Reset reporter.
+        self.test_reporter.test_complete = turtle.Turtle()
+
+        # Run tests again.
+        self.run_test('runner2')
+
+        # This time, test methods have been re-run as flakes. Now that they are
+        # are complete, they should be reported.
+        expected_methods = set(['test1', 'test2', 'classTearDown', 'run'])
+        seen_methods = set()
+
+        test_complete_calls = self.test_reporter.test_complete.calls
+        for call in test_complete_calls:
+            args = call[0]
+            first_arg = args[0]
+            first_method_name = first_arg['method']['name']
+            seen_methods.add(first_method_name)
+        # This produces a clearer diff than simply asserting the sets are
+        # equal.
+        assert_equal(expected_methods.symmetric_difference(seen_methods), set())
 
 
 class TestRunnerServerExceptionInClassSetupTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
