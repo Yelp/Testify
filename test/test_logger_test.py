@@ -153,6 +153,27 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         assert_in('FakeClassTeardownTestCase.class_teardown_raises_exception', logger_output)
 
 
+    def test_teardown_phase_of_class_setup_teardown(self):
+        self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeTeardownPhaseOfClassSetupTeardownTestCase)
+        assert_equal(len(self.logger.results), 3)
+
+        class_teardown_result = self.logger.results[-1]
+        assert_equal(
+            class_teardown_result['success'],
+            False,
+            'Unexpected success for %s' % class_teardown_result['method']['full_name'],
+        )
+        assert_equal(
+            class_teardown_result['error'],
+            True,
+            'Unexpected non-error for %s' % class_teardown_result['method']['full_name'],
+        )
+
+        logger_output = self.stream.getvalue()
+        assert_in('error', logger_output)
+        assert_in('FakeTeardownPhaseOfClassSetupTeardownTestCase.class_setup_teardown_raises_exception_in_teardown_phase', logger_output)
+
+
     def test_class_teardown_raises_after_test_raises(self):
         """Patch our fake test case, replacing test1() with a function that
         raises its own exception. Make sure that both the method's exception
