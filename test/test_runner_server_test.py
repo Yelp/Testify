@@ -295,8 +295,12 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
         # don't especially care about it, but it's in there.
         #
-        # Exceptions during execution of class_setup causes test methods to be
+        # Exceptions during execution of class_setup cause test methods to be
         # skipped, so they won't be reported.
+        ### i think self.setup_method_name should never show up here and that
+        ### the class_setup_teardown setup phase behavior is broken (i thought
+        ### maybe due to is_class_level=True being wrong, but removing that
+        ### breaks other stuff; need to investigate this more).
         expected_methods = set([self.setup_method_name, 'classTearDown', 'run'])
         seen_methods = set()
 
@@ -314,6 +318,17 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         assert_equal(self.server.test_queue.empty(), False)
         requeued_test_case = get_test(self.server, 'runner2')
         assert_in(self.dummy_test_case.__name__, requeued_test_case['class_path'])
+
+        ### now run requeued_test_case so the 'flakes' are re-run and check
+        ### that set (i think this is test1, test2, and the boilerplate, and
+        ### NOT class_setup_raises_exception). (i'm not sure the best way
+        ### to reset the calls on self.test_reporter.)
+
+
+class TestRunnerServerExceptionInClassSetupTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
+    def build_test_case(self):
+        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassSetupTestCase
+        self.setup_method_name = 'class_setup_raises_exception'
 
 
 class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
