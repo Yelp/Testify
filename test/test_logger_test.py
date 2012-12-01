@@ -108,7 +108,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         assert_equal(runner_result, False)
 
 
-    def test_setup(self):
+    def test_class_setup(self):
         self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeClassSetupTestCase)
 
         # The fake test methods assert if they are called. If we make it here,
@@ -132,7 +132,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         assert_in('FakeClassSetupTestCase.test2', logger_output)
 
 
-    def test_teardown(self):
+    def test_class_teardown(self):
         self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase)
         assert_equal(len(self.logger.results), 3)
 
