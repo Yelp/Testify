@@ -93,9 +93,9 @@ class TestReporterExceptionInClassFixtureSampleTests(TestCase):
 
 
 class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
-    """Tests how TextLogger handles exceptions in @class_[setup|teardown]. Also
-    an integration test with how results are collected because this seemed like
-    the most natural place to test everything.
+    """Tests how TextLogger handles exceptions in @class_[setup | teardown |
+    setup_teardown]. Also an integration test with how results are collected
+    because this seemed like the most natural place to test everything.
     """
 
     def _run_test_case(self, test_case):
@@ -153,7 +153,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         assert_in('FakeClassTeardownTestCase.class_teardown_raises_exception', logger_output)
 
 
-    def test_teardown_raises_after_test_raises(self):
+    def test_class_teardown_raises_after_test_raises(self):
         """Patch our fake test case, replacing test1() with a function that
         raises its own exception. Make sure that both the method's exception
         and the class_teardown exception are represented in the results.
