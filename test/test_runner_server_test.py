@@ -4,7 +4,7 @@ import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
 from test_logger_test import TestReporterExceptionInClassFixtureSampleTests
-from testify import assert_equal, assert_raises_and_contains, class_setup, class_teardown, setup, teardown, test_case, test_runner_server
+from testify import assert_equal, assert_in, assert_raises_and_contains, class_setup, class_teardown, setup, teardown, test_case, test_runner_server
 from testify.utils import turtle
 
 _log = logging.getLogger('testify')
@@ -268,12 +268,22 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
             raise Exception(' '.join(failures))
 
 
-class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunnerServerBaseTestCase):
-    def build_test_case(self):
-        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase
+class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTestCase):
+    """Child classes should set:
+
+    - self.dummy_test_case - a test case that raises an exception during a
+      class_setup or the setup phase of a class_setup_teardown
+
+    - self.setup_method_name - the name of the method which will raise an
+      exception
+
+    This class's test method will do the rest.
+    """
+
+    __test__ = False
 
     def test_exception_in_setup_phase(self):
-        # Pull and run the test case, thereby causing class_teardown to run.
+        # Pull and run the test case, thereby causing class_setup to run.
         test_case = get_test(self.server, 'runner')
         assert_equal(len(test_case['methods']), 3)
         # The last method will be the special 'run' method which signals the
@@ -284,7 +294,10 @@ class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunn
 
         # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
         # don't especially care about it, but it's in there.
-        expected_methods = set(['test1', 'test2', 'class_setup_teardown_raises_exception_in_setup_phase', 'classTearDown', 'run'])
+        #
+        # Exceptions during execution of class_setup causes test methods to be
+        # skipped, so they won't be reported.
+        expected_methods = set([self.setup_method_name, 'classTearDown', 'run'])
         seen_methods = set()
 
         test_complete_calls = self.test_reporter.test_complete.calls
@@ -297,9 +310,16 @@ class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunn
         # equal.
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
 
-        # Verify the failed class_teardown method is not re-queued for running
-        # -- it doesn't make sense to re-run a "flaky" class_teardown.
-        assert_equal(self.server.test_queue.empty(), True)
+        # Verify the failed test case is re-queued for running.
+        assert_equal(self.server.test_queue.empty(), False)
+        requeued_test_case = get_test(self.server, 'runner2')
+        assert_in(self.dummy_test_case.__name__, requeued_test_case['class_path'])
+
+
+class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
+    def build_test_case(self):
+        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase
+        self.setup_method_name = 'class_setup_teardown_raises_exception_in_setup_phase'
 
 
 class TestRunnerServerExceptionInTeardownPhaseBaseTestCase(TestRunnerServerBaseTestCase):
@@ -311,7 +331,7 @@ class TestRunnerServerExceptionInTeardownPhaseBaseTestCase(TestRunnerServerBaseT
     - self.teardown_method_name - the name of the method which will raise an
       exception
 
-    The test method will do the rest.
+    This class's test method will do the rest.
     """
 
     __test__ = False
