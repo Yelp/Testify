@@ -268,11 +268,21 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
             raise Exception(' '.join(failures))
 
 
-class TestRunnerServerExceptionInClassTeardownTestCase(TestRunnerServerBaseTestCase):
-    def build_test_case(self):
-        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase
+class TestRunnerServerExceptionInTeardownPhaseBaseTestCase(TestRunnerServerBaseTestCase):
+    """Child classes should set:
 
-    def test_exception_during_class_teardown(self):
+    - self.dummy_test_case - a test case that raises an exception during a
+      class_teardown or the teardown phase of a class_setup_teardown
+
+    - self.teardown_method_name - the name of the method which will raise an
+      exception
+
+    The test method will do the rest.
+    """
+
+    __test__ = False
+
+    def test_exception_in_teardown_phase(self):
         # Pull and run the test case, thereby causing class_teardown to run.
         test_case = get_test(self.server, 'runner')
         assert_equal(len(test_case['methods']), 3)
@@ -284,7 +294,7 @@ class TestRunnerServerExceptionInClassTeardownTestCase(TestRunnerServerBaseTestC
 
         # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
         # don't especially care about it, but it's in there.
-        expected_methods = set(['test1', 'test2', 'class_teardown_raises_exception', 'classTearDown', 'run'])
+        expected_methods = set(['test1', 'test2', self.teardown_method_name, 'classTearDown', 'run'])
         seen_methods = set()
 
         test_complete_calls = self.test_reporter.test_complete.calls
@@ -300,6 +310,18 @@ class TestRunnerServerExceptionInClassTeardownTestCase(TestRunnerServerBaseTestC
         # Verify the failed class_teardown method is not re-queued for running
         # -- it doesn't make sense to re-run a "flaky" class_teardown.
         assert_equal(self.server.test_queue.empty(), True)
+
+
+class TestRunnerServerExceptionInClassTeardownTestCase(TestRunnerServerExceptionInTeardownPhaseBaseTestCase):
+    def build_test_case(self):
+        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase
+        self.teardown_method_name = 'class_teardown_raises_exception'
+
+
+class TestRunnerServerExceptionInTeardownPhaseOfClassSetupTeardownTestCase(TestRunnerServerExceptionInTeardownPhaseBaseTestCase):
+    def build_test_case(self):
+        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeTeardownPhaseOfClassSetupTeardownTestCase
+        self.teardown_method_name = 'class_setup_teardown_raises_exception_in_teardown_phase'
 
 
 class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunnerServerBaseTestCase):
@@ -319,40 +341,6 @@ class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunn
         # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
         # don't especially care about it, but it's in there.
         expected_methods = set(['test1', 'test2', 'class_setup_teardown_raises_exception_in_setup_phase', 'classTearDown', 'run'])
-        seen_methods = set()
-
-        test_complete_calls = self.test_reporter.test_complete.calls
-        for call in test_complete_calls:
-            args = call[0]
-            first_arg = args[0]
-            first_method_name = first_arg['method']['name']
-            seen_methods.add(first_method_name)
-        # This produces a clearer diff than simply asserting the sets are
-        # equal.
-        assert_equal(expected_methods.symmetric_difference(seen_methods), set())
-
-        # Verify the failed class_teardown method is not re-queued for running
-        # -- it doesn't make sense to re-run a "flaky" class_teardown.
-        assert_equal(self.server.test_queue.empty(), True)
-
-
-class TestRunnerServerExceptionInTeardownPhaseOfClassSetupTeardownTestCase(TestRunnerServerBaseTestCase):
-    def build_test_case(self):
-        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeTeardownPhaseOfClassSetupTeardownTestCase
-
-    def test_exception_during_class_teardown(self):
-        # Pull and run the test case, thereby causing class_teardown to run.
-        test_case = get_test(self.server, 'runner')
-        assert_equal(len(test_case['methods']), 3)
-        # The last method will be the special 'run' method which signals the
-        # entire test case is complete (including class_teardown).
-        assert_equal(test_case['methods'][-1], 'run')
-
-        self.run_test('runner')
-
-        # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
-        # don't especially care about it, but it's in there.
-        expected_methods = set(['test1', 'test2', 'class_setup_teardown_raises_exception_in_teardown_phase', 'classTearDown', 'run'])
         seen_methods = set()
 
         test_complete_calls = self.test_reporter.test_complete.calls
