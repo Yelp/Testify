@@ -308,8 +308,9 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
         # don't especially care about it, but it's in there.
         #
-        # Exceptions during execution of class_setup cause test methods to be
-        # skipped, so they won't be reported.
+        # Exceptions during execution of class_setup cause test methods to fail
+        # and get requeued as flakes. They aren't reported now because they
+        # aren't complete.
         expected_methods = set(['classTearDown', 'run'])
         seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
         # This produces a clearer diff than simply asserting the sets are
