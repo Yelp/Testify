@@ -130,6 +130,32 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         assert_in('error', logger_output)
         assert_in('FakeClassSetupTestCase.test1', logger_output)
         assert_in('FakeClassSetupTestCase.test2', logger_output)
+        assert_in('in class_setup_raises_exception', logger_output)
+
+
+    def test_setup_phase_of_class_setup_teardown(self):
+        self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase)
+
+        # The fake test methods assert if they are called. If we make it here,
+        # then execution never reached those methods and we are happy.
+
+        for result in self.logger.results:
+            assert_equal(
+                result['success'],
+                False,
+                'Unexpected success for %s' % result['method']['full_name'],
+            )
+            assert_equal(
+                result['error'],
+                True,
+                'Unexpected non-error for %s' % result['method']['full_name'],
+            )
+
+        logger_output = self.stream.getvalue()
+        assert_in('error', logger_output)
+        assert_in('FakeSetupPhaseOfClassSetupTeardownTestCase.test1', logger_output)
+        assert_in('FakeSetupPhaseOfClassSetupTeardownTestCase.test2', logger_output)
+        assert_in('in class_setup_teardown_raises_exception_in_setup_phase', logger_output)
 
 
     def test_class_teardown(self):

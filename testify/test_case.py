@@ -393,7 +393,7 @@ class TestCase(object):
             enter_result = TestResult(fixture_method)
             enter_result.start()
             self.fire_event(self.EVENT_ON_RUN_CLASS_SETUP_METHOD, enter_result)
-            if self.__execute_block_recording_exceptions(ctm.__enter__, enter_result):
+            if self.__execute_block_recording_exceptions(ctm.__enter__, enter_result, is_class_level=True):
                 enter_result.end_in_success()
             self.fire_event(self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, enter_result)
 
@@ -402,7 +402,7 @@ class TestCase(object):
             exit_result = TestResult(fixture_method)
             exit_result.start()
             self.fire_event(self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, exit_result)
-            if self.__execute_block_recording_exceptions(lambda: ctm.__exit__(None, None, None), exit_result):
+            if self.__execute_block_recording_exceptions(lambda: ctm.__exit__(None, None, None), exit_result, is_class_level=True):
                 exit_result.end_in_success()
             self.fire_event(self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, exit_result)
         else:
