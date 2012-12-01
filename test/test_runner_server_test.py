@@ -328,7 +328,7 @@ class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunn
     def build_test_case(self):
         self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase
 
-    def test_exception_during_class_teardown(self):
+    def test_exception_in_setup_phase(self):
         # Pull and run the test case, thereby causing class_teardown to run.
         test_case = get_test(self.server, 'runner')
         assert_equal(len(test_case['methods']), 3)
