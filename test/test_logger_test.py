@@ -3,7 +3,7 @@ import cStringIO
 from mock import patch
 
 from test.discovery_failure_test import BrokenImportTestCase
-from testify import TestCase, assert_equal, assert_in, class_setup, class_teardown, run, setup, teardown
+from testify import TestCase, assert_equal, assert_in, class_setup, class_setup_teardown, class_teardown, run, setup, teardown
 from testify.test_logger import TextTestLogger, VERBOSITY_NORMAL
 from testify.test_runner import TestRunner
 from testify.utils import turtle
@@ -57,6 +57,33 @@ class TestReporterExceptionInClassFixtureSampleTests(TestCase):
         @class_teardown
         def class_teardown_raises_exception(self):
             raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_teardown kaboom')
+
+        def test1(self):
+            pass
+
+        def test2(self):
+            pass
+
+    class FakeSetupPhaseOfClassSetupTeardownTestCase(TestCase):
+        @class_setup_teardown
+        def class_setup_teardown_raises_exception_in_setup_phase(self):
+            raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup_teardown setup phase kaboom')
+            yield # Never reached
+            # Empty teardown; also never reached
+
+        def test1(self):
+            pass
+
+        def test2(self):
+            pass
+
+
+    class FakeTeardownPhaseOfClassSetupTeardownTestCase(TestCase):
+        @class_setup_teardown
+        def class_setup_teardown_raises_exception_in_teardown_phase(self):
+            # Empty setup
+            yield
+            raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup_teardown teardown phase kaboom')
 
         def test1(self):
             pass

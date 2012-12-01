@@ -175,7 +175,7 @@ class TestRunnerServer(TestRunner):
             # If class_teardown failed, the client will send us a result to let us
             # know. If that happens, don't worry about the apparently un-checked
             # out test method.
-            if result['method']['fixture_type'] == 'class_teardown':
+            if result['method']['fixture_type'] in ['class_teardown', 'class_setup_teardown']:
                 pass
             else:
                 raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
@@ -192,7 +192,7 @@ class TestRunnerServer(TestRunner):
         d['timeout_time'] = time.time() + self.runner_timeout
 
         # class_teardowns are special.
-        if result['method']['fixture_type'] != 'class_teardown':
+        if result['method']['fixture_type'] not in ('class_teardown', 'class_setup_teardown'):
             d['methods'].remove(result['method']['name'])
 
         if not d['methods']:
@@ -348,7 +348,7 @@ class TestRunnerServer(TestRunner):
         for method, result in failed_methods:
             if (class_path, method) in self.failed_rerun_methods:
                 failed_methods_already_rerun.append((method, result))
-            elif result['method']['fixture_type'] == 'class_teardown':
+            elif result['method']['fixture_type'] in ['class_teardown', 'class_setup_teardown']:
                 failed_class_teardown_methods.append((method, result))
             elif early_shutdown:
                 early_shutdown_methods.append((method, result))
