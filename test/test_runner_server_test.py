@@ -57,6 +57,15 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
 
         self.test_instance.run()
 
+    def get_seen_methods(self, test_complete_calls):
+        seen_methods = set()
+        for call in test_complete_calls:
+            args = call[0]
+            first_arg = args[0]
+            first_method_name = first_arg['method']['name']
+            seen_methods.add(first_method_name)
+        return seen_methods
+
     def start_server(self, test_reporters=None, failure_limit=None):
         if test_reporters is None:
             self.test_reporter = turtle.Turtle()
@@ -306,14 +315,7 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         ### maybe due to is_class_level=True being wrong, but removing that
         ### breaks other stuff; need to investigate this more).
         expected_methods = set(['classTearDown', 'run'])
-        seen_methods = set()
-
-        test_complete_calls = self.test_reporter.test_complete.calls
-        for call in test_complete_calls:
-            args = call[0]
-            first_arg = args[0]
-            first_method_name = first_arg['method']['name']
-            seen_methods.add(first_method_name)
+        seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
         # This produces a clearer diff than simply asserting the sets are
         # equal.
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
@@ -329,17 +331,10 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         # Run tests again.
         self.run_test('runner2')
 
-        # This time, test methods have been re-run as flakes. Now that they are
-        # are complete, they should be reported.
+        # This time, test methods have been re-run as flakes. Now that these
+        # methods are are complete, they should be reported.
         expected_methods = set(['test1', 'test2', 'classTearDown', 'run'])
-        seen_methods = set()
-
-        test_complete_calls = self.test_reporter.test_complete.calls
-        for call in test_complete_calls:
-            args = call[0]
-            first_arg = args[0]
-            first_method_name = first_arg['method']['name']
-            seen_methods.add(first_method_name)
+        seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
         # This produces a clearer diff than simply asserting the sets are
         # equal.
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
@@ -384,14 +379,7 @@ class TestRunnerServerExceptionInTeardownPhaseBaseTestCase(TestRunnerServerBaseT
         # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
         # don't especially care about it, but it's in there.
         expected_methods = set(['test1', 'test2', self.teardown_method_name, 'classTearDown', 'run'])
-        seen_methods = set()
-
-        test_complete_calls = self.test_reporter.test_complete.calls
-        for call in test_complete_calls:
-            args = call[0]
-            first_arg = args[0]
-            first_method_name = first_arg['method']['name']
-            seen_methods.add(first_method_name)
+        seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
         # This produces a clearer diff than simply asserting the sets are
         # equal.
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
