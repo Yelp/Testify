@@ -310,10 +310,6 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         #
         # Exceptions during execution of class_setup cause test methods to be
         # skipped, so they won't be reported.
-        ### i think self.setup_method_name should never show up here and that
-        ### the class_setup_teardown setup phase behavior is broken (i thought
-        ### maybe due to is_class_level=True being wrong, but removing that
-        ### breaks other stuff; need to investigate this more).
         expected_methods = set(['classTearDown', 'run'])
         seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
         # This produces a clearer diff than simply asserting the sets are
