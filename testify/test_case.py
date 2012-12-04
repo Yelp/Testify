@@ -44,7 +44,6 @@ FIXTURE_TYPES = (
     'class_setup_teardown',
 )
 FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS = (
-    ###'class_setup',
     'class_teardown',
     'class_setup_teardown',
 )
@@ -350,6 +349,9 @@ class TestCase(object):
                 self.fire_event(callback_on_run_event, result)
                 if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
                     result.end_in_success()
+                ### this else block might be unnecessary???
+                ### or maybe just the end_in_*? cuz failure count isn't set elsewhere.
+                ### because __execute_block_recording_exceptions records the failure
                 else:
                     if self.__class_level_failure:
                         result.end_in_failure(self.__class_level_failure)
@@ -398,7 +400,7 @@ class TestCase(object):
             enter_result = TestResult(fixture_method)
             enter_result.start()
             self.fire_event(self.EVENT_ON_RUN_CLASS_SETUP_METHOD, enter_result)
-            if self.__execute_block_recording_exceptions(ctm.__enter__, enter_result, is_class_level=True): ### maybe is_class_level=False?
+            if self.__execute_block_recording_exceptions(ctm.__enter__, enter_result, is_class_level=True):
                 enter_result.end_in_success()
             self.fire_event(self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, enter_result)
 

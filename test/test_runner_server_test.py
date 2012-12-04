@@ -47,6 +47,7 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
         self.test_instance = self.dummy_test_case(should_pass=should_pass)
         for event in [
             test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
+            ###test_case.TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
             test_case.TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
             test_case.TestCase.EVENT_ON_COMPLETE_TEST_CASE,
         ]:
@@ -283,7 +284,7 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
     - self.dummy_test_case - a test case that raises an exception during a
       class_setup or the setup phase of a class_setup_teardown
 
-    - self.setup_method_name - the name of the method which will raise an
+    - self.class_setup_teardown_method_name - the name of the method which will raise an
       exception
 
     This class's test method will do the rest.
@@ -312,9 +313,22 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         # and get requeued as flakes. They aren't reported now because they
         # aren't complete.
         expected_methods = set(['classTearDown', 'run'])
+        # self.run_test configures us up to collect results submitted at
+        # class_teardown completion time. class_setup_teardown methods report
+        # the result of their teardown phase at "class_teardown completion"
+        # time. So, when testing the setup phase of class_setup_teardown, we
+        # will see an "extra" method.
+        #
+        # Child classes which exercise class_setup_teardown will set
+        # self.class_setup_teardown_method_name so we can add it to
+        # expected_methods here.
+        if hasattr(self, 'class_setup_teardown_method_name'):
+            expected_methods.add(self.class_setup_teardown_method_name)
         seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
         # This produces a clearer diff than simply asserting the sets are
         # equal.
+        ### pprint
+        from pprint import pprint; pprint(self.test_reporter.test_complete.calls)
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
 
         # Verify the failed test case is re-queued for running.
@@ -331,22 +345,27 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         # This time, test methods have been re-run as flakes. Now that these
         # methods are are complete, they should be reported.
         expected_methods = set(['test1', 'test2', 'classTearDown', 'run'])
+        if hasattr(self, 'class_setup_teardown_method_name'):
+            expected_methods.add(self.class_setup_teardown_method_name)
         seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
         # This produces a clearer diff than simply asserting the sets are
         # equal.
+        ### pprint
+        from pprint import pprint; pprint(self.test_reporter.test_complete.calls)
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
 
+        # Verify no more test cases have been re-queued for running.
+        assert_equal(self.server.test_queue.empty(), True)
 
 class TestRunnerServerExceptionInClassSetupTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
     def build_test_case(self):
         self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassSetupTestCase
-        self.setup_method_name = 'class_setup_raises_exception'
 
 
 class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
     def build_test_case(self):
         self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase
-        self.setup_method_name = 'class_setup_teardown_raises_exception_in_setup_phase'
+        self.class_setup_teardown_method_name = 'class_setup_teardown_raises_exception_in_setup_phase'
 
 
 class TestRunnerServerExceptionInTeardownPhaseBaseTestCase(TestRunnerServerBaseTestCase):
