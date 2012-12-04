@@ -3,7 +3,7 @@ import threading
 import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
-from test_logger_test import TestReporterExceptionInClassFixtureSampleTests
+from test_logger_test import ExceptionInClassFixtureSampleTests
 from testify import assert_equal, assert_in, assert_raises_and_contains, class_setup, class_teardown, setup, teardown, test_case, test_runner_server
 from testify.utils import turtle
 
@@ -354,12 +354,12 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
 
 class TestRunnerServerExceptionInClassSetupTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
     def build_test_case(self):
-        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassSetupTestCase
+        self.dummy_test_case = ExceptionInClassFixtureSampleTests.FakeClassSetupTestCase
 
 
 class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
     def build_test_case(self):
-        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase
+        self.dummy_test_case = ExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase
         self.class_setup_teardown_method_name = 'class_setup_teardown_raises_exception_in_setup_phase'
 
 
@@ -402,13 +402,13 @@ class TestRunnerServerExceptionInTeardownPhaseBaseTestCase(TestRunnerServerBaseT
 
 class TestRunnerServerExceptionInClassTeardownTestCase(TestRunnerServerExceptionInTeardownPhaseBaseTestCase):
     def build_test_case(self):
-        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase
+        self.dummy_test_case = ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase
         self.teardown_method_name = 'class_teardown_raises_exception'
 
 
 class TestRunnerServerExceptionInTeardownPhaseOfClassSetupTeardownTestCase(TestRunnerServerExceptionInTeardownPhaseBaseTestCase):
     def build_test_case(self):
-        self.dummy_test_case = TestReporterExceptionInClassFixtureSampleTests.FakeTeardownPhaseOfClassSetupTeardownTestCase
+        self.dummy_test_case = ExceptionInClassFixtureSampleTests.FakeTeardownPhaseOfClassSetupTeardownTestCase
         self.teardown_method_name = 'class_setup_teardown_raises_exception_in_teardown_phase'
 
 

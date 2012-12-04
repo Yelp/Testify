@@ -4,7 +4,7 @@ import tornado.httpserver
 import tornado.web
 import Queue
 
-from test.test_logger_test import TestReporterExceptionInClassFixtureSampleTests
+from test.test_logger_test import ExceptionInClassFixtureSampleTests
 from testify import assert_equal, setup_teardown, TestCase
 from testify.test_runner import TestRunner
 from testify.plugins.http_reporter import HTTPReporter
@@ -98,7 +98,7 @@ class HTTPReporterTestCase(TestCase):
         assert_equal(test_case_result['method']['name'], 'run')
 
     def test_http_reporter_class_teardown_exception(self):
-        runner = TestRunner(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, test_reporters=[HTTPReporter(None, self.connect_addr, 'runner1')])
+        runner = TestRunner(ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, test_reporters=[HTTPReporter(None, self.connect_addr, 'runner1')])
         runner.run()
 
         (test1_method_result, test2_method_result, class_teardown_result, test_case_result) = self.results_reported

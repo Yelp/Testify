@@ -38,14 +38,14 @@ class TextLoggerDiscoveryFailureTestCase(BrokenImportTestCase, TextLoggerBaseTes
         assert_in('DISCOVERY FAILURE!', logger_output)
 
 
-class TestReporterExceptionInClassFixtureSampleTests(TestCase):
+class ExceptionInClassFixtureSampleTests(TestCase):
     class FakeClassFixtureException(Exception):
         pass
 
     class FakeClassSetupTestCase(TestCase):
         @class_setup
         def class_setup_raises_exception(self):
-            raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup kaboom')
+            raise ExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup kaboom')
 
         def test1(self):
             assert False, 'test1 should not be reached; class_setup should have aborted.'
@@ -56,7 +56,7 @@ class TestReporterExceptionInClassFixtureSampleTests(TestCase):
     class FakeClassTeardownTestCase(TestCase):
         @class_teardown
         def class_teardown_raises_exception(self):
-            raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_teardown kaboom')
+            raise ExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_teardown kaboom')
 
         def test1(self):
             pass
@@ -67,7 +67,7 @@ class TestReporterExceptionInClassFixtureSampleTests(TestCase):
     class FakeSetupPhaseOfClassSetupTeardownTestCase(TestCase):
         @class_setup_teardown
         def class_setup_teardown_raises_exception_in_setup_phase(self):
-            raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup_teardown setup phase kaboom')
+            raise ExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup_teardown setup phase kaboom')
             yield # Never reached
             # Empty teardown, also never reached
 
@@ -83,7 +83,7 @@ class TestReporterExceptionInClassFixtureSampleTests(TestCase):
         def class_setup_teardown_raises_exception_in_teardown_phase(self):
             # Empty setup
             yield
-            raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup_teardown teardown phase kaboom')
+            raise ExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup_teardown teardown phase kaboom')
 
         def test1(self):
             pass
@@ -109,7 +109,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
 
 
     def test_class_setup(self):
-        self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeClassSetupTestCase)
+        self._run_test_case(ExceptionInClassFixtureSampleTests.FakeClassSetupTestCase)
 
         # The fake test methods assert if they are called. If we make it here,
         # then execution never reached those methods and we are happy.
@@ -134,7 +134,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
 
 
     def test_setup_phase_of_class_setup_teardown(self):
-        self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase)
+        self._run_test_case(ExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase)
 
         # The fake test methods assert if they are called. If we make it here,
         # then execution never reached those methods and we are happy.
@@ -159,7 +159,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
 
 
     def test_class_teardown(self):
-        self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase)
+        self._run_test_case(ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase)
         assert_equal(len(self.logger.results), 3)
 
         class_teardown_result = self.logger.results[-1]
@@ -180,7 +180,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
 
 
     def test_teardown_phase_of_class_setup_teardown(self):
-        self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeTeardownPhaseOfClassSetupTeardownTestCase)
+        self._run_test_case(ExceptionInClassFixtureSampleTests.FakeTeardownPhaseOfClassSetupTeardownTestCase)
         assert_equal(len(self.logger.results), 3)
 
         class_teardown_result = self.logger.results[-1]
@@ -212,8 +212,8 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         def test1_raises(self):
             raise FakeTestException('I raise before class_teardown raises')
 
-        with patch.object(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, 'test1', test1_raises):
-            self._run_test_case(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase)
+        with patch.object(ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, 'test1', test1_raises):
+            self._run_test_case(ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase)
 
             assert_equal(len(self.logger.results), 3)
             test1_raises_result = self.logger.results[0]
