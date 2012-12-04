@@ -47,7 +47,6 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
         self.test_instance = self.dummy_test_case(should_pass=should_pass)
         for event in [
             test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
-            ###test_case.TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
             test_case.TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
             test_case.TestCase.EVENT_ON_COMPLETE_TEST_CASE,
         ]:
@@ -327,8 +326,6 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
         # This produces a clearer diff than simply asserting the sets are
         # equal.
-        ### pprint
-        from pprint import pprint; pprint(self.test_reporter.test_complete.calls)
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
 
         # Verify the failed test case is re-queued for running.
@@ -350,8 +347,6 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
         # This produces a clearer diff than simply asserting the sets are
         # equal.
-        ### pprint
-        from pprint import pprint; pprint(self.test_reporter.test_complete.calls)
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
 
         # Verify no more test cases have been re-queued for running.
