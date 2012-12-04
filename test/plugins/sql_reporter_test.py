@@ -12,7 +12,7 @@ except ImportError:
 
 
 from test.discovery_failure_test import BrokenImportTestCase
-from test.test_logger_test import TestReporterExceptionInClassFixtureSampleTests
+from test.test_logger_test import ExceptionInClassFixtureSampleTests
 from testify import TestCase, assert_equal, assert_gt, assert_in,  assert_in_range, setup_teardown
 from testify.plugins.sql_reporter import Builds, Failures, SQLReporter, TestResults, Tests, add_command_line_options
 from testify.test_result import TestResult
@@ -187,7 +187,7 @@ class SQLReporterDiscoveryFailureTestCase(SQLReporterBaseTestCase, BrokenImportT
 
 class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
     def test_setup(self):
-        runner = TestRunner(TestReporterExceptionInClassFixtureSampleTests.FakeClassSetupTestCase, test_reporters=[self.reporter])
+        runner = TestRunner(ExceptionInClassFixtureSampleTests.FakeClassSetupTestCase, test_reporters=[self.reporter])
         runner.run()
 
         conn = self.reporter.conn
@@ -210,7 +210,7 @@ class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
 
 
     def test_teardown(self):
-        runner = TestRunner(TestReporterExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, test_reporters=[self.reporter])
+        runner = TestRunner(ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, test_reporters=[self.reporter])
         runner.run()
 
         conn = self.reporter.conn
