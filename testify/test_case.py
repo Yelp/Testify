@@ -43,6 +43,11 @@ FIXTURE_TYPES = (
     'setup_teardown',
     'class_setup_teardown',
 )
+FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS = (
+    ###'class_setup',
+    'class_teardown',
+    'class_setup_teardown',
+)
 
 # In general, inherited fixtures are applied first unless they are of these
 # types. These fixtures are applied (in order of their definitions) starting
@@ -341,8 +346,8 @@ class TestCase(object):
             result = TestResult(fixture_method)
 
             try:
-                self.fire_event(callback_on_run_event, result)
                 result.start()
+                self.fire_event(callback_on_run_event, result)
                 if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
                     result.end_in_success()
                 else:

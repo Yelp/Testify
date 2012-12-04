@@ -10,6 +10,7 @@ from __future__ import with_statement
 
 import logging
 
+from test_case import FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS
 from test_runner import TestRunner
 import tornado.httpserver
 import tornado.ioloop
@@ -175,7 +176,7 @@ class TestRunnerServer(TestRunner):
             # If class_teardown failed, the client will send us a result to let us
             # know. If that happens, don't worry about the apparently un-checked
             # out test method.
-            if result['method']['fixture_type'] in ['class_teardown', 'class_setup_teardown']:
+            if result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
                 pass
             else:
                 raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
@@ -192,7 +193,7 @@ class TestRunnerServer(TestRunner):
         d['timeout_time'] = time.time() + self.runner_timeout
 
         # class_teardowns are special.
-        if result['method']['fixture_type'] not in ('class_teardown', 'class_setup_teardown'):
+        if result['method']['fixture_type'] not in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
             d['methods'].remove(result['method']['name'])
 
         if not d['methods']:
@@ -342,14 +343,14 @@ class TestRunnerServer(TestRunner):
         failed_methods = list(d['failed_methods'].items())
         early_shutdown_methods = []
         failed_methods_already_rerun = []
-        failed_class_teardown_methods = []
+        unexpected_failed_methods = []
         requeue_methods = []
 
         for method, result in failed_methods:
             if (class_path, method) in self.failed_rerun_methods:
                 failed_methods_already_rerun.append((method, result))
-            elif result['method']['fixture_type'] in ['class_teardown', 'class_setup_teardown']:
-                failed_class_teardown_methods.append((method, result))
+            elif result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
+                unexpected_failed_methods.append((method, result))
             elif early_shutdown:
                 early_shutdown_methods.append((method, result))
                 requeue_methods.append((method, result))
@@ -360,7 +361,7 @@ class TestRunnerServer(TestRunner):
             passed_methods,
             early_shutdown_methods,
             failed_methods_already_rerun,
-            failed_class_teardown_methods,
+            unexpected_failed_methods,
         )
         for method, result_dict in tests_to_report:
             for reporter in self.test_reporters:
