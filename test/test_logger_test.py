@@ -69,7 +69,7 @@ class TestReporterExceptionInClassFixtureSampleTests(TestCase):
         def class_setup_teardown_raises_exception_in_setup_phase(self):
             raise TestReporterExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup_teardown setup phase kaboom')
             yield # Never reached
-            # Empty teardown; also never reached
+            # Empty teardown
 
         def test1(self):
             pass
