@@ -349,20 +349,8 @@ class TestCase(object):
                 self.fire_event(callback_on_run_event, result)
                 if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
                     result.end_in_success()
-                ### this else block might be unnecessary???
-                ### or maybe just the end_in_*? cuz failure count isn't set elsewhere.
-                ### because __execute_block_recording_exceptions records the failure
                 else:
-                    if self.__class_level_failure:
-                        result.end_in_failure(self.__class_level_failure)
-                        self.failure_count += 1
-                    elif self.__class_level_error:
-                        result.end_in_error(self.__class_level_error)
-                        self.failure_count += 1
-                    else:
-                        raise Exception("Couldn't find a class-level failure or error even"
-                            " though we failed while executing a class-level fixture."
-                            " This should not be possible. Aborting.")
+                    self.failure_count += 1
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_interruption(sys.exc_info())
                 raise
