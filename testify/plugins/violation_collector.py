@@ -51,7 +51,7 @@ Tests = SA.Table(
 )
 
 def is_sqliteurl(dburl):
-    return dburl.startswith("sqlite:///")
+    return dburl.startswith("sqlite://")
 
 def sqlite_dbpath(dburl):
     if is_sqliteurl(dburl):
@@ -59,10 +59,7 @@ def sqlite_dbpath(dburl):
     return None
 
 def cleandict(dictionary, allowed_keys):
-    new_dict = {}
-    for key in dictionary.iterkeys():
-        new_dict[key] = dictionary[key]
-    return new_dict
+    return dict((k, v) for k, v in dictionary.iteritems() if k in allowed_keys)
 
 class ViolationStore:
     def __init__(self, options):
