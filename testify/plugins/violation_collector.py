@@ -194,10 +194,9 @@ def collect(operation, path, resolved_path):
 
 
 class ViolationReporter(test_reporter.TestReporter):
-    def __init__(self, options):
+    def __init__(self, violation_collector=None):
         global collector
-        self.collector = collector
-        self.options = options
+        self.collector = violation_collector or collector
         self.violations_write_fd = self.collector.violations_write_fd
         super(ViolationReporter, self).__init__(self)
 
@@ -312,7 +311,7 @@ def build_test_reporters(options):
             raise Exception, "Violation collection requires catbox. You do not have catbox install in your path."
         if not catbox.has_pcre():
             raise Exception, "Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support."
-        return [ViolationReporter(options)]
+        return [ViolationReporter()]
     return []
 
 
