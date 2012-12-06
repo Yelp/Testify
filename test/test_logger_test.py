@@ -38,14 +38,15 @@ class TextLoggerDiscoveryFailureTestCase(BrokenImportTestCase, TextLoggerBaseTes
         assert_in('DISCOVERY FAILURE!', logger_output)
 
 
-class ExceptionInClassFixtureSampleTests(TestCase):
-    class FakeClassFixtureException(Exception):
-        pass
+class FakeClassFixtureException(Exception):
+    pass
 
+
+class ExceptionInClassFixtureSampleTests(TestCase):
     class FakeClassSetupTestCase(TestCase):
         @class_setup
         def class_setup_raises_exception(self):
-            raise ExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup kaboom')
+            raise FakeClassFixtureException('class_setup kaboom')
 
         def test1(self):
             assert False, 'test1 should not be reached; class_setup should have aborted.'
@@ -56,7 +57,7 @@ class ExceptionInClassFixtureSampleTests(TestCase):
     class FakeClassTeardownTestCase(TestCase):
         @class_teardown
         def class_teardown_raises_exception(self):
-            raise ExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_teardown kaboom')
+            raise FakeClassFixtureException('class_teardown kaboom')
 
         def test1(self):
             pass
@@ -67,7 +68,7 @@ class ExceptionInClassFixtureSampleTests(TestCase):
     class FakeSetupPhaseOfClassSetupTeardownTestCase(TestCase):
         @class_setup_teardown
         def class_setup_teardown_raises_exception_in_setup_phase(self):
-            raise ExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup_teardown setup phase kaboom')
+            raise FakeClassFixtureException('class_setup_teardown setup phase kaboom')
             yield # Never reached
             # Empty teardown, also never reached
 
@@ -83,7 +84,7 @@ class ExceptionInClassFixtureSampleTests(TestCase):
         def class_setup_teardown_raises_exception_in_teardown_phase(self):
             # Empty setup
             yield
-            raise ExceptionInClassFixtureSampleTests.FakeClassFixtureException('class_setup_teardown teardown phase kaboom')
+            raise FakeClassFixtureException('class_setup_teardown teardown phase kaboom')
 
         def test1(self):
             pass
