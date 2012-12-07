@@ -7,13 +7,10 @@ import mock
 import testify as T
 
 from testify.plugins.violation_collector import cleandict
+from testify.plugins.violation_collector import collect
 from testify.plugins.violation_collector import is_sqliteurl
 from testify.plugins.violation_collector import sqlite_dbpath
-
-from testify.plugins.violation_collector import collector
-from testify.plugins.violation_collector import ViolationCollector
 from testify.plugins.violation_collector import ViolationReporter
-from testify.plugins.violation_collector import ViolationStore
 
 
 
@@ -45,14 +42,16 @@ class ViolationReporterTestCase(T.TestCase):
             'module' : 'mock_module',
         }
         self.mock_result.configure_mocks(**result_attrs)
+        self.mock_store = mock.Mock()
         self.mock_collector = mock.Mock()
+        self.mock_collector.store = self.mock_store
         self.mock_set_violator = mock.Mock()
         self.reporter = ViolationReporter(violation_collector=self.mock_collector)
         self.reporter.set_violator = self.mock_set_violator
 
     def test_test_case_start(self):
         self.reporter.test_case_start(self.mock_result)
-        assert self.mock_set_violator
+        assert self.mock_set_violator.called
         assert self.mock_collector.store.add_test.called
 
     def test_test_case_complete(self):
@@ -61,7 +60,7 @@ class ViolationReporterTestCase(T.TestCase):
 
     def test_test_start(self):
         self.reporter.test_start(self.mock_result)
-        assert self.mock_set_violator
+        assert self.mock_set_violator.called
         assert self.mock_collector.store.add_test.called
 
     def test_test_complete(self):
@@ -70,7 +69,7 @@ class ViolationReporterTestCase(T.TestCase):
 
     def test_test_setup_start(self):
         self.reporter.test_setup_start(self.mock_result)
-        assert self.mock_set_violator
+        assert self.mock_set_violator.called
         assert self.mock_collector.store.add_test.called
 
     def test_test_setup_complete(self):
@@ -79,7 +78,7 @@ class ViolationReporterTestCase(T.TestCase):
 
     def test_test_teardown_start(self):
         self.reporter.test_teardown_start(self.mock_result)
-        assert self.mock_set_violator
+        assert self.mock_set_violator.called
         assert self.mock_collector.store.add_test.called
 
     def test_test_teardown_complete(self):
@@ -98,8 +97,28 @@ class ViolationReporterTestCase(T.TestCase):
             [('fake_violation2', 5), ('fake_violation3', 5), ('fake_violation1', 10)]
         )
 
-    def test_report(self):
-        assert False, "TODO: implement test for ViolationReporter.report"
+    def test_report_with_no_violations(self):
+        self.mock_store.violation_counts.return_value = []
+
+        self.reporter.report()
+
+        self.mock_collector.writeln.assert_called_with(
+            "No unit test violations! \o/\n",
+            T.test_logger.VERBOSITY_SILENT
+        )
+
+    def test_report_with_violations(self):
+        fake_violation = [
+            ('fake_class1', 'fake_method1', 'fake_violation1', 5),
+        ]
+        self.mock_store.violation_counts.return_value = fake_violation
+
+        self.reporter.report()
+
+        self.mock_collector.writeln.assert_called_with(
+            "%s.%s\t%s\t%s" % fake_violation[0],
+            T.test_logger.VERBOSITY_SILENT
+        )
 
 
 class ViolationCollectorTestCase(T.TestCase):
@@ -117,6 +136,15 @@ class ViolationCollectorTestCase(T.TestCase):
     def setup_testify_program(self):
         pass
 
-    def test_nothing(self):
-        pass
+    def test_violation_collector_pipeline(self):
+        assert False, "Setup the whole pipeline and check if creating a violation is catched"
 
+    def test_collect(self):
+        with mock.patch('testify.plugins.violation_collector.collector') as mock_collector:
+            mock_collector.get_violator.return_value = "fake_class1,fake_method1,tests.fake_module1"
+
+            collect("fake_violation1", "", "")
+
+            assert mock_collector.get_violator.called
+            assert mock_collector.report_violation.called
+            T.assert_equal(mock_collector.writeln.called, False)
