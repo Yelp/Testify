@@ -20,48 +20,92 @@ from testify import test_reporter
 from testify import test_logger
 
 
-metadata = SA.MetaData()
+"""We'll have two copies of this collector instance, one in parent
+(collecting syscall violations) and one in the traced child process
+running TestCases (and reporting active module/test_case/test_method."""
+collector = None
 
-# TODO: We should probably normalize these tables, but good for now.
-Violations = SA.Table(
-    'violations', metadata,
-    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-    SA.Column('branch', SA.String(255)),
-    SA.Column('revision', SA.String(255)),
-    SA.Column('submitstamp', SA.Integer),
-    SA.Column('module', SA.String(255), nullable=False),
-    SA.Column('class_name', SA.String(255), nullable=False),
-    SA.Column('method_name', SA.String(255), nullable=False),
-    SA.Column('syscall', SA.String(20), index=True, nullable=False),
-    SA.Column('syscall_args', SA.String(255), nullable=True),
-)
-SA.Index('ix_build', Violations.c.branch, Violations.c.revision, Violations.c.submitstamp)
-SA.Index('ix_individual_test', Violations.c.module, Violations.c.class_name, Violations.c.method_name)
-SA.Index('ix_syscall_signature', Violations.c.syscall, Violations.c.syscall_args)
 
-Tests = SA.Table(
-    'tests', metadata,
-    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-    SA.Column('branch', SA.String(255)),
-    SA.Column('revision', SA.String(255)),
-    SA.Column('submitstamp', SA.Integer),
-    SA.Column('module', SA.String(255), nullable=False),
-    SA.Column('class_name', SA.String(255), nullable=False),
-    SA.Column('method_name', SA.String(255), nullable=False),
-)
+def is_sqlite_filepath(dburl):
+    return dburl.startswith("sqlite:///")
 
-def is_sqliteurl(dburl):
-    return dburl.startswith("sqlite://")
 
 def sqlite_dbpath(dburl):
-    if is_sqliteurl(dburl):
+    if is_sqlite_filepath(dburl):
         return os.path.abspath(dburl[len("sqlite:///"):])
     return None
+
 
 def cleandict(dictionary, allowed_keys):
     return dict((k, v) for k, v in dictionary.iteritems() if k in allowed_keys)
 
+
+def writeable_paths(options):
+    paths = ["~.*pyc$", "/dev/null"]
+    if is_sqlite_filepath(options.violation_dburl):
+        paths.append("~%s.*$" % sqlite_dbpath(options.violation_dburl))
+    return paths
+
+
+def run_in_catbox(method, logger, paths):
+    if not catbox:
+        return method()
+
+    return catbox.run(
+        method,
+        collect_only=True,
+        network=False,
+        logger=logger,
+        writable_paths=paths,
+    ).code
+
+
+def collect(operation, path, resolved_path):
+    """This is the 'logger' method passed to catbox. This method
+    will be triggered at each catbox violation.
+    """
+    global collector
+    try:
+        violator = collector.get_violator()
+        violation = (operation, resolved_path)
+        collector.violations[violator].append(violation)
+        collector.report_violation(violator, violation)
+    except Exception, e:
+        # No way to recover in here, just report error and violation
+        collector.writeln("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
+
+
 class ViolationStore:
+    metadata = SA.MetaData()
+    
+    # TODO: We should probably normalize these tables, but good for now.
+    Violations = SA.Table(
+        'violations', metadata,
+        SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+        SA.Column('branch', SA.String(255)),
+        SA.Column('revision', SA.String(255)),
+        SA.Column('submitstamp', SA.Integer),
+        SA.Column('module', SA.String(255), nullable=False),
+        SA.Column('class_name', SA.String(255), nullable=False),
+        SA.Column('method_name', SA.String(255), nullable=False),
+        SA.Column('syscall', SA.String(20), index=True, nullable=False),
+        SA.Column('syscall_args', SA.String(255), nullable=True),
+    )
+    SA.Index('ix_build', Violations.c.branch, Violations.c.revision, Violations.c.submitstamp)
+    SA.Index('ix_individual_test', Violations.c.module, Violations.c.class_name, Violations.c.method_name)
+    SA.Index('ix_syscall_signature', Violations.c.syscall, Violations.c.syscall_args)
+    
+    Tests = SA.Table(
+        'tests', metadata,
+        SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+        SA.Column('branch', SA.String(255)),
+        SA.Column('revision', SA.String(255)),
+        SA.Column('submitstamp', SA.Integer),
+        SA.Column('module', SA.String(255), nullable=False),
+        SA.Column('class_name', SA.String(255), nullable=False),
+        SA.Column('method_name', SA.String(255), nullable=False),
+    )
+
     def __init__(self, options):
         self.options = options
         self.dburl = self.options.violation_dburl or SA.engine.url.URL(**yaml.safe_load(open(self.options.violation_dbconfig)))
@@ -71,7 +115,7 @@ class ViolationStore:
         else:
             self.info = {'branch': "", 'revision': "", 'submitstamp': time.time()}
 
-        if is_sqliteurl(self.dburl):
+        if is_sqlite_filepath(self.dburl):
             if self.dburl.find(":memory:") > -1:
                 raise ValueError("Can not use sqlite memory database for ViolationStore")
             dbpath = sqlite_dbpath(self.dburl)
@@ -83,32 +127,32 @@ class ViolationStore:
     def connect(self):
         engine = SA.create_engine(self.dburl)
         conn = engine.connect()
-        if is_sqliteurl(self.dburl):
+        if is_sqlite_filepath(self.dburl):
             conn.execute("PRAGMA journal_mode = MEMORY;")
-        metadata.create_all(engine)
+        self.metadata.create_all(engine)
         return engine, conn
 
     def add_test(self, testinfo):
         try:
             testinfo.update(self.info)
-            self.conn.execute(Tests.insert(), testinfo)
+            self.conn.execute(self.Tests.insert(), testinfo)
         except Exception, e:
             logging.error("Exception inserting testinfo: %r" % e)
 
     def add_violation(self, violation):
         try:
             violation.update(self.info)
-            self.conn.execute(Violations.insert(), violation)
+            self.conn.execute(self.Violations.insert(), violation)
         except Exception, e:
             logging.error("Exception inserting violations: %r" % e)
 
     def violation_counts(self):
         query = SA.sql.select([
-            Violations.c.class_name,
-            Violations.c.method_name,
-            Violations.c.syscall,
-            SA.sql.func.count(Violations.c.syscall).label("count")
-        ]).group_by(Violations.c.class_name, Violations.c.method_name, Violations.c.syscall).order_by("count DESC")
+            self.Violations.c.class_name,
+            self.Violations.c.method_name,
+            self.Violations.c.syscall,
+            SA.sql.func.count(self.Violations.c.syscall).label("count")
+        ]).group_by(self.Violations.c.class_name, self.Violations.c.method_name, self.Violations.c.syscall).order_by("count DESC")
         result = self.conn.execute(query)
         violations = []
         for row in result:
@@ -170,27 +214,6 @@ class ViolationCollector:
                 violator_line = read.split(self.VIOLATOR_DESC_END)[-2]
                 self.last_violator = tuple(violator_line.split(','))
         return self.last_violator
-
-
-"""We'll have two copies of this collector instance, one in parent
-(collecting syscall violations) and one in the child running TestCases
-(and reporting active module/test_case/test_method."""
-collector = None
-
-
-def collect(operation, path, resolved_path):
-    """This is the 'logger' method passed to catbox. This method
-    will be triggered at each catbox violation.
-    """
-    global collector
-    try:
-        violator = collector.get_violator()
-        violation = (operation, resolved_path)
-        collector.violations[violator].append(violation)
-        collector.report_violation(violator, violation)
-    except Exception, e:
-        # No way to recover in here, just report error and violation
-        collector.writeln("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
 
 
 class ViolationReporter(test_reporter.TestReporter):
@@ -268,22 +291,6 @@ class ViolationReporter(test_reporter.TestReporter):
         for class_name, test_method, syscall, count in violations:
             self.collector.writeln("%s.%s\t%s\t%s" % (class_name, test_method, syscall, count), verbosity)
 
-def run_in_catbox(method, options):
-    if not catbox:
-        return method()
-
-    paths = ["~.*pyc$", "/dev/null"]
-    if is_sqliteurl(options.violation_dburl):
-        paths.append("~%s.*$" % sqlite_dbpath(options.violation_dburl))
-
-    return catbox.run(
-        method,
-        collect_only=True,
-        network=False,
-        logger=collect,
-        writable_paths=paths
-    ).code
-
 
 def add_command_line_options(parser):
     parser.add_option(
@@ -305,6 +312,7 @@ def add_command_line_options(parser):
         help="Yaml configuration file describing SQL database to store violations."
     )
 
+
 def build_test_reporters(options):
     if options.catbox_violations:
         if not catbox:
@@ -323,6 +331,10 @@ def prepare_test_program(options, program):
         collector.verbosity = options.verbosity
         collector.stream = sys.stderr # TODO: Use logger?
         def _run():
-            return run_in_catbox(program.__original_run__, options)
+            return run_in_catbox(
+                program.__original_run__,
+                collect,
+                writeable_paths(options)
+            )
         program.__original_run__ = program.run
         program.run = _run

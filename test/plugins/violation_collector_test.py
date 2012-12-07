@@ -8,7 +8,8 @@ import testify as T
 
 from testify.plugins.violation_collector import cleandict
 from testify.plugins.violation_collector import collect
-from testify.plugins.violation_collector import is_sqliteurl
+from testify.plugins.violation_collector import is_sqlite_filepath
+from testify.plugins.violation_collector import run_in_catbox
 from testify.plugins.violation_collector import sqlite_dbpath
 from testify.plugins.violation_collector import ViolationReporter
 
@@ -16,9 +17,9 @@ from testify.plugins.violation_collector import ViolationReporter
 
 class HelpersTestCase(T.TestCase):
     def test_is_sqliteurl(self):
-        assert is_sqliteurl("sqlite://")
-        assert is_sqliteurl("sqlite:///test.db")
-        assert is_sqliteurl("sqlite:////tmp/test-database.sqlite")
+        assert is_sqlite_filepath("sqlite:///")
+        assert is_sqlite_filepath("sqlite:///test.db")
+        assert is_sqlite_filepath("sqlite:////tmp/test-database.sqlite")
 
     def test_sqlite_dbpath(self):
         T.assert_equal(sqlite_dbpath("sqlite:///test.sqlite"), os.path.abspath("test.sqlite"))
@@ -137,7 +138,7 @@ class ViolationCollectorTestCase(T.TestCase):
         pass
 
     def test_violation_collector_pipeline(self):
-        assert False, "Setup the whole pipeline and check if creating a violation is catched"
+        assert False, "TODO: Setup the whole pipeline and check if creating a violation will be catched"
 
     def test_collect(self):
         with mock.patch('testify.plugins.violation_collector.collector') as mock_collector:
@@ -148,3 +149,19 @@ class ViolationCollectorTestCase(T.TestCase):
             assert mock_collector.get_violator.called
             assert mock_collector.report_violation.called
             T.assert_equal(mock_collector.writeln.called, False)
+
+    def test_run_in_catbox(self):
+        with mock.patch('testify.plugins.violation_collector.catbox') as mock_catbox:
+            mock_method = mock.Mock()
+            mock_logger = mock.Mock()
+            mock_paths = mock.Mock()
+
+            run_in_catbox(mock_method, mock_logger, mock_paths)
+
+            mock_catbox.run.assert_called_with(
+				mock_method,
+				collect_only=True,
+				network=False,
+				logger=mock_logger,
+				writable_paths=mock_paths,
+			)
