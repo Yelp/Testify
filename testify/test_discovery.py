@@ -124,12 +124,12 @@ def discover(what):
                         # If it's actually a package (directory + __init__.py)
                         item_path = os.path.join(module_filesystem_path, item)
                         if os.path.isdir(item_path) and os.path.exists(os.path.join(item_path, '__init__.py')):
-                            for test_case_class in discover_inner("%s.%s" % (locator, item), module_suites):
+                            for test_case_class in discover_inner("%s.%s" % (locator, item), suites=module_suites):
                                 yield test_case_class
 
                         # other than directories, only look in .py files
                         elif item.endswith('.py'):
-                            for test_case_class in discover_inner("%s.%s" % (locator, item[:-3]), module_suites):
+                            for test_case_class in discover_inner("%s.%s" % (locator, item[:-3]), suites=module_suites):
                                 yield test_case_class
 
             # Otherwise it's some other type of module
