@@ -151,6 +151,8 @@ class TestRunner(object):
                     test_case.register_callback(test_case.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, reporter.class_teardown_start)
                     test_case.register_callback(test_case.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, reporter.class_teardown_complete)
 
+                    test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_CASE, reporter.test_case_complete)
+
                 test_case.register_callback(test_case.EVENT_ON_COMPLETE_TEST_METHOD, failure_counter)
 
                 # Now we wrap our test case like an onion. Each plugin given the opportunity to wrap it.
