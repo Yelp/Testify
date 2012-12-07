@@ -19,7 +19,7 @@ setup(
         "Intended Audience :: Developers",
         "Development Status :: 4 - Beta",
     ],
-    install_requires=['mock,', 'PyYaml', 'SQLAlchemy', 'Tornado'],
+    install_requires=['Mock', 'PyYaml', 'SQLAlchemy', 'Tornado'],
     packages=["testify", "testify.contrib", "testify.utils", "testify.plugins"],
     scripts=['bin/testify'],
     long_description="""Testify - A Testing Framework
