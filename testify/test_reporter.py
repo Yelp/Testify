@@ -57,6 +57,10 @@ class TestReporter(object):
         """Called when a class_teardown or the second half of a class_setup_teardown finishes"""
         pass
 
+    def test_case_complete(self, result):
+        """Called when a test case and all of its fixtures have been run."""
+        pass
+
     def report(self):
         """Called at the end of the test run to report results
 

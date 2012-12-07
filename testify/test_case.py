@@ -43,6 +43,10 @@ FIXTURE_TYPES = (
     'setup_teardown',
     'class_setup_teardown',
 )
+FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS = (
+    'class_teardown',
+    'class_setup_teardown',
+)
 
 # In general, inherited fixtures are applied first unless they are of these
 # types. These fixtures are applied (in order of their definitions) starting
@@ -148,6 +152,7 @@ class TestCase(object):
     EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD = 6
     EVENT_ON_RUN_FIXTURE_METHOD = 7
     EVENT_ON_COMPLETE_FIXTURE_METHOD = 8
+    EVENT_ON_COMPLETE_TEST_CASE = 9
 
     log = class_logger.ClassLogger()
 
@@ -289,10 +294,30 @@ class TestCase(object):
                 yield member
 
     def run(self):
-        """Delegator method encapsulating the flow for executing a TestCase instance"""
+        """Delegator method encapsulating the flow for executing a TestCase instance.
+
+        This method tracks its progress in a TestResult with test_method 'run'.
+        This TestResult is used as a signal when running in client/server mode:
+        when the client is done running a TestCase and its fixtures, it sends
+        this TestResult to the server during the EVENT_ON_COMPLETE_TEST_CASE
+        phase.
+
+        This could be handled better. See
+        https://github.com/Yelp/Testify/issues/121.
+        """
+
+        # The TestResult constructor wants an actual method, which it inspects
+        # to determine the method name (and class name, so it must be a method
+        # and not a function!). self.run is as good a method as any.
+        test_case_result = TestResult(self.run)
+        test_case_result.start()
+
         self.__run_class_setup_fixtures()
         self.__enter_class_context_managers(self.class_setup_teardown_fixtures, self.__run_test_methods)
         self.__run_class_teardown_fixtures()
+
+        test_case_result.end_in_success()
+        self.fire_event(self.EVENT_ON_COMPLETE_TEST_CASE, test_case_result)
 
     def __run_class_setup_fixtures(self):
         """Running the class's class_setup method chain."""
@@ -320,23 +345,12 @@ class TestCase(object):
             result = TestResult(fixture_method)
 
             try:
-                self.fire_event(callback_on_run_event, result)
                 result.start()
+                self.fire_event(callback_on_run_event, result)
                 if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
                     result.end_in_success()
                 else:
-                    if self.__class_level_failure:
-                        result.end_in_failure(self.__class_level_failure)
-                        ### Bump failure count?
-                        ### Something about failure_limit?
-                    elif self.__class_level_error:
-                        result.end_in_error(self.__class_level_error)
-                        ### Bump failure count?
-                        ### Something about failure_limit?
-                    else:
-                        raise Exception("Couldn't find a class-level failure or error even"
-                            " though we failed while executing a class-level fixture."
-                            " This should not be possible. Aborting.")
+                    self.failure_count += 1
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_interruption(sys.exc_info())
                 raise
@@ -374,7 +388,7 @@ class TestCase(object):
             enter_result = TestResult(fixture_method)
             enter_result.start()
             self.fire_event(self.EVENT_ON_RUN_CLASS_SETUP_METHOD, enter_result)
-            if self.__execute_block_recording_exceptions(ctm.__enter__, enter_result):
+            if self.__execute_block_recording_exceptions(ctm.__enter__, enter_result, is_class_level=True):
                 enter_result.end_in_success()
             self.fire_event(self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, enter_result)
 
@@ -383,7 +397,7 @@ class TestCase(object):
             exit_result = TestResult(fixture_method)
             exit_result.start()
             self.fire_event(self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, exit_result)
-            if self.__execute_block_recording_exceptions(lambda: ctm.__exit__(None, None, None), exit_result):
+            if self.__execute_block_recording_exceptions(lambda: ctm.__exit__(None, None, None), exit_result, is_class_level=True):
                 exit_result.end_in_success()
             self.fire_event(self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, exit_result)
         else:

@@ -536,12 +536,13 @@ class CallbacksGetCalledTest(TestCase):
             TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
             TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
             TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
+            TestCase.EVENT_ON_COMPLETE_TEST_CASE,
         )
 
         calls_to_callback = []
         def make_callback(event):
             def callback(result):
-                calls_to_callback.append((event, result['method']['name']))
+                calls_to_callback.append((event, result['method']['name'] if result else None))
             return callback
 
         for event in events:
@@ -564,6 +565,8 @@ class CallbacksGetCalledTest(TestCase):
 
             (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, 'classTearDown'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, 'classTearDown'),
+
+            (TestCase.EVENT_ON_COMPLETE_TEST_CASE, 'run'),
         ])
 
 if __name__ == '__main__':

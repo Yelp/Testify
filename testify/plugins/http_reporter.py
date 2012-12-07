@@ -47,6 +47,20 @@ class HTTPReporter(test_reporter.TestReporter):
 
         super(HTTPReporter, self).__init__(options, *args, **kwargs)
 
+    def test_case_complete(self, result):
+        """Add a result to result_queue. The result is specially constructed to
+        signal to the test_runner server that a test_runner client has finished
+        running an entire TestCase.
+        """
+        self.result_queue.put(result)
+
+    def class_teardown_complete(self, result):
+        """If there was an error during class_teardown, insert the result
+        containing the error into the queue that report_results pulls from.
+        """
+        if not result['success']:
+            self.result_queue.put(result)
+
     def test_complete(self, result):
         self.result_queue.put(result)
 
