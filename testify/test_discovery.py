@@ -105,9 +105,10 @@ def discover(what):
 
         # If it's actually a package, recursively descend.  If it's a true module, import its TestCase members
         elif isinstance(test_module, types.ModuleType):
+            module_suites = suites + getattr(test_module, '_suites', [])
+
             # If it has a __path__, it should be a package (directory)
             if hasattr(test_module, '__path__'):
-                module_suites = getattr(test_module, '_suites', [])
                 module_filesystem_path = test_module.__path__[0]
                 # but let's be sure
                 if os.path.isdir(module_filesystem_path):
@@ -118,22 +119,22 @@ def discover(what):
                             continue
 
                         # If it's actually a package (directory + __init__.py)
-                        if os.path.isdir(os.path.join(module_filesystem_path, item)) and os.path.exists(os.path.join(module_filesystem_path, item, '__init__.py')):
-                            for test_case_class in discover_inner("%s.%s" % (locator, item), suites+module_suites):
+                        item_path = os.path.join(module_filesystem_path, item)
+                        if os.path.isdir(item_path) and os.path.exists(os.path.join(item_path, '__init__.py')):
+                            for test_case_class in discover_inner("%s.%s" % (locator, item), suites=module_suites):
                                 yield test_case_class
 
                         # other than directories, only look in .py files
                         elif item.endswith('.py'):
-                            for test_case_class in discover_inner("%s.%s" % (locator, item[:-3]), suites+module_suites):
+                            for test_case_class in discover_inner("%s.%s" % (locator, item[:-3]), suites=module_suites):
                                 yield test_case_class
 
             # Otherwise it's some other type of module
             else:
-                module_suites = getattr(test_module, '_suites', [])
                 for member_name in dir(test_module):
                     obj = getattr(test_module, member_name)
                     if isinstance(obj, types.TypeType) and inspect.getmodule(obj) == test_module:
-                        for test_case_class in discover_inner(obj, suites + module_suites):
+                        for test_case_class in discover_inner(obj, suites=module_suites):
                             yield test_case_class
 
         # it's not a list, it's not a bare module - let's see if it's an honest-to-god TestCaseBase
@@ -151,7 +152,7 @@ def discover(what):
 
         # detect unittest test cases
         elif issubclass(test_module, unittest.TestCase) and (not '__test__' in test_module.__dict__ or bool(test_module.__test__)):
-            test_case = TestifiedUnitTest.from_unittest_case(test_module)
+            test_case = TestifiedUnitTest.from_unittest_case(test_module, module_suites=suites)
             discover_set.add(test_case)
             yield test_case
 

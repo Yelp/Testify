@@ -554,11 +554,14 @@ class TestCase(object):
 class TestifiedUnitTest(TestCase, unittest.TestCase):
 
     @classmethod
-    def from_unittest_case(cls, unittest_class):
+    def from_unittest_case(cls, unittest_class, module_suites=None):
         """"Constructs a new testify.TestCase from a unittest.TestCase class.
 
         This operates recursively on the TestCase's class hierarchy by
         converting each parent unittest.TestCase into a TestifiedTestCase.
+
+        If 'suites' are provided, they are treated as module-level suites to be
+        applied in addition to class- and test-level suites.
         """
 
         # our base case: once we get to the parent TestCase, replace it with our
@@ -583,12 +586,16 @@ class TestifiedUnitTest(TestCase, unittest.TestCase):
         # use an __init__ smart enough to figure out our inheritance
         unittest_dict['__init__'] = cls.__init__
 
+        # add module-level suites in addition to any suites already on the class
+        class_suites = set(getattr(unittest_class, '_suites', []))
+        unittest_dict['_suites'] = class_suites | set(module_suites or [])
+
         # traverse our class hierarchy and 'testify' parent unittest.TestCases
         bases = []
 
         for base_class in unittest_class.__bases__:
             if issubclass(base_class, unittest.TestCase):
-                base_class = cls.from_unittest_case(base_class)
+                base_class = cls.from_unittest_case(base_class, module_suites=module_suites)
             bases.append(base_class)
 
         # include our original unittest class so existing super() calls still

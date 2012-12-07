@@ -506,7 +506,7 @@ class LetWithLambdaTest(TestCase):
         assert_equal(self.counter.next(), 0)
         assert_equal(self.counter.next(), 1)
 
-class LetWithSubclassTest(TestCase):
+class LetWithSubclassTest(LetWithLambdaTest):
     """Test that @let is inherited correctly."""
     pass
 
