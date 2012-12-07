@@ -137,7 +137,7 @@ def discover(what):
                 for member_name in dir(test_module):
                     obj = getattr(test_module, member_name)
                     if isinstance(obj, types.TypeType) and inspect.getmodule(obj) == test_module:
-                        for test_case_class in discover_inner(obj, module_suites):
+                        for test_case_class in discover_inner(obj, suites=module_suites):
                             yield test_case_class
 
         # it's not a list, it's not a bare module - let's see if it's an honest-to-god TestCaseBase
