@@ -25,22 +25,29 @@ from testify import test_logger
 running TestCases (and reporting active module/test_case/test_method."""
 collector = None
 
+output_stream = None
+output_verbosity = test_logger.VERBOSITY_NORMAL
+
 
 def is_sqlite_filepath(dburl):
+    """Check if dburl is an sqlite file path."""
     return dburl.startswith("sqlite:///")
 
 
 def sqlite_dbpath(dburl):
+    """Return the file path of the sqlite url"""
     if is_sqlite_filepath(dburl):
         return os.path.abspath(dburl[len("sqlite:///"):])
     return None
 
 
 def cleandict(dictionary, allowed_keys):
+    """Cleanup the dictionary removing all keys but the allowed ones."""
     return dict((k, v) for k, v in dictionary.iteritems() if k in allowed_keys)
 
 
 def writeable_paths(options):
+    """Generate a list of writeable paths"""
     paths = ["~.*pyc$", "/dev/null"]
     if is_sqlite_filepath(options.violation_dburl):
         paths.append("~%s.*$" % sqlite_dbpath(options.violation_dburl))
@@ -48,8 +55,15 @@ def writeable_paths(options):
 
 
 def run_in_catbox(method, logger, paths):
-    if not catbox:
-        return method()
+    """Run the given method in catbox. method is going to be run in
+    catbox to be traced and logger will be notified of any violations
+    in the method.
+
+    paths is a list of writable strings (regexp). Catbox will ignore
+    violations by syscalls if the syscall is call writing to a path in
+    the writable paths list.
+    """
+    if not catbox: return method()
 
     return catbox.run(
         method,
@@ -58,6 +72,16 @@ def run_in_catbox(method, logger, paths):
         logger=logger,
         writable_paths=paths,
     ).code
+
+
+def writeln(msg, verbosity=None):
+    """Write msg to the output stream appending a new line"""
+    global output_stream, output_verbosity
+    verbosity =  verbosity or output_verbosity
+    if output_stream and (verbosity <= output_verbosity):
+        msg = msg.encode('utf8') if isinstance(msg, unicode) else msg
+        output_stream.write(msg + '\n')
+        output_stream.flush()
 
 
 def collect(operation, path, resolved_path):
@@ -72,7 +96,7 @@ def collect(operation, path, resolved_path):
         collector.report_violation(violator, violation)
     except Exception, e:
         # No way to recover in here, just report error and violation
-        collector.writeln("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
+        sys.stderr.write("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
 
 
 class ViolationStore:
@@ -166,7 +190,6 @@ class ViolationCollector:
 
     store = None
     stream = None
-    verbosity = test_logger.VERBOSITY_NORMAL
     violations = defaultdict(list)
 
     UNDEFINED_VIOLATOR = ("UndefinedTestCase", "UndefinedMethod", "UndefinedPath")
@@ -176,14 +199,6 @@ class ViolationCollector:
     epoll = select.epoll()
     epoll.register(violations_read_fd, select.EPOLLIN | select.EPOLLET)
 
-    def writeln(self, msg, verbosity=None):
-        if not verbosity:
-            verbosity = self.verbosity
-        if self.stream and verbosity <= self.verbosity:
-            msg = msg.encode('utf8') if isinstance(msg, unicode) else msg
-            self.stream.write(msg + '\n')
-            self.stream.flush()
-
     def report_violation(self, violator, violation):
         if violator == self.UNDEFINED_VIOLATOR:
             # This is coming from Testify, not from a TestCase. Ignoring.
@@ -191,7 +206,7 @@ class ViolationCollector:
 
         test_case, method, module = violator
         syscall, resolved_path = violation
-        self.writeln(
+        writeln(
             "CATBOX_VIOLATION: %s.%s %r" % (test_case, method, violation),
             test_logger.VERBOSITY_VERBOSE
         )
@@ -274,22 +289,22 @@ class ViolationReporter(test_reporter.TestReporter):
     def report(self):
         violations = self.collector.store.violation_counts()
         verbosity = test_logger.VERBOSITY_SILENT
-        self.collector.writeln("", verbosity)
-        self.collector.writeln("=" * 72, verbosity)
+        writeln("", verbosity)
+        writeln("=" * 72, verbosity)
 
         if not len(violations):
-            self.collector.writeln("No unit test violations! \o/\n", verbosity)
+            writeln("No unit test violations! \o/\n", verbosity)
             return
 
-        self.collector.writeln("VIOLATIONS:", verbosity)
-        self.collector.writeln("", verbosity)
+        writeln("VIOLATIONS:", verbosity)
+        writeln("", verbosity)
         for syscall, count in self.get_syscall_count(violations):
-            self.collector.writeln("%s\t%s" % (syscall, count), verbosity)
+            writeln("%s\t%s" % (syscall, count), verbosity)
 
-        self.collector.writeln("")
+        writeln("")
 
         for class_name, test_method, syscall, count in violations:
-            self.collector.writeln("%s.%s\t%s\t%s" % (class_name, test_method, syscall, count), verbosity)
+            writeln("%s.%s\t%s\t%s" % (class_name, test_method, syscall, count), verbosity)
 
 
 def add_command_line_options(parser):
@@ -325,11 +340,12 @@ def build_test_reporters(options):
 
 def prepare_test_program(options, program):
     global collector
+    global output_stream
     if options.catbox_violations:
+        output_stream = sys.stderr # TODO: Use logger?
         collector = ViolationCollector()
         collector.store = ViolationStore(options)
         collector.verbosity = options.verbosity
-        collector.stream = sys.stderr # TODO: Use logger?
         def _run():
             return run_in_catbox(
                 program.__original_run__,

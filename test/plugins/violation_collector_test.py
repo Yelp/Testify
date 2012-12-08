@@ -1,3 +1,4 @@
+import contextlib
 import os
 import socket
 import tempfile
@@ -11,11 +12,12 @@ from testify.plugins.violation_collector import collect
 from testify.plugins.violation_collector import is_sqlite_filepath
 from testify.plugins.violation_collector import run_in_catbox
 from testify.plugins.violation_collector import sqlite_dbpath
+from testify.plugins.violation_collector import writeln
+
 from testify.plugins.violation_collector import ViolationReporter
 
 
-
-class HelpersTestCase(T.TestCase):
+class HelperFunctionsTestCase(T.TestCase):
     def test_is_sqliteurl(self):
         assert is_sqlite_filepath("sqlite:///")
         assert is_sqlite_filepath("sqlite:///test.db")
@@ -29,6 +31,57 @@ class HelpersTestCase(T.TestCase):
         dirty_dict = {'a': 1, 'b': 2, 'c': 3}
         clean_dict = {'a': 1}
         T.assert_equal(cleandict(dirty_dict, allowed_keys=['a']), clean_dict)
+
+    def test_collect(self):
+        with mock.patch('testify.plugins.violation_collector.collector') as mock_collector:
+            mock_collector.get_violator.return_value = "fake_class1,fake_method1,tests.fake_module1"
+
+            collect("fake_violation1", "", "")
+
+            assert mock_collector.get_violator.called
+            assert mock_collector.report_violation.called
+            T.assert_equal(mock_collector.writeln.called, False)
+
+    def test_run_in_catbox(self):
+        with mock.patch('testify.plugins.violation_collector.catbox') as mock_catbox:
+            mock_method = mock.Mock()
+            mock_logger = mock.Mock()
+            mock_paths = mock.Mock()
+
+            run_in_catbox(mock_method, mock_logger, mock_paths)
+
+            mock_catbox.run.assert_called_with(
+                mock_method,
+                collect_only=True,
+                network=False,
+                logger=mock_logger,
+                writable_paths=mock_paths,
+            )
+
+    @contextlib.contextmanager
+    def mocked_writeln(self, verbosity=None):
+        with mock.patch('testify.plugins.violation_collector.output_stream') as mock_stream:
+            test_message = "test message"
+            writeln(test_message, verbosity)
+            yield test_message, mock_stream
+
+    def test_writeln_with_default_verbosity(self):
+        with self.mocked_writeln() as data:
+            msg, stream = data
+            stream.write.assert_called_with(msg + "\n")
+            assert stream.flush.called
+
+    def test_writeln_with_verbosity_silent(self):
+        with self.mocked_writeln(verbosity=T.test_logger.VERBOSITY_SILENT) as data:
+            msg, stream = data
+            stream.write.assert_called_with(msg + "\n")
+            assert stream.flush.called
+
+    def test_writeln_with_verbosity_verbose(self):
+        with self.mocked_writeln(verbosity=T.test_logger.VERBOSITY_VERBOSE) as data:
+            msg, stream = data
+            T.assert_equal(stream.write.called, False)
+            T.assert_equal(stream.flush.called, False)
 
 
 class ViolationReporterTestCase(T.TestCase):
@@ -99,27 +152,33 @@ class ViolationReporterTestCase(T.TestCase):
         )
 
     def test_report_with_no_violations(self):
-        self.mock_store.violation_counts.return_value = []
+        with mock.patch('testify.plugins.violation_collector.writeln') as mock_writeln:
+            self.mock_store.violation_counts.return_value = []
 
-        self.reporter.report()
+            self.reporter.report()
 
-        self.mock_collector.writeln.assert_called_with(
-            "No unit test violations! \o/\n",
-            T.test_logger.VERBOSITY_SILENT
-        )
+            mock_writeln.assert_called_with(
+                "No unit test violations! \o/\n",
+                T.test_logger.VERBOSITY_SILENT
+            )
 
     def test_report_with_violations(self):
-        fake_violation = [
-            ('fake_class1', 'fake_method1', 'fake_violation1', 5),
-        ]
-        self.mock_store.violation_counts.return_value = fake_violation
+        with mock.patch('testify.plugins.violation_collector.writeln') as mock_writeln:
+            fake_violation = [
+                ('fake_class1', 'fake_method1', 'fake_violation1', 5),
+            ]
+            self.mock_store.violation_counts.return_value = fake_violation
 
-        self.reporter.report()
+            self.reporter.report()
 
-        self.mock_collector.writeln.assert_called_with(
-            "%s.%s\t%s\t%s" % fake_violation[0],
-            T.test_logger.VERBOSITY_SILENT
-        )
+            mock_writeln.assert_called_with(
+                "%s.%s\t%s\t%s" % fake_violation[0],
+                T.test_logger.VERBOSITY_SILENT
+            )
+
+class ViolationStoreTestCase(T.TestCase):
+    def test_not_implemented(self):
+        assert False, "TODO: Implement ViolationStrore tests"
 
 
 class ViolationCollectorTestCase(T.TestCase):
@@ -133,35 +192,6 @@ class ViolationCollectorTestCase(T.TestCase):
         def test_network_violation(self):
             socket.gethostbyname("yelp.com")
 
-    @T.setup
-    def setup_testify_program(self):
-        pass
-
     def test_violation_collector_pipeline(self):
         assert False, "TODO: Setup the whole pipeline and check if creating a violation will be catched"
 
-    def test_collect(self):
-        with mock.patch('testify.plugins.violation_collector.collector') as mock_collector:
-            mock_collector.get_violator.return_value = "fake_class1,fake_method1,tests.fake_module1"
-
-            collect("fake_violation1", "", "")
-
-            assert mock_collector.get_violator.called
-            assert mock_collector.report_violation.called
-            T.assert_equal(mock_collector.writeln.called, False)
-
-    def test_run_in_catbox(self):
-        with mock.patch('testify.plugins.violation_collector.catbox') as mock_catbox:
-            mock_method = mock.Mock()
-            mock_logger = mock.Mock()
-            mock_paths = mock.Mock()
-
-            run_in_catbox(mock_method, mock_logger, mock_paths)
-
-            mock_catbox.run.assert_called_with(
-				mock_method,
-				collect_only=True,
-				network=False,
-				logger=mock_logger,
-				writable_paths=mock_paths,
-			)
