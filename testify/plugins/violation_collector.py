@@ -219,15 +219,17 @@ class ViolationCollector:
                 "start_time": time.time()
         })
 
+    def _get_last_violator(self, data):
+        # get last non empty string as violator line
+        violator_line = data.split(self.VIOLATOR_DESC_END)[-2]
+        return tuple(violator_line.split(','))
+
     def get_violator(self):
         events = self.epoll.poll(.01)
-        violator_line = ""
         if events:
             read = os.read(events[0][0], self.MAX_VIOLATOR_LINE)
             if read:
-                # get last non empty string as violator line
-                violator_line = read.split(self.VIOLATOR_DESC_END)[-2]
-                self.last_violator = tuple(violator_line.split(','))
+                self.last_violator = self._get_last_violator(read)
         return self.last_violator
 
 

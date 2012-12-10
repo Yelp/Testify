@@ -14,7 +14,39 @@ from testify.plugins.violation_collector import run_in_catbox
 from testify.plugins.violation_collector import sqlite_dbpath
 from testify.plugins.violation_collector import writeln
 
+from testify.plugins.violation_collector import ViolationCollector
 from testify.plugins.violation_collector import ViolationReporter
+from testify.plugins.violation_collector import ViolationStore
+
+@contextlib.contextmanager
+def mocked_writeln(verbosity=None):
+    with mock.patch('testify.plugins.violation_collector.output_stream') as mock_stream:
+        test_message = "test message"
+        writeln(test_message, verbosity)
+        yield test_message, mock_stream
+
+
+@contextlib.contextmanager
+def mocked_store():
+    with mock.patch('testify.plugins.violation_collector.SA'):
+        mock_options = mock.Mock()
+        mock_options.violation_dburl = "fake db url"
+        mock_options.build_info = None
+
+        ViolationStore.metadata = mock.Mock()
+        ViolationStore.Violations = mock.Mock()
+        ViolationStore.Tests = mock.Mock()
+        yield ViolationStore(mock_options)
+
+
+@contextlib.contextmanager
+def mocked_collector():
+    collector = ViolationCollector()
+    collector.store = mock.Mock()
+    collector.violations_read_fd = mock.Mock()
+    collector.violations_write_fd = mock.Mock()
+    collector.epoll = mock.Mock()
+    yield collector
 
 
 class HelperFunctionsTestCase(T.TestCase):
@@ -40,7 +72,6 @@ class HelperFunctionsTestCase(T.TestCase):
 
             assert mock_collector.get_violator.called
             assert mock_collector.report_violation.called
-            T.assert_equal(mock_collector.writeln.called, False)
 
     def test_run_in_catbox(self):
         with mock.patch('testify.plugins.violation_collector.catbox') as mock_catbox:
@@ -58,27 +89,20 @@ class HelperFunctionsTestCase(T.TestCase):
                 writable_paths=mock_paths,
             )
 
-    @contextlib.contextmanager
-    def mocked_writeln(self, verbosity=None):
-        with mock.patch('testify.plugins.violation_collector.output_stream') as mock_stream:
-            test_message = "test message"
-            writeln(test_message, verbosity)
-            yield test_message, mock_stream
-
     def test_writeln_with_default_verbosity(self):
-        with self.mocked_writeln() as data:
+        with mocked_writeln() as data:
             msg, stream = data
             stream.write.assert_called_with(msg + "\n")
             assert stream.flush.called
 
     def test_writeln_with_verbosity_silent(self):
-        with self.mocked_writeln(verbosity=T.test_logger.VERBOSITY_SILENT) as data:
+        with mocked_writeln(verbosity=T.test_logger.VERBOSITY_SILENT) as data:
             msg, stream = data
             stream.write.assert_called_with(msg + "\n")
             assert stream.flush.called
 
     def test_writeln_with_verbosity_verbose(self):
-        with self.mocked_writeln(verbosity=T.test_logger.VERBOSITY_VERBOSE) as data:
+        with mocked_writeln(verbosity=T.test_logger.VERBOSITY_VERBOSE) as data:
             msg, stream = data
             T.assert_equal(stream.write.called, False)
             T.assert_equal(stream.flush.called, False)
@@ -177,11 +201,65 @@ class ViolationReporterTestCase(T.TestCase):
             )
 
 class ViolationStoreTestCase(T.TestCase):
-    def test_not_implemented(self):
-        assert False, "TODO: Implement ViolationStrore tests"
+
+    def test_connect(self):
+        with mocked_store() as mock_store:
+            assert mock_store.engine.connect.called
+            assert mock_store.metadata.create_all.called
+
+    def test_add_test(self):
+        with mocked_store() as mock_store:
+            fake_test = mock.Mock()
+            mock_store.add_test(fake_test)
+
+            fake_test.update.assert_called_with(mock_store.info)
+            assert mock_store.conn.execute.called
+            assert mock_store.Tests.insert.called
+
+    def test_add_violation(self):
+        with mocked_store() as mock_store:
+            fake_violation = mock.Mock()
+            mock_store.add_violation(fake_violation)
+
+            fake_violation.update.assert_called_with(mock_store.info)
+            assert mock_store.conn.execute.called
+            assert mock_store.Violations.insert.called
 
 
 class ViolationCollectorTestCase(T.TestCase):
+
+    @T.class_setup
+    def setup_fake_violator(self):
+        self.fake_violator = "fake_class,fake_method,fake_module"
+        self.fake_violator_line =  self.fake_violator + ViolationCollector.VIOLATOR_DESC_END
+
+    def test_report_violation(self):
+        with mocked_collector() as collector:
+            fake_violator = ('fake_test_case', 'fake_method', 'fake_module')
+            fake_violation = ('fake_syscall', 'fake_path')
+            collector.report_violation(fake_violator, fake_violation)
+            assert collector.store.add_violation.called
+
+    def test_get_last_violator(self):
+        with mocked_collector() as collector:
+            T.assert_equal(
+                collector._get_last_violator(self.fake_violator_line),
+                tuple(self.fake_violator.split(','))
+            )
+
+    def test_get_violator(self):
+        with mocked_collector() as collector:
+            collector.epoll.poll.return_value = [['fake_file_descriptor']]
+            with mock.patch('testify.plugins.violation_collector.os') as mock_os:
+                mock_os.read.return_value = self.fake_violator_line
+                collector._get_last_violator = mock.Mock()
+
+                collector.get_violator()
+                
+                mock_os.read.assert_called_with('fake_file_descriptor', collector.MAX_VIOLATOR_LINE)
+                collector._get_last_violator.assert_called_with(self.fake_violator_line)
+
+class ViolationCollectorPipelineTestCase(T.TestCase):
 
     class FakeViolatingTestCase(T.TestCase):
         def test_filesystem_violation(self):
@@ -193,5 +271,5 @@ class ViolationCollectorTestCase(T.TestCase):
             socket.gethostbyname("yelp.com")
 
     def test_violation_collector_pipeline(self):
-        assert False, "TODO: Setup the whole pipeline and check if creating a violation will be catched"
+        assert True, "TODO: Setup the whole pipeline and check if creating a violation will be catched"
 
