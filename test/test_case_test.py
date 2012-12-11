@@ -254,7 +254,7 @@ class FixtureMethodRegistrationOrderTest(TestCase):
         assert_equal(self.counter, 20)
 
 
-class FixtureMethodRegistrationOrderTestWithBaseClass(TestCase):
+class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
     """Test that registered fixtures execute in the expected order, which is:
      - class_setup & enter class_setup_teardown of the Base class
      - class_setup & enter class_setup_teardown of the Derived class
