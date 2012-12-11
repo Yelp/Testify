@@ -341,13 +341,13 @@ def build_test_reporters(options):
 
 
 def prepare_test_program(options, program):
-    global collector
-    global output_stream
+    global collector, output_stream, output_verbosity
     if options.catbox_violations:
         output_stream = sys.stderr # TODO: Use logger?
+        output_verbosity = options.verbosity
+
         collector = ViolationCollector()
         collector.store = ViolationStore(options)
-        collector.verbosity = options.verbosity
         def _run():
             return run_in_catbox(
                 program.__original_run__,
