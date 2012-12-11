@@ -254,6 +254,65 @@ class FixtureMethodRegistrationOrderTest(TestCase):
         assert_equal(self.counter, 20)
 
 
+class FixtureMethodRegistrationOrderTestWithBaseClass(TestCase):
+    """Test that registered fixtures execute in the expected order, which is:
+     - class_setup & enter class_setup_teardown of the Base class
+     - class_setup & enter class_setup_teardown of the Derived class
+     - exit class_setup_teardown & class_teardown of the Base class
+     - exit class_setup_teardown & class_teardown of the Derived class
+    """
+
+    @setup
+    def setup_fake_classes(self):
+
+        class FakeBaseClass(TestCase):
+            def __init__(self, *args, **kwargs):
+                super(FakeBaseClass, self).__init__(*args, **kwargs)
+                self.counter = 0
+
+            @class_setup
+            def base_class_setup(self):
+                assert_equal(self.counter, 0)
+                self.counter += 1
+
+            @class_setup_teardown
+            def base_class_setup_teardown(self):
+                assert_equal(self.counter, 1)
+                self.counter += 1
+                yield
+                assert_equal(self.counter, 5)
+                self.counter += 1
+
+            @class_teardown
+            def base_class_teardown(self):
+                assert_equal(self.counter, 4)
+                self.counter += 1
+
+        class FakeDerivedClass(FakeBaseClass):
+            @class_setup
+            def derived_class_setup(self):
+                assert_equal(self.counter, 2)
+                self.counter += 1
+
+            @class_setup_teardown
+            def derived_class_setup_teardown(self):
+                assert_equal(self.counter, 3)
+                self.counter += 1
+                yield
+                assert_equal(self.counter, 7)
+                self.counter += 1
+
+            @class_teardown
+            def base_class_teardown(self):
+                assert_equal(self.counter, 6)
+                self.counter += 1
+
+        self.fake_derived_class = FakeDerivedClass()
+
+    def test_order(self):
+        self.fake_derived_class.run()
+
+
 class OverrideTest(TestCase):
     def test_method_1(self):
         pass
