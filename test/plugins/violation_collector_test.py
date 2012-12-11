@@ -3,6 +3,12 @@ import os
 import socket
 import tempfile
 
+catbox = None
+try:
+    import catbox
+except ImportError:
+    pass
+
 import mock
 
 import testify as T
@@ -259,9 +265,10 @@ class ViolationCollectorTestCase(T.TestCase):
                 mock_os.read.assert_called_with('fake_file_descriptor', collector.MAX_VIOLATOR_LINE)
                 collector._get_last_violator.assert_called_with(self.fake_violator_line)
 
+
 class ViolationCollectorPipelineTestCase(T.TestCase):
 
-    class FakeViolatingTestCase(T.TestCase):
+    class ViolatingTestCase(T.TestCase):
         def test_filesystem_violation(self):
             fd, fpath = tempfile.mkstemp(suffix="fake_testfile")
             os.close(fd)
@@ -271,5 +278,25 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
             socket.gethostbyname("yelp.com")
 
     def test_violation_collector_pipeline(self):
-        assert True, "TODO: Setup the whole pipeline and check if creating a violation will be catched"
+        if not catbox:
+            # Nothing to test here, catbox is not installed.
+            pass
 
+        with mock.patch("testify.plugins.violation_collector.collect") as collect:
+            with mocked_store() as mock_store:
+                collector = ViolationCollector()
+                collector.store = mock_store
+
+                reporter = ViolationReporter(violation_collector=collector)
+
+                # Runing the test case inside catbox, we'll catch
+                # violating syscalls and catbox will call our logger
+                # function (collect)
+                runner = T.test_runner.TestRunner(self.ViolatingTestCase, test_reporters=[reporter])
+                run_in_catbox(runner.run, collect, [])
+
+                assert collect.called
+                violating_syscalls = [call[0][0] for call in collect.call_args_list]
+                T.assert_in('open', violating_syscalls)
+                T.assert_in('unlink', violating_syscalls)
+                T.assert_in('socketcall', violating_syscalls)
