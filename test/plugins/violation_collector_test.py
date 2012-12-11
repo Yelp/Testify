@@ -25,11 +25,9 @@ from testify.plugins.violation_collector import ViolationReporter
 from testify.plugins.violation_collector import ViolationStore
 
 @contextlib.contextmanager
-def mocked_writeln(verbosity=None):
-    with mock.patch('testify.plugins.violation_collector.output_stream') as mock_stream:
-        test_message = "test message"
-        writeln(test_message, verbosity)
-        yield test_message, mock_stream
+def mocked_ctx(verbosity=None):
+    with mock.patch('testify.plugins.violation_collector.ctx') as mock_ctx:
+        yield mock_ctx
 
 
 @contextlib.contextmanager
@@ -71,13 +69,13 @@ class HelperFunctionsTestCase(T.TestCase):
         T.assert_equal(cleandict(dirty_dict, allowed_keys=['a']), clean_dict)
 
     def test_collect(self):
-        with mock.patch('testify.plugins.violation_collector.collector') as mock_collector:
-            mock_collector.get_violator.return_value = "fake_class1,fake_method1,tests.fake_module1"
+        with mock.patch('testify.plugins.violation_collector.ctx') as mock_ctx:
+            mock_ctx.collector.get_violator.return_value = "fake_class1,fake_method1,tests.fake_module1"
 
             collect("fake_violation1", "", "")
 
-            assert mock_collector.get_violator.called
-            assert mock_collector.report_violation.called
+            assert mock_ctx.collector.get_violator.called
+            assert mock_ctx.collector.report_violation.called
 
     def test_run_in_catbox(self):
         with mock.patch('testify.plugins.violation_collector.catbox') as mock_catbox:
@@ -96,22 +94,34 @@ class HelperFunctionsTestCase(T.TestCase):
             )
 
     def test_writeln_with_default_verbosity(self):
-        with mocked_writeln() as data:
-            msg, stream = data
-            stream.write.assert_called_with(msg + "\n")
-            assert stream.flush.called
+        with mocked_ctx() as ctx:
+            msg = "test message"
+
+            writeln(msg)
+
+            ctx.output_stream.write.assert_called_with(msg + "\n")
+            assert ctx.output_stream.flush.called
 
     def test_writeln_with_verbosity_silent(self):
-        with mocked_writeln(verbosity=T.test_logger.VERBOSITY_SILENT) as data:
-            msg, stream = data
-            stream.write.assert_called_with(msg + "\n")
-            assert stream.flush.called
+        with mocked_ctx() as ctx:
+            ctx.output_verbosity = T.test_logger.VERBOSITY_SILENT
+            msg = "test message"
+
+            writeln(msg)
+
+            ctx.output_stream.write.assert_called_with(msg + "\n")
+            assert ctx.output_stream.flush.called
 
     def test_writeln_with_verbosity_verbose(self):
-        with mocked_writeln(verbosity=T.test_logger.VERBOSITY_VERBOSE) as data:
-            msg, stream = data
-            T.assert_equal(stream.write.called, False)
-            T.assert_equal(stream.flush.called, False)
+        with mocked_ctx() as ctx:
+            verbosity = T.test_logger.VERBOSITY_VERBOSE
+            msg = "test message"
+            ctx.output_verbosity = verbosity
+
+            writeln(msg, verbosity)
+
+            ctx.output_stream.write.assert_called_with(msg + "\n")
+            assert ctx.output_stream.flush.called
 
 
 class ViolationReporterTestCase(T.TestCase):
@@ -188,23 +198,20 @@ class ViolationReporterTestCase(T.TestCase):
             self.reporter.report()
 
             mock_writeln.assert_called_with(
-                "No unit test violations! \o/\n",
-                T.test_logger.VERBOSITY_SILENT
+                "No syscall violations! \o/\n",
+                T.test_logger.VERBOSITY_NORMAL
             )
 
     def test_report_with_violations(self):
-        with mock.patch('testify.plugins.violation_collector.writeln') as mock_writeln:
+        with mocked_ctx() as ctx:
+            ctx.output_verbosity = T.test_logger.VERBOSITY_VERBOSE
             fake_violation = [
                 ('fake_class1', 'fake_method1', 'fake_violation1', 5),
             ]
             self.mock_store.violation_counts.return_value = fake_violation
 
             self.reporter.report()
-
-            mock_writeln.assert_called_with(
-                "%s.%s\t%s\t%s" % fake_violation[0],
-                T.test_logger.VERBOSITY_SILENT
-            )
+            ctx.output_stream.write.assert_called_with("%s.%s\t%s\t%s\n" % fake_violation[0])
 
 class ViolationStoreTestCase(T.TestCase):
 

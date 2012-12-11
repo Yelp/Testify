@@ -20,13 +20,15 @@ from testify import test_reporter
 from testify import test_logger
 
 
-"""We'll have two copies of this collector instance, one in parent
+class _Context(object):
+	collector = None
+	output_stream = None
+	output_verbosity = test_logger.VERBOSITY_NORMAL
+
+"""We'll have two copies of this context instance, one in parent
 (collecting syscall violations) and one in the traced child process
 running TestCases (and reporting active module/test_case/test_method."""
-collector = None
-
-output_stream = None
-output_verbosity = test_logger.VERBOSITY_NORMAL
+ctx = _Context()
 
 
 def is_sqlite_filepath(dburl):
@@ -76,24 +78,24 @@ def run_in_catbox(method, logger, paths):
 
 def writeln(msg, verbosity=None):
     """Write msg to the output stream appending a new line"""
-    global output_stream, output_verbosity
-    verbosity =  verbosity or output_verbosity
-    if output_stream and (verbosity <= output_verbosity):
+    global ctx
+    verbosity =  verbosity or ctx.output_verbosity
+    if ctx.output_stream and (verbosity <= ctx.output_verbosity):
         msg = msg.encode('utf8') if isinstance(msg, unicode) else msg
-        output_stream.write(msg + '\n')
-        output_stream.flush()
+        ctx.output_stream.write(msg + '\n')
+        ctx.output_stream.flush()
 
 
 def collect(operation, path, resolved_path):
     """This is the 'logger' method passed to catbox. This method
     will be triggered at each catbox violation.
     """
-    global collector
+    global ctx
     try:
-        violator = collector.get_violator()
+        violator = ctx.collector.get_violator()
         violation = (operation, resolved_path)
-        collector.violations[violator].append(violation)
-        collector.report_violation(violator, violation)
+        ctx.collector.violations[violator].append(violation)
+        ctx.collector.report_violation(violator, violation)
     except Exception, e:
         # No way to recover in here, just report error and violation
         sys.stderr.write("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
@@ -235,8 +237,8 @@ class ViolationCollector:
 
 class ViolationReporter(test_reporter.TestReporter):
     def __init__(self, violation_collector=None):
-        global collector
-        self.collector = violation_collector or collector
+        global ctx
+        self.collector = violation_collector or ctx.collector
         self.violations_write_fd = self.collector.violations_write_fd
         super(ViolationReporter, self).__init__(self)
 
@@ -290,23 +292,34 @@ class ViolationReporter(test_reporter.TestReporter):
 
     def report(self):
         violations = self.collector.store.violation_counts()
-        verbosity = test_logger.VERBOSITY_SILENT
-        writeln("", verbosity)
-        writeln("=" * 72, verbosity)
+        if ctx.output_verbosity == test_logger.VERBOSITY_VERBOSE:
+            self._report_verbose(violations)
+        elif ctx.output_verbosity >= test_logger.VERBOSITY_NORMAL:
+            self._report_normal(violations)
+        else:
+            self._report_silent(violations)
 
-        if not len(violations):
-            writeln("No unit test violations! \o/\n", verbosity)
-            return
-
-        writeln("VIOLATIONS:", verbosity)
-        writeln("", verbosity)
-        for syscall, count in self.get_syscall_count(violations):
-            writeln("%s\t%s" % (syscall, count), verbosity)
-
+    def _report_verbose(self, violations):
+        verbosity = test_logger.VERBOSITY_VERBOSE
+        self._report_normal(violations)
         writeln("")
-
         for class_name, test_method, syscall, count in violations:
             writeln("%s.%s\t%s\t%s" % (class_name, test_method, syscall, count), verbosity)
+
+    def _report_normal(self, violations):
+        if not len(violations):
+            writeln("No syscall violations! \o/\n", test_logger.VERBOSITY_NORMAL)
+            return
+        self._report_silent(violations)
+
+    def _report_silent(self, violations):
+        syscall_violations = ['%s (%s)' % counts for counts in self.get_syscall_count(violations)]
+        violations_line = "%s %s" % (
+			"%s syscall violations:" % len(violations),
+			','.join(syscall_violations)
+		)
+        writeln(violations_line, test_logger.VERBOSITY_SILENT)
+
 
 
 def add_command_line_options(parser):
@@ -341,13 +354,13 @@ def build_test_reporters(options):
 
 
 def prepare_test_program(options, program):
-    global collector, output_stream, output_verbosity
+    global ctx
     if options.catbox_violations:
-        output_stream = sys.stderr # TODO: Use logger?
-        output_verbosity = options.verbosity
+        ctx.output_stream = sys.stderr # TODO: Use logger?
+        ctx.output_verbosity = options.verbosity
 
-        collector = ViolationCollector()
-        collector.store = ViolationStore(options)
+        ctx.collector = ViolationCollector()
+        ctx.collector.store = ViolationStore(options)
         def _run():
             return run_in_catbox(
                 program.__original_run__,
