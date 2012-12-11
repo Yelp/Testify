@@ -268,50 +268,56 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
         class FakeBaseClass(TestCase):
             def __init__(self, *args, **kwargs):
                 super(FakeBaseClass, self).__init__(*args, **kwargs)
-                self.counter = 0
+                self.method_order = []
 
             @class_setup
             def base_class_setup(self):
-                assert_equal(self.counter, 0)
-                self.counter += 1
+                self.method_order.append("base_class_setup")
 
             @class_setup_teardown
             def base_class_setup_teardown(self):
-                assert_equal(self.counter, 1)
-                self.counter += 1
+                self.method_order.append("base_class_setup_teardown_setup_phase")
                 yield
-                assert_equal(self.counter, 5)
-                self.counter += 1
+                self.method_order.append("base_class_setup_teardown_teardown_phase")
 
             @class_teardown
             def base_class_teardown(self):
-                assert_equal(self.counter, 4)
-                self.counter += 1
+                self.method_order.append("base_class_teardown")
 
         class FakeDerivedClass(FakeBaseClass):
             @class_setup
             def derived_class_setup(self):
-                assert_equal(self.counter, 2)
-                self.counter += 1
+                self.method_order.append("derived_class_setup")
 
             @class_setup_teardown
             def derived_class_setup_teardown(self):
-                assert_equal(self.counter, 3)
-                self.counter += 1
+                self.method_order.append("derived_class_setup_teardown_setup_phase")
                 yield
-                assert_equal(self.counter, 7)
-                self.counter += 1
+                self.method_order.append("derived_class_setup_teardown_teardown_phase")
 
             @class_teardown
-            def base_class_teardown(self):
-                assert_equal(self.counter, 6)
-                self.counter += 1
+            def derived_class_teardown(self):
+                self.method_order.append("derived_class_teardown")
 
         self.fake_derived_class = FakeDerivedClass()
 
     def test_order(self):
         self.fake_derived_class.run()
+        expected_order = [
+            "base_class_setup",
+            "base_class_setup_teardown_setup_phase",
 
+            "derived_class_setup",
+            "derived_class_setup_teardown_setup_phase",
+
+            "derived_class_setup_teardown_teardown_phase",
+            "base_class_setup_teardown_teardown_phase",
+
+            "derived_class_teardown",
+            "base_class_teardown"
+        ]
+
+        assert_equal(self.fake_derived_class.method_order, expected_order)
 
 class OverrideTest(TestCase):
     def test_method_1(self):
