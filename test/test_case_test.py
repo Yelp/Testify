@@ -299,10 +299,10 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
             def derived_class_teardown(self):
                 self.method_order.append("derived_class_teardown")
 
-        self.fake_derived_class = FakeDerivedClass()
+        self.fake_test_case = FakeDerivedClass()
 
     def test_order(self):
-        self.fake_derived_class.run()
+        self.fake_test_case.run()
         expected_order = [
             "base_class_setup",
             "base_class_setup_teardown_setup_phase",
@@ -317,7 +317,7 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
             "base_class_teardown"
         ]
 
-        assert_equal(self.fake_derived_class.method_order, expected_order)
+        assert_equal(self.fake_test_case.method_order, expected_order)
 
 class OverrideTest(TestCase):
     def test_method_1(self):
