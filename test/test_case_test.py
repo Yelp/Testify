@@ -258,8 +258,8 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
     """Test that registered fixtures execute in the expected order, which is:
      - class_setup & enter class_setup_teardown of the Base class
      - class_setup & enter class_setup_teardown of the Derived class
-     - exit class_setup_teardown & class_teardown of the Base class
      - exit class_setup_teardown & class_teardown of the Derived class
+     - exit class_setup_teardown & class_teardown of the Base class
     """
 
     @setup
@@ -311,9 +311,9 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
             "derived_class_setup_teardown_setup_phase",
 
             "derived_class_setup_teardown_teardown_phase",
-            "base_class_setup_teardown_teardown_phase",
-
             "derived_class_teardown",
+
+            "base_class_setup_teardown_teardown_phase",
             "base_class_teardown"
         ]
 
