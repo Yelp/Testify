@@ -312,50 +312,42 @@ class TestCase(object):
         test_case_result = TestResult(self.run)
         test_case_result.start()
 
-        self.__run_class_setup_fixtures()
-        self.__enter_class_context_managers(self.class_setup_teardown_fixtures, self.__run_test_methods)
-        self.__run_class_teardown_fixtures()
+        fixtures = []
+
+		# TODO: The order below is not correct. Modify
+		# __init_fixture_methods to get the fixture methods in proper
+		# order.
+        for fixture in self.class_setup_fixtures:
+            fixture = self.__convert_class_setup_to_class_setup_teardown(fixture)
+            fixtures.append(fixture)
+
+        for fixture in self.class_setup_teardown_fixtures:
+            fixtures.append(fixture)
+
+        for fixture in self.class_teardown_fixtures:
+            fixture = self.__convert_class_teardown_to_class_setup_teardown(fixture)
+            fixtures.append(fixture)
+
+        self.__enter_class_context_managers(fixtures, self.__run_test_methods)
 
         test_case_result.end_in_success()
         self.fire_event(self.EVENT_ON_COMPLETE_TEST_CASE, test_case_result)
 
-    def __run_class_setup_fixtures(self):
-        """Running the class's class_setup method chain."""
-        self.__run_class_fixtures(
-            self.STAGE_CLASS_SETUP,
-            self.class_setup_fixtures,
-            self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
-            self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
-        )
+    def __convert_class_setup_to_class_setup_teardown(self, fixture):
+        def wrapper(self):
+            fixture()
+            yield
+        wrapper.__name__ = fixture.__name__
+        wrapper.__doc__ = fixture.__doc__
+        return instancemethod(wrapper, self, self.__class__)
 
-    def __run_class_teardown_fixtures(self):
-        """End the process of running tests.  Run the class's class_teardown methods"""
-        self.__run_class_fixtures(
-            self.STAGE_CLASS_TEARDOWN,
-            self.class_teardown_fixtures,
-            self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
-            self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
-        )
-
-    def __run_class_fixtures(self, stage, fixtures, callback_on_run_event, callback_on_complete_event):
-        """Set the current _stage, run a set of fixtures, calling callbacks before and after each."""
-        self._stage = stage
-
-        for fixture_method in fixtures:
-            result = TestResult(fixture_method)
-
-            try:
-                result.start()
-                self.fire_event(callback_on_run_event, result)
-                if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
-                    result.end_in_success()
-                else:
-                    self.failure_count += 1
-            except (KeyboardInterrupt, SystemExit):
-                result.end_in_interruption(sys.exc_info())
-                raise
-            finally:
-                self.fire_event(callback_on_complete_event, result)
+    def __convert_class_teardown_to_class_setup_teardown(self, fixture):
+        def wrapper(self):
+            yield
+            fixture()
+        wrapper.__name__ = fixture.__name__
+        wrapper.__doc__ = fixture.__doc__
+        return instancemethod(wrapper, self, self.__class__)
 
     @classmethod
     def in_suite(cls, method, suite_name):
@@ -378,33 +370,58 @@ class TestCase(object):
         method_suites = set(getattr(method, '_suites', set()))
         return (self.__suites_exclude & method_suites)
 
+    def __run_class_fixture(self, fixture_method, function_to_call, stage, callback_on_run_event, callback_on_complete_event):
+        self._stage = stage
+
+        result = TestResult(fixture_method)
+
+        try:
+            result.start()
+            self.fire_event(callback_on_run_event, result)
+            if self.__execute_block_recording_exceptions(function_to_call, result, is_class_level=True):
+                result.end_in_success()
+            else:
+                self.failure_count += 1
+        except (KeyboardInterrupt, SystemExit):
+            result.end_in_interruption(sys.exc_info())
+            raise
+        finally:
+            self.fire_event(callback_on_complete_event, result)
 
     def __enter_class_context_managers(self, fixture_methods, callback):
-        """Transform each fixture_method into a context manager with contextlib.contextmanager, enter them recursively, and call callback"""
+        """Transform each fixture_method into a context manager with
+        contextlib.contextmanager, enter them recursively, and call
+        callback
+        """
         if fixture_methods:
             fixture_method = fixture_methods[0]
             ctm = contextmanager(fixture_method)()
 
-            enter_result = TestResult(fixture_method)
-            enter_result.start()
-            self.fire_event(self.EVENT_ON_RUN_CLASS_SETUP_METHOD, enter_result)
-            if self.__execute_block_recording_exceptions(ctm.__enter__, enter_result, is_class_level=True):
-                enter_result.end_in_success()
-            self.fire_event(self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, enter_result)
+            self.__run_class_fixture(
+                fixture_method,
+                ctm.__enter__,
+                self.STAGE_CLASS_SETUP,
+                self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
+                self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD
+            )
 
-            self.__enter_context_managers(fixture_methods[1:], callback)
+            self.__enter_class_context_managers(fixture_methods[1:], callback)
 
-            exit_result = TestResult(fixture_method)
-            exit_result.start()
-            self.fire_event(self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, exit_result)
-            if self.__execute_block_recording_exceptions(lambda: ctm.__exit__(None, None, None), exit_result, is_class_level=True):
-                exit_result.end_in_success()
-            self.fire_event(self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, exit_result)
+            self.__run_class_fixture(
+                fixture_method,
+                lambda: ctm.__exit__(None, None, None),
+                self.STAGE_CLASS_TEARDOWN,
+                self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
+                self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD
+            )
         else:
             callback()
 
     def __enter_context_managers(self, fixture_methods, callback):
-        """Transform each fixture_method into a context manager with contextlib.contextmanager, enter them recursively, and call callback"""
+        """Transform each fixture_method into a context manager with
+        contextlib.contextmanager, enter them recursively, and call
+        callback
+		"""
         if fixture_methods:
             with contextmanager(fixture_methods[0])():
                 self.__enter_context_managers(fixture_methods[1:], callback)
