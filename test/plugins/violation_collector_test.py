@@ -230,13 +230,19 @@ class ViolationStoreTestCase(T.TestCase):
             assert mock_store.Tests.insert.called
 
     def test_add_violation(self):
-        with mocked_store() as mock_store:
+        with mocked_store() as store:
+            fake_test_id = 1
             fake_violation = mock.Mock()
-            mock_store.add_violation(fake_violation)
+            store.get_last_test_id = mock.Mock()
+            store.get_last_test_id.return_value = fake_test_id
 
-            fake_violation.update.assert_called_with(mock_store.info)
-            assert mock_store.conn.execute.called
-            assert mock_store.Violations.insert.called
+            store.add_violation(fake_violation)
+
+            call_to_violation_update = fake_violation.update.call_args[0]
+            first_arg_to_violation_update = call_to_violation_update[0]
+            T.assert_equal(first_arg_to_violation_update, {'test_id': fake_test_id})
+            assert store.conn.execute.called
+            assert store.Violations.insert.called
 
 
 class ViolationCollectorTestCase(T.TestCase):

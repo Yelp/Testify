@@ -21,13 +21,17 @@ from testify import test_logger
 
 
 class _Context(object):
-	collector = None
-	output_stream = None
-	output_verbosity = test_logger.VERBOSITY_NORMAL
+    collector = None
+    output_stream = None
+    output_verbosity = test_logger.VERBOSITY_NORMAL
 
-"""We'll have two copies of this context instance, one in parent
-(collecting syscall violations) and one in the traced child process
-running TestCases (and reporting active module/test_case/test_method."""
+"""Catbox run will fork the process and run the our TestProgram in the
+child. Although test methods will be running in the child catbox will
+do the tracing in the parent process.
+
+The instances created by this module, as this global context instance,
+will have two copies. One in parent (collecting syscall violations)
+and one in the traced child process (running tests)."""
 ctx = _Context()
 
 
@@ -104,25 +108,19 @@ def collect(operation, path, resolved_path):
 class ViolationStore:
     metadata = SA.MetaData()
     
-    # TODO: We should probably normalize these tables, but good for now.
     Violations = SA.Table(
-        'violations', metadata,
+        'catbox_violations', metadata,
         SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-        SA.Column('branch', SA.String(255)),
-        SA.Column('revision', SA.String(255)),
-        SA.Column('submitstamp', SA.Integer),
-        SA.Column('module', SA.String(255), nullable=False),
-        SA.Column('class_name', SA.String(255), nullable=False),
-        SA.Column('method_name', SA.String(255), nullable=False),
+        SA.Column('test_id', SA.Integer, nullable=False),
         SA.Column('syscall', SA.String(20), index=True, nullable=False),
         SA.Column('syscall_args', SA.String(255), nullable=True),
+        SA.Column('start_time', SA.Integer),
     )
-    SA.Index('ix_build', Violations.c.branch, Violations.c.revision, Violations.c.submitstamp)
-    SA.Index('ix_individual_test', Violations.c.module, Violations.c.class_name, Violations.c.method_name)
     SA.Index('ix_syscall_signature', Violations.c.syscall, Violations.c.syscall_args)
+    SA.Index('ix_violating_test_id', Violations.c.test_id)
     
     Tests = SA.Table(
-        'tests', metadata,
+        'catbox_tests', metadata,
         SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
         SA.Column('branch', SA.String(255)),
         SA.Column('revision', SA.String(255)),
@@ -131,6 +129,22 @@ class ViolationStore:
         SA.Column('class_name', SA.String(255), nullable=False),
         SA.Column('method_name', SA.String(255), nullable=False),
     )
+    SA.Index('ix_build', Tests.c.branch, Tests.c.revision, Tests.c.submitstamp)
+    SA.Index('ix_individual_test', Tests.c.module, Tests.c.class_name, Tests.c.method_name)
+
+    # Adding tests and adding violations to the database is done
+    # through different processes. We use this pipe to update the last
+    # test id to be used while inserting Violations. Although it is
+    # possible to get it from the database we'll use the pipe not to
+    # make a db query each time we add a violation.
+    test_id_read_fd, test_id_write_fd = os.pipe()
+    epoll = select.epoll()
+    epoll.register(test_id_read_fd, select.EPOLLIN | select.EPOLLET)
+
+    TEST_ID_DESC_END = "#END#"
+    MAX_TEST_ID_LINE = 1024
+
+    last_test_id = 0
 
     def __init__(self, options):
         self.options = options
@@ -161,29 +175,56 @@ class ViolationStore:
     def add_test(self, testinfo):
         try:
             testinfo.update(self.info)
-            self.conn.execute(self.Tests.insert(), testinfo)
+            result = self.conn.execute(self.Tests.insert(), testinfo)
+            # update the test id for add_violation to use it to insert
+            # violations for a method
+            test_id = result.lastrowid
+            self.set_last_test_id(test_id)
         except Exception, e:
             logging.error("Exception inserting testinfo: %r" % e)
 
     def add_violation(self, violation):
         try:
-            violation.update(self.info)
+            test_id = self.get_last_test_id()
+            violation.update({'test_id': test_id})
             self.conn.execute(self.Violations.insert(), violation)
         except Exception, e:
             logging.error("Exception inserting violations: %r" % e)
 
     def violation_counts(self):
         query = SA.sql.select([
-            self.Violations.c.class_name,
-            self.Violations.c.method_name,
+            self.Tests.c.class_name,
+            self.Tests.c.method_name,
             self.Violations.c.syscall,
             SA.sql.func.count(self.Violations.c.syscall).label("count")
-        ]).group_by(self.Violations.c.class_name, self.Violations.c.method_name, self.Violations.c.syscall).order_by("count DESC")
+        ]).where(
+			self.Violations.c.test_id == self.Tests.c.id
+		).group_by(
+			self.Tests.c.class_name, self.Tests.c.method_name, self.Violations.c.syscall
+		).order_by(
+			"count DESC"
+		)
         result = self.conn.execute(query)
         violations = []
         for row in result:
             violations.append((row['class_name'], row['method_name'], row['syscall'], row['count']))
         return violations
+
+    def _get_last_test_id(self, data):
+        # get last non empty string as violator line
+        test_id_str = data.split(self.TEST_ID_DESC_END)[-2]
+        return int(test_id_str)
+
+    def get_last_test_id(self):
+        events = self.epoll.poll(.01)
+        if events:
+            read = os.read(events[0][0], self.MAX_TEST_ID_LINE)
+            if read:
+                self.last_test_id = self._get_last_test_id(read)
+        return self.last_test_id
+
+    def set_last_test_id(self, test_id):
+        os.write(self.test_id_write_fd, "%d%s" % (test_id, self.TEST_ID_DESC_END))
 
 
 class ViolationCollector:
@@ -197,6 +238,10 @@ class ViolationCollector:
     UNDEFINED_VIOLATOR = ("UndefinedTestCase", "UndefinedMethod", "UndefinedPath")
     last_violator = UNDEFINED_VIOLATOR
 
+    # Simmilar to the mechanism in ViolationStore (read the comment in
+    # ViolationStore), ViolationCollector will get the violating test
+    # method information from ViolationReporter, which runs on a
+    # different process, by reading this pipe.
     violations_read_fd, violations_write_fd = os.pipe()
     epoll = select.epoll()
     epoll.register(violations_read_fd, select.EPOLLIN | select.EPOLLET)
@@ -213,9 +258,6 @@ class ViolationCollector:
             test_logger.VERBOSITY_VERBOSE
         )
         self.store.add_violation({
-                "module": module,
-                "class_name": test_case,
-                "method_name": method,
                 "syscall": syscall,
                 "syscall_args": resolved_path,
                 "start_time": time.time()
@@ -315,9 +357,9 @@ class ViolationReporter(test_reporter.TestReporter):
     def _report_silent(self, violations):
         syscall_violations = ['%s (%s)' % counts for counts in self.get_syscall_count(violations)]
         violations_line = "%s %s" % (
-			"%s syscall violations:" % len(violations),
-			','.join(syscall_violations)
-		)
+            "%s syscall violations:" % len(violations),
+            ','.join(syscall_violations)
+        )
         writeln(violations_line, test_logger.VERBOSITY_SILENT)
 
 
