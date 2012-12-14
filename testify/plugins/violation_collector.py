@@ -387,7 +387,7 @@ def add_command_line_options(parser):
 
 def build_test_reporters(options):
     if options.catbox_violations:
-        msg_pcre = '\nhttps://github.com/baris/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
+        msg_pcre = '\nhttps://github.com/Yelp/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
         if not catbox:
             msg = 'Violation collection requires catbox and you do not have it installed in your PYTHONPATH.\n'
             msg += msg_pcre
