@@ -268,6 +268,10 @@ class ViolationCollectorTestCase(T.TestCase):
 
     def test_get_violator(self):
         with mocked_collector() as collector:
+            # ViolationCollector.get_violator() will try to get the most recent
+            # violator (test method) by reading from a pipe. collector's epoll
+            # attribute is just a Mock and here we provide a fake event with a
+            # fake file descriptor that get_violator should try reading from.
             collector.epoll.poll.return_value = [['fake_file_descriptor']]
             with mock.patch('testify.plugins.violation_collector.os') as mock_os:
                 mock_os.read.return_value = self.fake_violator_line
