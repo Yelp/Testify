@@ -198,12 +198,12 @@ class ViolationStore:
             self.Violations.c.syscall,
             SA.sql.func.count(self.Violations.c.syscall).label('count')
         ]).where(
-			self.Violations.c.test_id == self.Tests.c.id
-		).group_by(
-			self.Tests.c.class_name, self.Tests.c.method_name, self.Violations.c.syscall
-		).order_by(
-			'count DESC'
-		)
+            self.Violations.c.test_id == self.Tests.c.id
+        ).group_by(
+            self.Tests.c.class_name, self.Tests.c.method_name, self.Violations.c.syscall
+        ).order_by(
+            'count DESC'
+        )
         result = self.conn.execute(query)
         violations = []
         for row in result:
@@ -387,10 +387,15 @@ def add_command_line_options(parser):
 
 def build_test_reporters(options):
     if options.catbox_violations:
+        msg_pcre = '\nhttps://github.com/baris/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
         if not catbox:
-            raise Exception, 'Violation collection requires catbox. You do not have catbox install in your path.'
-        if not catbox.has_pcre():
-            raise Exception, 'Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support.'
+            msg = 'Violation collection requires catbox and you do not have it installed in your PYTHONPATH.\n'
+            msg += msg_pcre
+            raise Exception, msg
+        if catbox and not catbox.has_pcre():
+            msg = 'Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support.'
+            msg += msg_pcre
+            raise Exception, msg
         return [ViolationReporter()]
     return []
 
