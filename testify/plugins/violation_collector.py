@@ -25,13 +25,13 @@ class _Context(object):
     output_stream = None
     output_verbosity = test_logger.VERBOSITY_NORMAL
 
-"""Catbox run will fork the process and run the our TestProgram in the
-child. Although test methods will be running in the child catbox will
-do the tracing in the parent process.
+"""Catbox will fork this process and run TestProgram in the child. The
+child process runs the tests while the parent process traces the
+tests' execution.
 
-The instances created by this module, as this global context instance,
-will have two copies. One in parent (collecting syscall violations)
-and one in the traced child process (running tests)."""
+The instances created by this module in this global context will have
+two copies: one in parent (collecting syscall violations) and one in
+the traced child process (running tests)."""
 ctx = _Context()
 
 
