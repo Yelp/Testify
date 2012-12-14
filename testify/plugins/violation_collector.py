@@ -25,50 +25,50 @@ class _Context(object):
     output_stream = None
     output_verbosity = test_logger.VERBOSITY_NORMAL
 
-"""Catbox will fork this process and run TestProgram in the child. The
+'''Catbox will fork this process and run TestProgram in the child. The
 child process runs the tests while the parent process traces the
 tests' execution.
 
 The instances created by this module in this global context will have
 two copies: one in parent (collecting syscall violations) and one in
-the traced child process (running tests)."""
+the traced child process (running tests).'''
 ctx = _Context()
 
 
 def is_sqlite_filepath(dburl):
-    """Check if dburl is an sqlite file path."""
-    return dburl.startswith("sqlite:///")
+    '''Check if dburl is an sqlite file path.'''
+    return dburl.startswith('sqlite:///')
 
 
 def sqlite_dbpath(dburl):
-    """Return the file path of the sqlite url"""
+    '''Return the file path of the sqlite url'''
     if is_sqlite_filepath(dburl):
-        return os.path.abspath(dburl[len("sqlite:///"):])
+        return os.path.abspath(dburl[len('sqlite:///'):])
     return None
 
 
 def cleandict(dictionary, allowed_keys):
-    """Cleanup the dictionary removing all keys but the allowed ones."""
+    '''Cleanup the dictionary removing all keys but the allowed ones.'''
     return dict((k, v) for k, v in dictionary.iteritems() if k in allowed_keys)
 
 
 def writable_paths(options):
-    """Generate a list of writable paths"""
-    paths = ["~.*pyc$", "/dev/null"]
+    '''Generate a list of writable paths'''
+    paths = ['~.*pyc$', '/dev/null']
     if is_sqlite_filepath(options.violation_dburl):
-        paths.append("~%s.*$" % sqlite_dbpath(options.violation_dburl))
+        paths.append('~%s.*$' % sqlite_dbpath(options.violation_dburl))
     return paths
 
 
 def run_in_catbox(method, logger, paths):
-    """Run the given method in catbox. method is going to be run in
+    '''Run the given method in catbox. method is going to be run in
     catbox to be traced and logger will be notified of any violations
     in the method.
 
     paths is a list of writable strings (regexp). Catbox will ignore
     violations by syscalls if the syscall is call writing to a path in
     the writable paths list.
-    """
+    '''
     if not catbox: return method()
 
     return catbox.run(
@@ -81,7 +81,7 @@ def run_in_catbox(method, logger, paths):
 
 
 def writeln(msg, verbosity=None):
-    """Write msg to the output stream appending a new line"""
+    '''Write msg to the output stream appending a new line'''
     global ctx
     verbosity =  verbosity or ctx.output_verbosity
     if ctx.output_stream and (verbosity <= ctx.output_verbosity):
@@ -91,9 +91,9 @@ def writeln(msg, verbosity=None):
 
 
 def collect(operation, path, resolved_path):
-    """This is the 'logger' method passed to catbox. This method
+    '''This is the 'logger' method passed to catbox. This method
     will be triggered at each catbox violation.
-    """
+    '''
     global ctx
     try:
         violator = ctx.collector.get_violator()
@@ -102,7 +102,7 @@ def collect(operation, path, resolved_path):
         ctx.collector.report_violation(violator, violation)
     except Exception, e:
         # No way to recover in here, just report error and violation
-        sys.stderr.write("Error collecting violation data. Error %r. Violation: %r" % (e, (operation, resolved_path)))
+        sys.stderr.write('Error collecting violation data. Error %r. Violation: %r' % (e, (operation, resolved_path)))
 
 
 class ViolationStore:
@@ -141,7 +141,7 @@ class ViolationStore:
     epoll = select.epoll()
     epoll.register(test_id_read_fd, select.EPOLLIN | select.EPOLLET)
 
-    TEST_ID_DESC_END = "#END#"
+    TEST_ID_DESC_END = '#END#'
     MAX_TEST_ID_LINE = 1024
 
     last_test_id = 0
@@ -153,11 +153,11 @@ class ViolationStore:
             info = json.loads(options.build_info)
             self.info = cleandict(info, ['branch', 'revision', 'submitstamp'])
         else:
-            self.info = {'branch': "", 'revision': "", 'submitstamp': time.time()}
+            self.info = {'branch': '', 'revision': '', 'submitstamp': time.time()}
 
         if is_sqlite_filepath(self.dburl):
-            if self.dburl.find(":memory:") > -1:
-                raise ValueError("Can not use sqlite memory database for ViolationStore")
+            if self.dburl.find(':memory:') > -1:
+                raise ValueError('Can not use sqlite memory database for ViolationStore')
             dbpath = sqlite_dbpath(self.dburl)
             if os.path.exists(dbpath):
                 os.unlink(dbpath)
@@ -168,7 +168,7 @@ class ViolationStore:
         engine = SA.create_engine(self.dburl)
         conn = engine.connect()
         if is_sqlite_filepath(self.dburl):
-            conn.execute("PRAGMA journal_mode = MEMORY;")
+            conn.execute('PRAGMA journal_mode = MEMORY;')
         self.metadata.create_all(engine)
         return engine, conn
 
@@ -181,7 +181,7 @@ class ViolationStore:
             test_id = result.lastrowid
             self.set_last_test_id(test_id)
         except Exception, e:
-            logging.error("Exception inserting testinfo: %r" % e)
+            logging.error('Exception inserting testinfo: %r' % e)
 
     def add_violation(self, violation):
         try:
@@ -189,20 +189,20 @@ class ViolationStore:
             violation.update({'test_id': test_id})
             self.conn.execute(self.Violations.insert(), violation)
         except Exception, e:
-            logging.error("Exception inserting violations: %r" % e)
+            logging.error('Exception inserting violations: %r' % e)
 
     def violation_counts(self):
         query = SA.sql.select([
             self.Tests.c.class_name,
             self.Tests.c.method_name,
             self.Violations.c.syscall,
-            SA.sql.func.count(self.Violations.c.syscall).label("count")
+            SA.sql.func.count(self.Violations.c.syscall).label('count')
         ]).where(
 			self.Violations.c.test_id == self.Tests.c.id
 		).group_by(
 			self.Tests.c.class_name, self.Tests.c.method_name, self.Violations.c.syscall
 		).order_by(
-			"count DESC"
+			'count DESC'
 		)
         result = self.conn.execute(query)
         violations = []
@@ -224,18 +224,18 @@ class ViolationStore:
         return self.last_test_id
 
     def set_last_test_id(self, test_id):
-        os.write(self.test_id_write_fd, "%d%s" % (test_id, self.TEST_ID_DESC_END))
+        os.write(self.test_id_write_fd, '%d%s' % (test_id, self.TEST_ID_DESC_END))
 
 
 class ViolationCollector:
-    VIOLATOR_DESC_END = "#END#"
+    VIOLATOR_DESC_END = '#END#'
     MAX_VIOLATOR_LINE = 1024
 
     store = None
     stream = None
     violations = defaultdict(list)
 
-    UNDEFINED_VIOLATOR = ("UndefinedTestCase", "UndefinedMethod", "UndefinedPath")
+    UNDEFINED_VIOLATOR = ('UndefinedTestCase', 'UndefinedMethod', 'UndefinedPath')
     last_violator = UNDEFINED_VIOLATOR
 
     # Simmilar to the mechanism in ViolationStore (read the comment in
@@ -254,13 +254,13 @@ class ViolationCollector:
         test_case, method, module = violator
         syscall, resolved_path = violation
         writeln(
-            "CATBOX_VIOLATION: %s.%s %r" % (test_case, method, violation),
+            'CATBOX_VIOLATION: %s.%s %r' % (test_case, method, violation),
             test_logger.VERBOSITY_VERBOSE
         )
         self.store.add_violation({
-                "syscall": syscall,
-                "syscall_args": resolved_path,
-                "start_time": time.time()
+                'syscall': syscall,
+                'syscall_args': resolved_path,
+                'start_time': time.time()
         })
 
     def _get_last_violator(self, data):
@@ -344,20 +344,20 @@ class ViolationReporter(test_reporter.TestReporter):
     def _report_verbose(self, violations):
         verbosity = test_logger.VERBOSITY_VERBOSE
         self._report_normal(violations)
-        writeln("")
+        writeln('')
         for class_name, test_method, syscall, count in violations:
-            writeln("%s.%s\t%s\t%s" % (class_name, test_method, syscall, count), verbosity)
+            writeln('%s.%s\t%s\t%s' % (class_name, test_method, syscall, count), verbosity)
 
     def _report_normal(self, violations):
         if not len(violations):
-            writeln("No syscall violations! \o/\n", test_logger.VERBOSITY_NORMAL)
+            writeln('No syscall violations! \o/\n', test_logger.VERBOSITY_NORMAL)
             return
         self._report_silent(violations)
 
     def _report_silent(self, violations):
         syscall_violations = ['%s (%s)' % counts for counts in self.get_syscall_count(violations)]
-        violations_line = "%s %s" % (
-            "%s syscall violations:" % len(violations),
+        violations_line = '%s %s' % (
+            '%s syscall violations:' % len(violations),
             ','.join(syscall_violations)
         )
         writeln(violations_line, test_logger.VERBOSITY_SILENT)
@@ -366,31 +366,31 @@ class ViolationReporter(test_reporter.TestReporter):
 
 def add_command_line_options(parser):
     parser.add_option(
-        "-V",
-        "--collect-violations",
-        action="store_true",
-        dest="catbox_violations",
-        help="Network or filesystem access from tests will be reported as violations."
+        '-V',
+        '--collect-violations',
+        action='store_true',
+        dest='catbox_violations',
+        help='Network or filesystem access from tests will be reported as violations.'
     )
     parser.add_option(
-        "--violation-db-url",
-        dest="violation_dburl",
-        default="sqlite:///violations.sqlite",
-        help="URL of the SQL database to store violations."
+        '--violation-db-url',
+        dest='violation_dburl',
+        default='sqlite:///violations.sqlite',
+        help='URL of the SQL database to store violations.'
     )
     parser.add_option(
-        "--violation-db-config",
-        dest="violation_dbconfig",
-        help="Yaml configuration file describing SQL database to store violations."
+        '--violation-db-config',
+        dest='violation_dbconfig',
+        help='Yaml configuration file describing SQL database to store violations.'
     )
 
 
 def build_test_reporters(options):
     if options.catbox_violations:
         if not catbox:
-            raise Exception, "Violation collection requires catbox. You do not have catbox install in your path."
+            raise Exception, 'Violation collection requires catbox. You do not have catbox install in your path.'
         if not catbox.has_pcre():
-            raise Exception, "Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support."
+            raise Exception, 'Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support.'
         return [ViolationReporter()]
     return []
 
