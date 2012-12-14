@@ -52,8 +52,8 @@ def cleandict(dictionary, allowed_keys):
     return dict((k, v) for k, v in dictionary.iteritems() if k in allowed_keys)
 
 
-def writeable_paths(options):
-    """Generate a list of writeable paths"""
+def writable_paths(options):
+    """Generate a list of writable paths"""
     paths = ["~.*pyc$", "/dev/null"]
     if is_sqlite_filepath(options.violation_dburl):
         paths.append("~%s.*$" % sqlite_dbpath(options.violation_dburl))
@@ -407,7 +407,7 @@ def prepare_test_program(options, program):
             return run_in_catbox(
                 program.__original_run__,
                 collect,
-                writeable_paths(options)
+                writable_paths(options)
             )
         program.__original_run__ = program.run
         program.run = _run
