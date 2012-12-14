@@ -238,7 +238,7 @@ class ViolationCollector:
     UNDEFINED_VIOLATOR = ('UndefinedTestCase', 'UndefinedMethod', 'UndefinedPath')
     last_violator = UNDEFINED_VIOLATOR
 
-    # Simmilar to the mechanism in ViolationStore (read the comment in
+    # Similar to the mechanism in ViolationStore (read the comment in
     # ViolationStore), ViolationCollector will get the violating test
     # method information from ViolationReporter, which runs on a
     # different process, by reading this pipe.
