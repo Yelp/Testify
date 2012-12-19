@@ -111,13 +111,12 @@ class ViolationStore:
     Violations = SA.Table(
         'catbox_violations', metadata,
         SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-        SA.Column('test_id', SA.Integer, nullable=False),
-        SA.Column('syscall', SA.String(20), index=True, nullable=False),
+        SA.Column('test_id', SA.Integer, index=True, nullable=False),
+        SA.Column('syscall', SA.String(20), nullable=False),
         SA.Column('syscall_args', SA.String(255), nullable=True),
         SA.Column('start_time', SA.Integer),
     )
     SA.Index('ix_syscall_signature', Violations.c.syscall, Violations.c.syscall_args)
-    SA.Index('ix_violating_test_id', Violations.c.test_id)
     
     Tests = SA.Table(
         'catbox_tests', metadata,
