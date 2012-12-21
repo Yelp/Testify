@@ -113,7 +113,7 @@ class ViolationStore:
         SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
         SA.Column('test_id', SA.Integer, index=True, nullable=False),
         SA.Column('syscall', SA.String(20), nullable=False),
-        SA.Column('syscall_args', SA.String(255), nullable=True),
+        SA.Column('syscall_args', SA.Text, nullable=True),
         SA.Column('start_time', SA.Integer),
     )
     SA.Index('ix_syscall_signature', Violations.c.syscall, Violations.c.syscall_args)
@@ -121,12 +121,12 @@ class ViolationStore:
     Tests = SA.Table(
         'catbox_tests', metadata,
         SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-        SA.Column('branch', SA.String(255)),
-        SA.Column('revision', SA.String(255)),
+        SA.Column('branch', SA.Text),
+        SA.Column('revision', SA.Text),
         SA.Column('submitstamp', SA.Integer),
-        SA.Column('module', SA.String(255), nullable=False),
-        SA.Column('class_name', SA.String(255), nullable=False),
-        SA.Column('method_name', SA.String(255), nullable=False),
+        SA.Column('module', SA.Text, nullable=False),
+        SA.Column('class_name', SA.Text, nullable=False),
+        SA.Column('method_name', SA.Text, nullable=False),
     )
     SA.Index('ix_build', Tests.c.branch, Tests.c.revision, Tests.c.submitstamp)
     SA.Index('ix_individual_test', Tests.c.module, Tests.c.class_name, Tests.c.method_name)
