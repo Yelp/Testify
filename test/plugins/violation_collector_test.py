@@ -305,7 +305,9 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
             os.unlink(fpath)
 
         def make_network_violation(self):
-            socket.gethostbyname("yelp.com")
+            s = socket.socket()
+            s.connect(("127.0.0.1", 80))
+            s.close()
 
         def test_filesystem_violation(self):
             self.make_filesystem_violation("fake_testfile")
@@ -360,7 +362,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
     def test_violation_collector_pipeline(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCase) as violations:
             T.assert_in(
-                (u'ViolatingTestCase', u'test_network_violation', u'socketcall', 5),
+                (u'ViolatingTestCase', u'test_network_violation', u'socketcall', 1),
                 violations
             )
             T.assert_in(
@@ -374,10 +376,6 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
 
     def test_violation_collector_pipeline_with_fixtures(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCaseWithSetupTeardown) as violations:
-            T.assert_in(
-                (u'ViolatingTestCaseWithSetupTeardown', u'test_network_violation', u'socketcall', 5),
-                violations
-            )
 			# setup/teardown fixtures will bump the unlink count for test_filesystem_violation by 2
             T.assert_in(
                 (u'ViolatingTestCaseWithSetupTeardown', u'test_filesystem_violation', u'unlink', 4),
