@@ -13,6 +13,8 @@ import mock
 
 import testify as T
 
+from testify.plugins.violation_collector import ctx
+
 from testify.plugins.violation_collector import cleandict
 from testify.plugins.violation_collector import collect
 from testify.plugins.violation_collector import is_sqlite_filepath
@@ -41,6 +43,17 @@ def mocked_store():
         ViolationStore.Violations = mock.Mock()
         ViolationStore.Tests = mock.Mock()
         yield ViolationStore(mock_options)
+
+
+@contextlib.contextmanager
+def sqlite_store():
+    test_violations_file = "test_violations.sqlite"
+    mock_options = mock.Mock()
+    mock_options.violation_dburl = "sqlite:///%s" % test_violations_file
+    mock_options.build_info = None
+
+    yield ViolationStore(mock_options)
+    os.unlink(test_violations_file)
 
 
 @contextlib.contextmanager
@@ -286,34 +299,111 @@ class ViolationCollectorTestCase(T.TestCase):
 class ViolationCollectorPipelineTestCase(T.TestCase):
 
     class ViolatingTestCase(T.TestCase):
-        def test_filesystem_violation(self):
-            fd, fpath = tempfile.mkstemp(suffix="fake_testfile")
+        def make_filesystem_violation(self, suffix):
+            fd, fpath = tempfile.mkstemp(suffix=suffix)
             os.close(fd)
             os.unlink(fpath)
 
-        def test_network_violation(self):
+        def make_network_violation(self):
             socket.gethostbyname("yelp.com")
 
-    def test_violation_collector_pipeline(self):
+        def test_filesystem_violation(self):
+            self.make_filesystem_violation("fake_testfile")
+
+        def test_network_violation(self):
+            self.make_network_violation()
+
+    class ViolatingTestCaseWithSetupTeardown(ViolatingTestCase):
+
+        @T.setup
+        def __setup(self):
+            self.make_filesystem_violation("fake_testcase_setup")
+
+        @T.teardown
+        def __teardown(self):
+            self.make_filesystem_violation("fake_testcase_teardown")
+
+    class ViolatingTestCaseWithClassSetupTeardown(ViolatingTestCase):
+
+        @T.class_setup
+        def __class_setup(self):
+            self.make_filesystem_violation("fake_testcase_class_setup")
+
+        @T.class_teardown
+        def __class_teardown(self):
+            self.make_filesystem_violation("fake_testcase_class_teardown")
+
+    @contextlib.contextmanager
+    def run_testcase_in_catbox(self, test_case):
         if not catbox:
             # Nothing to test here, catbox is not installed.
             pass
 
-        with mock.patch("testify.plugins.violation_collector.collect") as collect:
-            with mocked_store() as mock_store:
-                collector = ViolationCollector()
-                collector.store = mock_store
+        with sqlite_store() as store:
+            collector = ViolationCollector()
+            collector.store = store
 
-                reporter = ViolationReporter(violation_collector=collector)
+            ctx.collector = collector
 
-                # Runing the test case inside catbox, we'll catch
-                # violating syscalls and catbox will call our logger
-                # function (collect)
-                runner = T.test_runner.TestRunner(self.ViolatingTestCase, test_reporters=[reporter])
-                run_in_catbox(runner.run, collect, [])
+            reporter = ViolationReporter(violation_collector=collector)
 
-                assert collect.called
-                violating_syscalls = [call[0][0] for call in collect.call_args_list]
-                T.assert_in('open', violating_syscalls)
-                T.assert_in('unlink', violating_syscalls)
-                T.assert_in('socketcall', violating_syscalls)
+            # Runing the test case inside catbox, we'll catch
+            # violating syscalls and catbox will call our logger
+            # function (collect)
+            runner = T.test_runner.TestRunner(test_case, test_reporters=[reporter])
+            run_in_catbox(runner.run, collect, [])
+
+            yield store.violation_counts()
+
+            ctx.collector = None
+
+    def test_violation_collector_pipeline(self):
+        with self.run_testcase_in_catbox(self.ViolatingTestCase) as violations:
+            T.assert_in(
+                (u'ViolatingTestCase', u'test_network_violation', u'socketcall', 5),
+                violations
+            )
+            T.assert_in(
+                (u'ViolatingTestCase', u'test_filesystem_violation', u'unlink', 2),
+                violations
+            )
+            T.assert_in(
+                (u'ViolatingTestCase', u'test_filesystem_violation', u'open', 2),
+                violations
+            )
+
+    def test_violation_collector_pipeline_with_fixtures(self):
+        with self.run_testcase_in_catbox(self.ViolatingTestCaseWithSetupTeardown) as violations:
+            T.assert_in(
+                (u'ViolatingTestCaseWithSetupTeardown', u'test_network_violation', u'socketcall', 5),
+                violations
+            )
+			# setup/teardown fixtures will bump the unlink count for test_filesystem_violation by 2
+            T.assert_in(
+                (u'ViolatingTestCaseWithSetupTeardown', u'test_filesystem_violation', u'unlink', 4),
+                violations
+            )
+			# setup/teardown fixtures will bump the open count for test_filesystem_violation by 2
+            T.assert_in(
+                (u'ViolatingTestCaseWithSetupTeardown', u'test_filesystem_violation', u'open', 4),
+                violations
+            )
+
+    def test_violation_collector_pipeline_with_class_level_fixtures(self):
+        with self.run_testcase_in_catbox(self.ViolatingTestCaseWithClassSetupTeardown) as violations:
+            T.assert_in(
+                (u'ViolatingTestCaseWithClassSetupTeardown', u'__class_setup', u'open', 2),
+                violations
+            )
+            T.assert_in(
+                (u'ViolatingTestCaseWithClassSetupTeardown', u'__class_setup', u'unlink', 2),
+                violations
+            )
+            T.assert_in(
+                (u'ViolatingTestCaseWithClassSetupTeardown', u'__class_teardown', u'open', 1),
+                violations
+            )
+            T.assert_in(
+                (u'ViolatingTestCaseWithClassSetupTeardown', u'__class_teardown', u'unlink', 1),
+                violations
+			)

@@ -141,7 +141,7 @@ class ViolationStore:
     epoll.register(test_id_read_fd, select.EPOLLIN | select.EPOLLET)
 
     TEST_ID_DESC_END = '#END#'
-    MAX_TEST_ID_LINE = 1024
+    MAX_TEST_ID_LINE = 1024 * 10
 
     last_test_id = 0
 
@@ -228,7 +228,7 @@ class ViolationStore:
 
 class ViolationCollector:
     VIOLATOR_DESC_END = '#END#'
-    MAX_VIOLATOR_LINE = 1024
+    MAX_VIOLATOR_LINE = 1024 * 10
 
     store = None
     stream = None
