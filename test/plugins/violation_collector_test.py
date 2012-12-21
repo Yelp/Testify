@@ -407,3 +407,6 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
                 (u'ViolatingTestCaseWithClassSetupTeardown', u'__class_teardown', u'unlink', 1),
                 violations
 			)
+
+if __name__ == '__main__':
+    T.run()
