@@ -161,22 +161,22 @@ class ViolationReporterTestCase(T.TestCase):
         self.reporter.test_complete(self.mock_result)
         assert self.mock_collector.get_violator.called
 
-    def test_test_setup_start(self):
-        self.reporter.test_setup_start(self.mock_result)
+    def test_class_setup_start(self):
+        self.reporter.class_setup_start(self.mock_result)
         assert self.mock_set_violator.called
         assert self.mock_collector.store.add_test.called
 
-    def test_test_setup_complete(self):
-        self.reporter.test_setup_complete(self.mock_result)
+    def test_class_setup_complete(self):
+        self.reporter.class_setup_complete(self.mock_result)
         assert self.mock_collector.get_violator.called
 
-    def test_test_teardown_start(self):
-        self.reporter.test_teardown_start(self.mock_result)
+    def test_class_teardown_start(self):
+        self.reporter.class_teardown_start(self.mock_result)
         assert self.mock_set_violator.called
         assert self.mock_collector.store.add_test.called
 
-    def test_test_teardown_complete(self):
-        self.reporter.test_teardown_complete(self.mock_result)
+    def test_class_teardown_complete(self):
+        self.reporter.class_teardown_complete(self.mock_result)
         assert self.mock_collector.get_violator.called
 
     def test_get_syscall_count(self):

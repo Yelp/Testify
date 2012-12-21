@@ -312,16 +312,16 @@ class ViolationReporter(test_reporter.TestReporter):
     def test_complete(self, result):
         self.collector.get_violator()
 
-    def test_setup_start(self, result):
+    def class_setup_start(self, result):
         self.__update_violator(result)
 
-    def test_setup_complete(self, result):
+    def class_setup_complete(self, result):
         self.collector.get_violator()
 
-    def test_teardown_start(self, result):
+    def class_teardown_start(self, result):
         self.__update_violator(result)
 
-    def test_teardown_complete(self, result):
+    def class_teardown_complete(self, result):
         self.collector.get_violator()
 
     def get_syscall_count(self, violations):
