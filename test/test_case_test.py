@@ -525,14 +525,6 @@ class CallbacksGetCalledTest(TestCase):
             def __class_setup_teardown(self):
                 yield
 
-            @setup
-            def __setup(self):
-                pass
-
-            @teardown
-            def __teardown(self):
-                pass
-
             def test_things(self):
                 pass
 
@@ -544,10 +536,6 @@ class CallbacksGetCalledTest(TestCase):
             TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
             TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
             TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
-            TestCase.EVENT_ON_RUN_SETUP_METHOD,
-            TestCase.EVENT_ON_COMPLETE_SETUP_METHOD,
-            TestCase.EVENT_ON_RUN_TEARDOWN_METHOD,
-            TestCase.EVENT_ON_COMPLETE_TEARDOWN_METHOD,
             TestCase.EVENT_ON_RUN_TEST_CASE,
             TestCase.EVENT_ON_COMPLETE_TEST_CASE,
         )
@@ -572,14 +560,8 @@ class CallbacksGetCalledTest(TestCase):
             (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, '__class_setup_teardown'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, '__class_setup_teardown'),
 
-            (TestCase.EVENT_ON_RUN_SETUP_METHOD, '__setup'),
-            (TestCase.EVENT_ON_COMPLETE_SETUP_METHOD, '__setup'),
-
             (TestCase.EVENT_ON_RUN_TEST_METHOD, 'test_things'),
             (TestCase.EVENT_ON_COMPLETE_TEST_METHOD, 'test_things'),
-
-            (TestCase.EVENT_ON_RUN_TEARDOWN_METHOD, '__teardown'),
-            (TestCase.EVENT_ON_COMPLETE_TEARDOWN_METHOD, '__teardown'),
 
             (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, '__class_setup_teardown'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, '__class_setup_teardown'),
