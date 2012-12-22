@@ -325,7 +325,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
         def __teardown(self):
             self.make_filesystem_violation("fake_testcase_teardown")
 
-    class ViolatingTestCaseWithClassSetupTeardown(ViolatingTestCase):
+    class ViolatingTestCaseWithClassSetupAndTeardown(ViolatingTestCase):
 
         @T.class_setup
         def __class_setup(self):
@@ -389,21 +389,21 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
             )
 
     def test_violation_collector_pipeline_with_class_level_fixtures(self):
-        with self.run_testcase_in_catbox(self.ViolatingTestCaseWithClassSetupTeardown) as violations:
+        with self.run_testcase_in_catbox(self.ViolatingTestCaseWithClassSetupAndTeardown) as violations:
             T.assert_in(
-                (u'ViolatingTestCaseWithClassSetupTeardown', u'__class_setup', u'open', 2),
+                (u'ViolatingTestCaseWithClassSetupAndTeardown', u'__class_setup', u'open', 2),
                 violations
             )
             T.assert_in(
-                (u'ViolatingTestCaseWithClassSetupTeardown', u'__class_setup', u'unlink', 2),
+                (u'ViolatingTestCaseWithClassSetupAndTeardown', u'__class_setup', u'unlink', 2),
                 violations
             )
             T.assert_in(
-                (u'ViolatingTestCaseWithClassSetupTeardown', u'__class_teardown', u'open', 1),
+                (u'ViolatingTestCaseWithClassSetupAndTeardown', u'__class_teardown', u'open', 1),
                 violations
             )
             T.assert_in(
-                (u'ViolatingTestCaseWithClassSetupTeardown', u'__class_teardown', u'unlink', 1),
+                (u'ViolatingTestCaseWithClassSetupAndTeardown', u'__class_teardown', u'unlink', 1),
                 violations
 			)
 
