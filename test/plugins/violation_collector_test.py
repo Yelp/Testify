@@ -315,7 +315,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
         def test_network_violation(self):
             self.make_network_violation()
 
-    class ViolatingTestCaseWithSetupTeardown(ViolatingTestCase):
+    class ViolatingTestCaseWithSetupAndTeardown(ViolatingTestCase):
 
         @T.setup
         def __setup(self):
@@ -338,8 +338,9 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
     @contextlib.contextmanager
     def run_testcase_in_catbox(self, test_case):
         if not catbox:
-            # Nothing to test here, catbox is not installed.
-            pass
+            msg = 'Violation collection pipeline tests require catbox.\n'
+            msg_pcre = 'https://github.com/Yelp/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
+            raise Exception, msg + msg_pcre
 
         with sqlite_store() as store:
             collector = ViolationCollector()
@@ -375,15 +376,15 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
             )
 
     def test_violation_collector_pipeline_with_fixtures(self):
-        with self.run_testcase_in_catbox(self.ViolatingTestCaseWithSetupTeardown) as violations:
-			# setup/teardown fixtures will bump the unlink count for test_filesystem_violation by 2
+        with self.run_testcase_in_catbox(self.ViolatingTestCaseWithSetupAndTeardown) as violations:
+            # setup/teardown fixtures will bump the unlink count for test_filesystem_violation by 2
             T.assert_in(
-                (u'ViolatingTestCaseWithSetupTeardown', u'test_filesystem_violation', u'unlink', 4),
+                (u'ViolatingTestCaseWithSetupAndTeardown', u'test_filesystem_violation', u'unlink', 4),
                 violations
             )
-			# setup/teardown fixtures will bump the open count for test_filesystem_violation by 2
+            # setup/teardown fixtures will bump the open count for test_filesystem_violation by 2
             T.assert_in(
-                (u'ViolatingTestCaseWithSetupTeardown', u'test_filesystem_violation', u'open', 4),
+                (u'ViolatingTestCaseWithSetupAndTeardown', u'test_filesystem_violation', u'open', 4),
                 violations
             )
 
