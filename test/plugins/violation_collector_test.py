@@ -156,6 +156,15 @@ class ViolationReporterTestCase(T.TestCase):
         self.reporter = ViolationReporter(violation_collector=self.mock_collector)
         self.reporter.set_violator = self.mock_set_violator
 
+    @T.setup
+    def setup_fake_violations(self):
+        self.fake_violations = [
+            ('fake_class1', 'fake_method1', 'fake_violation1', 5),
+            ('fake_class1', 'fake_method2', 'fake_violation2', 5),
+            ('fake_class2', 'fake_method3', 'fake_violation3', 5),
+            ('fake_class3', 'fake_method4', 'fake_violation1', 5),
+        ]
+
     def test_test_case_start(self):
         self.reporter.test_case_start(self.mock_result)
         assert self.mock_set_violator.called
@@ -193,15 +202,16 @@ class ViolationReporterTestCase(T.TestCase):
         assert self.mock_collector.get_violator.called
 
     def test_get_syscall_count(self):
-        fake_violations = [
-            ('fake_class1', 'fake_method1', 'fake_violation1', 5),
-            ('fake_class1', 'fake_method2', 'fake_violation2', 5),
-            ('fake_class2', 'fake_method3', 'fake_violation3', 5),
-            ('fake_class3', 'fake_method4', 'fake_violation1', 5),
-        ]
         T.assert_equal(
-            self.reporter.get_syscall_count(fake_violations),
+            self.reporter.get_syscall_count(self.fake_violations),
             [('fake_violation2', 5), ('fake_violation3', 5), ('fake_violation1', 10)]
+        )
+
+    def test_get_violations_count(self):
+        syscall_violation_counts = self.reporter.get_syscall_count(self.fake_violations)
+        T.assert_equal(
+            self.reporter.get_violations_count(syscall_violation_counts),
+            sum(count for violating_class, violating_method, violation, count in self.fake_violations)
         )
 
     def test_report_with_no_violations(self):

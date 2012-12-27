@@ -331,6 +331,9 @@ class ViolationReporter(test_reporter.TestReporter):
             syscall_violations.append((syscall, count))
         return sorted(syscall_violations, key=operator.itemgetter(1))
 
+    def get_violations_count(self, syscall_violation_counts):
+        return sum(count for (syscall, count) in syscall_violation_counts)
+
     def report(self):
         violations = self.collector.store.violation_counts()
         if ctx.output_verbosity == test_logger.VERBOSITY_VERBOSE:
@@ -354,10 +357,11 @@ class ViolationReporter(test_reporter.TestReporter):
         self._report_silent(violations)
 
     def _report_silent(self, violations):
-        syscall_violations = ['%s (%s)' % counts for counts in self.get_syscall_count(violations)]
+        syscall_violation_counts = self.get_syscall_count(violations)
+        violations_count = self.get_violations_count(syscall_violation_counts)
         violations_line = '%s %s' % (
-            '%s syscall violations:' % len(violations),
-            ','.join(syscall_violations)
+            '%s syscall violations:' % violations_count,
+            ','.join(['%s (%s)' % (syscall, count) for syscall, count in syscall_violation_counts])
         )
         writeln(violations_line, test_logger.VERBOSITY_SILENT)
 
