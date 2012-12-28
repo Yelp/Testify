@@ -1,10 +1,8 @@
-from collections import defaultdict
 import itertools
 import json
 import logging
 import operator
 import os
-import select
 import sys
 import time
 
@@ -96,9 +94,8 @@ def collect(operation, path, resolved_path):
     '''
     global ctx
     try:
-        violator = ctx.collector.get_violator()
+        violator = ctx.collector.store.get_last_test()
         violation = (operation, resolved_path)
-        ctx.collector.violations[violator].append(violation)
         ctx.collector.report_violation(violator, violation)
     except Exception, e:
         # No way to recover in here, just report error and violation
@@ -124,6 +121,7 @@ class ViolationStore:
         SA.Column('branch', SA.Text),
         SA.Column('revision', SA.Text),
         SA.Column('submitstamp', SA.Integer),
+        SA.Column('start_time', SA.Integer),
         SA.Column('module', SA.Text, nullable=False),
         SA.Column('class_name', SA.Text, nullable=False),
         SA.Column('method_name', SA.Text, nullable=False),
@@ -160,6 +158,7 @@ class ViolationStore:
     def add_test(self, testinfo):
         try:
             testinfo.update(self.info)
+            testinfo.update({'start_time': time.time()})
             self.conn.execute(self.Tests.insert(), testinfo)
         except Exception, e:
             logging.error('Exception inserting testinfo: %r' % e)
@@ -197,35 +196,26 @@ class ViolationStore:
         ])
         return self.conn.execute(query).scalar()
 
-    def set_last_test_id(self, test_id):
-        os.write(self.test_id_write_fd, '%d%s' % (test_id, self.TEST_ID_DESC_END))
+    def get_last_test(self):
+        query = SA.sql.select([
+            self.Tests.c.module,
+            self.Tests.c.class_name,
+            self.Tests.c.method_name,
+        ]).order_by(self.Tests.c.id.desc()).limit(1)
+        return self.conn.execute(query).fetchone()
 
 
 class ViolationCollector:
-    VIOLATOR_DESC_END = '#END#'
-    MAX_VIOLATOR_LINE = 1024 * 10
-
     store = None
-    stream = None
-    violations = defaultdict(list)
 
     UNDEFINED_VIOLATOR = ('UndefinedTestCase', 'UndefinedMethod', 'UndefinedPath')
-    last_violator = UNDEFINED_VIOLATOR
-
-    # Similar to the mechanism in ViolationStore (read the comment in
-    # ViolationStore), ViolationCollector will get the violating test
-    # method information from ViolationReporter, which runs on a
-    # different process, by reading this pipe.
-    violations_read_fd, violations_write_fd = os.pipe()
-    epoll = select.epoll()
-    epoll.register(violations_read_fd, select.EPOLLIN | select.EPOLLET)
 
     def report_violation(self, violator, violation):
         if violator == self.UNDEFINED_VIOLATOR:
             # This is coming from Testify, not from a TestCase. Ignoring.
             return
 
-        test_case, method, module = violator
+        module, test_case, method = violator
         syscall, resolved_path = violation
         writeln(
             'CATBOX_VIOLATION: %s.%s %r' % (test_case, method, violation),
@@ -237,37 +227,18 @@ class ViolationCollector:
                 'start_time': time.time()
         })
 
-    def _get_last_violator(self, data):
-        # get last non empty string as violator line
-        violator_line = data.split(self.VIOLATOR_DESC_END)[-2]
-        return tuple(violator_line.split(','))
-
-    def get_violator(self):
-        events = self.epoll.poll(.01)
-        if events:
-            read = os.read(events[0][0], self.MAX_VIOLATOR_LINE)
-            if read:
-                self.last_violator = self._get_last_violator(read)
-        return self.last_violator
-
 
 class ViolationReporter(test_reporter.TestReporter):
     def __init__(self, violation_collector=None):
         global ctx
         self.collector = violation_collector or ctx.collector
-        self.violations_write_fd = self.collector.violations_write_fd
         super(ViolationReporter, self).__init__(self)
-
-    def set_violator(self, test_case_name, method_name, module_path):
-        violator_line = ','.join([test_case_name, method_name, module_path])
-        os.write(self.violations_write_fd, violator_line + self.collector.VIOLATOR_DESC_END)
 
     def __update_violator(self, result):
         method = result['method']
         test_case_name = method['class']
         test_method_name = method['name']
         module_path = method['module']
-        self.set_violator(test_case_name, test_method_name, module_path)
         self.collector.store.add_test({
                 'method_name' : test_method_name,
                 'class_name' : test_case_name,
@@ -279,25 +250,25 @@ class ViolationReporter(test_reporter.TestReporter):
         self.__update_violator(result)
 
     def test_case_complete(self, result):
-        self.collector.get_violator()
+        pass
 
     def test_start(self, result):
         self.__update_violator(result)
 
     def test_complete(self, result):
-        self.collector.get_violator()
+        pass
 
     def class_setup_start(self, result):
         self.__update_violator(result)
 
     def class_setup_complete(self, result):
-        self.collector.get_violator()
+        pass
 
     def class_teardown_start(self, result):
         self.__update_violator(result)
 
     def class_teardown_complete(self, result):
-        self.collector.get_violator()
+        pass
 
     def get_syscall_count(self, violations):
         syscall_violations = []
