@@ -42,8 +42,8 @@ def mocked_store():
         ViolationStore.metadata = mock.Mock()
         ViolationStore.Violations = mock.Mock()
         ViolationStore.Tests = mock.Mock()
-        yield ViolationStore(mock_options)
 
+        yield ViolationStore(mock_options)
 
 @contextlib.contextmanager
 def sqlite_store():
@@ -53,17 +53,23 @@ def sqlite_store():
     mock_options.build_info = None
 
     yield ViolationStore(mock_options)
+
     os.unlink(test_violations_file)
 
 
 @contextlib.contextmanager
-def mocked_collector():
-    collector = ViolationCollector()
-    collector.store = mock.Mock()
-    collector.violations_read_fd = mock.Mock()
-    collector.violations_write_fd = mock.Mock()
-    collector.epoll = mock.Mock()
-    yield collector
+def mocked_collector(store):
+    with mock.patch.object(ViolationCollector, 'init_store'):
+        mock_options = mock.Mock()
+        collector = ViolationCollector(mock_options)
+        collector.store = store
+        yield collector
+
+@contextlib.contextmanager
+def mocked_reporter(collector):
+    mock_options = mock.Mock()
+    reporter = ViolationReporter(mock_options, collector)
+    yield reporter
 
 
 class HelperFunctionsTestCase(T.TestCase):
@@ -138,7 +144,7 @@ class HelperFunctionsTestCase(T.TestCase):
 
 class ViolationReporterTestCase(T.TestCase):
 
-    @T.setup
+    @T.setup_teardown
     def setup_reporter(self):
         self.mock_result = mock.MagicMock()
         result_attrs = {
@@ -148,10 +154,13 @@ class ViolationReporterTestCase(T.TestCase):
             'module' : 'mock_module',
         }
         self.mock_result.configure_mocks(**result_attrs)
-        self.mock_store = mock.Mock()
-        self.mock_collector = mock.Mock()
-        self.mock_collector.store = self.mock_store
-        self.reporter = ViolationReporter(violation_collector=self.mock_collector)
+        store = mock.Mock()
+        with mocked_collector(store) as collector:
+            with mocked_reporter(collector) as reporter:
+                self.mock_store = store
+                self.mock_collector = collector
+                self.reporter = reporter
+                yield
 
     @T.setup
     def setup_fake_violations(self):
@@ -252,7 +261,8 @@ class ViolationCollectorTestCase(T.TestCase):
         self.fake_violator = "fake_class,fake_method,fake_module"
 
     def test_report_violation(self):
-        with mocked_collector() as collector:
+        store = mock.Mock()
+        with mocked_collector(store) as collector:
             fake_violator = ('fake_test_case', 'fake_method', 'fake_module')
             fake_violation = ('fake_syscall', 'fake_path')
             collector.report_violation(fake_violator, fake_violation)
@@ -306,22 +316,19 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
             raise Exception, msg + msg_pcre
 
         with sqlite_store() as store:
-            collector = ViolationCollector()
-            collector.store = store
+            with mocked_collector(store) as collector:
+                with mocked_reporter(collector) as reporter:
+                    ctx.collector = collector
 
-            ctx.collector = collector
+                    # Runing the test case inside catbox, we'll catch
+                    # violating syscalls and catbox will call our logger
+                    # function (collect)
+                    runner = T.test_runner.TestRunner(test_case, test_reporters=[reporter])
+                    run_in_catbox(runner.run, collect, [])
 
-            reporter = ViolationReporter(violation_collector=collector)
+                    yield store.violation_counts()
 
-            # Runing the test case inside catbox, we'll catch
-            # violating syscalls and catbox will call our logger
-            # function (collect)
-            runner = T.test_runner.TestRunner(test_case, test_reporters=[reporter])
-            run_in_catbox(runner.run, collect, [])
-
-            yield store.violation_counts()
-
-            ctx.collector = None
+                    ctx.collector = None
 
     def test_violation_collector_pipeline(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCase) as violations:
@@ -368,7 +375,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
             T.assert_in(
                 (u'ViolatingTestCaseWithClassSetupAndTeardown', u'__class_teardown', u'unlink', 1),
                 violations
-			)
+            )
 
 if __name__ == '__main__':
     T.run()

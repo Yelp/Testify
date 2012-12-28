@@ -99,7 +99,7 @@ def collect(operation, path, resolved_path):
         ctx.collector.report_violation(violator, violation)
     except Exception, e:
         # No way to recover in here, just report error and violation
-        sys.stderr.write('Error collecting violation data. Error %r. Violation: %r' % (e, (operation, resolved_path)))
+        sys.stderr.write('Error collecting violation data. Error %r. Violation: %r\n' % (e, (operation, resolved_path)))
 
 
 class ViolationStore:
@@ -210,6 +210,13 @@ class ViolationCollector:
 
     UNDEFINED_VIOLATOR = ('UndefinedTestCase', 'UndefinedMethod', 'UndefinedPath')
 
+    def __init__(self, options):
+        self.options = options
+        self.init_store()
+
+    def init_store(self):
+        self.store = ViolationStore(self.options)
+
     def report_violation(self, violator, violation):
         if violator == self.UNDEFINED_VIOLATOR:
             # This is coming from Testify, not from a TestCase. Ignoring.
@@ -229,9 +236,9 @@ class ViolationCollector:
 
 
 class ViolationReporter(test_reporter.TestReporter):
-    def __init__(self, violation_collector=None):
-        global ctx
-        self.collector = violation_collector or ctx.collector
+    def __init__(self, options, violation_collector):
+        self.options = options
+        self.collector = violation_collector
         super(ViolationReporter, self).__init__(self)
 
     def __update_violator(self, result):
@@ -240,11 +247,10 @@ class ViolationReporter(test_reporter.TestReporter):
         test_method_name = method['name']
         module_path = method['module']
         self.collector.store.add_test({
-                'method_name' : test_method_name,
-                'class_name' : test_case_name,
-                'module' : module_path
+            'method_name' : test_method_name,
+            'class_name' : test_case_name,
+            'module' : module_path
         })
-                
 
     def test_case_start(self, result):
         self.__update_violator(result)
@@ -334,7 +340,24 @@ def add_command_line_options(parser):
     )
 
 
+def prepare_test_program(options, program):
+    global ctx
+    if options.catbox_violations:
+        ctx.output_stream = sys.stderr # TODO: Use logger?
+        ctx.output_verbosity = options.verbosity
+        ctx.collector = ViolationCollector(options)
+        def _run():
+            return run_in_catbox(
+                program.__original_run__,
+                collect,
+                writable_paths(options)
+            )
+        program.__original_run__ = program.run
+        program.run = _run
+
+
 def build_test_reporters(options):
+    global ctx
     if options.catbox_violations:
         msg_pcre = '\nhttps://github.com/Yelp/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
         if not catbox:
@@ -345,23 +368,5 @@ def build_test_reporters(options):
             msg = 'Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support.'
             msg += msg_pcre
             raise Exception, msg
-        return [ViolationReporter()]
+        return [ViolationReporter(options, ctx.collector)]
     return []
-
-
-def prepare_test_program(options, program):
-    global ctx
-    if options.catbox_violations:
-        ctx.output_stream = sys.stderr # TODO: Use logger?
-        ctx.output_verbosity = options.verbosity
-
-        ctx.collector = ViolationCollector()
-        ctx.collector.store = ViolationStore(options)
-        def _run():
-            return run_in_catbox(
-                program.__original_run__,
-                collect,
-                writable_paths(options)
-            )
-        program.__original_run__ = program.run
-        program.run = _run
