@@ -131,20 +131,6 @@ class ViolationStore:
     SA.Index('ix_build', Tests.c.branch, Tests.c.revision, Tests.c.submitstamp)
     SA.Index('ix_individual_test', Tests.c.module, Tests.c.class_name, Tests.c.method_name)
 
-    # Adding tests and adding violations to the database is done
-    # through different processes. We use this pipe to update the last
-    # test id to be used while inserting Violations. Although it is
-    # possible to get it from the database we'll use the pipe not to
-    # make a db query each time we add a violation.
-    test_id_read_fd, test_id_write_fd = os.pipe()
-    epoll = select.epoll()
-    epoll.register(test_id_read_fd, select.EPOLLIN | select.EPOLLET)
-
-    TEST_ID_DESC_END = '#END#'
-    MAX_TEST_ID_LINE = 1024 * 10
-
-    last_test_id = 0
-
     def __init__(self, options):
         self.options = options
         self.dburl = self.options.violation_dburl or SA.engine.url.URL(**yaml.safe_load(open(self.options.violation_dbconfig)))
@@ -174,11 +160,7 @@ class ViolationStore:
     def add_test(self, testinfo):
         try:
             testinfo.update(self.info)
-            result = self.conn.execute(self.Tests.insert(), testinfo)
-            # update the test id for add_violation to use it to insert
-            # violations for a method
-            test_id = result.lastrowid
-            self.set_last_test_id(test_id)
+            self.conn.execute(self.Tests.insert(), testinfo)
         except Exception, e:
             logging.error('Exception inserting testinfo: %r' % e)
 
@@ -209,18 +191,11 @@ class ViolationStore:
             violations.append((row['class_name'], row['method_name'], row['syscall'], row['count']))
         return violations
 
-    def _get_last_test_id(self, data):
-        # get last non empty string as violator line
-        test_id_str = data.split(self.TEST_ID_DESC_END)[-2]
-        return int(test_id_str)
-
     def get_last_test_id(self):
-        events = self.epoll.poll(.01)
-        if events:
-            read = os.read(events[0][0], self.MAX_TEST_ID_LINE)
-            if read:
-                self.last_test_id = self._get_last_test_id(read)
-        return self.last_test_id
+        query = SA.sql.select([
+            SA.sql.func.max(self.Tests.c.id).label('count')
+        ])
+        return self.conn.execute(query).scalar()
 
     def set_last_test_id(self, test_id):
         os.write(self.test_id_write_fd, '%d%s' % (test_id, self.TEST_ID_DESC_END))
