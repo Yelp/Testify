@@ -87,7 +87,6 @@ class HelperFunctionsTestCase(T.TestCase):
 
             collect("fake_violation1", "", "")
 
-            assert mock_ctx.collector.get_violator.called
             assert mock_ctx.collector.report_violation.called
 
     def test_run_in_catbox(self):
@@ -107,34 +106,34 @@ class HelperFunctionsTestCase(T.TestCase):
             )
 
     def test_writeln_with_default_verbosity(self):
-        with mocked_ctx() as ctx:
+        with mocked_ctx() as mctx:
             msg = "test message"
 
             writeln(msg)
 
-            ctx.output_stream.write.assert_called_with(msg + "\n")
-            assert ctx.output_stream.flush.called
+            mctx.output_stream.write.assert_called_with(msg + "\n")
+            assert mctx.output_stream.flush.called
 
     def test_writeln_with_verbosity_silent(self):
-        with mocked_ctx() as ctx:
-            ctx.output_verbosity = T.test_logger.VERBOSITY_SILENT
+        with mocked_ctx() as mctx:
+            mctx.output_verbosity = T.test_logger.VERBOSITY_SILENT
             msg = "test message"
 
             writeln(msg)
 
-            ctx.output_stream.write.assert_called_with(msg + "\n")
-            assert ctx.output_stream.flush.called
+            mctx.output_stream.write.assert_called_with(msg + "\n")
+            assert mctx.output_stream.flush.called
 
     def test_writeln_with_verbosity_verbose(self):
-        with mocked_ctx() as ctx:
+        with mocked_ctx() as mctx:
             verbosity = T.test_logger.VERBOSITY_VERBOSE
             msg = "test message"
-            ctx.output_verbosity = verbosity
+            mctx.output_verbosity = verbosity
 
             writeln(msg, verbosity)
 
-            ctx.output_stream.write.assert_called_with(msg + "\n")
-            assert ctx.output_stream.flush.called
+            mctx.output_stream.write.assert_called_with(msg + "\n")
+            assert mctx.output_stream.flush.called
 
 
 class ViolationReporterTestCase(T.TestCase):
@@ -152,9 +151,7 @@ class ViolationReporterTestCase(T.TestCase):
         self.mock_store = mock.Mock()
         self.mock_collector = mock.Mock()
         self.mock_collector.store = self.mock_store
-        self.mock_set_violator = mock.Mock()
         self.reporter = ViolationReporter(violation_collector=self.mock_collector)
-        self.reporter.set_violator = self.mock_set_violator
 
     @T.setup
     def setup_fake_violations(self):
@@ -167,39 +164,19 @@ class ViolationReporterTestCase(T.TestCase):
 
     def test_test_case_start(self):
         self.reporter.test_case_start(self.mock_result)
-        assert self.mock_set_violator.called
         assert self.mock_collector.store.add_test.called
-
-    def test_test_case_complete(self):
-        self.reporter.test_case_complete(self.mock_result)
-        assert self.mock_collector.get_violator.called
 
     def test_test_start(self):
         self.reporter.test_start(self.mock_result)
-        assert self.mock_set_violator.called
         assert self.mock_collector.store.add_test.called
-
-    def test_test_complete(self):
-        self.reporter.test_complete(self.mock_result)
-        assert self.mock_collector.get_violator.called
 
     def test_class_setup_start(self):
         self.reporter.class_setup_start(self.mock_result)
-        assert self.mock_set_violator.called
         assert self.mock_collector.store.add_test.called
-
-    def test_class_setup_complete(self):
-        self.reporter.class_setup_complete(self.mock_result)
-        assert self.mock_collector.get_violator.called
 
     def test_class_teardown_start(self):
         self.reporter.class_teardown_start(self.mock_result)
-        assert self.mock_set_violator.called
         assert self.mock_collector.store.add_test.called
-
-    def test_class_teardown_complete(self):
-        self.reporter.class_teardown_complete(self.mock_result)
-        assert self.mock_collector.get_violator.called
 
     def test_get_syscall_count(self):
         T.assert_equal(
@@ -226,15 +203,15 @@ class ViolationReporterTestCase(T.TestCase):
             )
 
     def test_report_with_violations(self):
-        with mocked_ctx() as ctx:
-            ctx.output_verbosity = T.test_logger.VERBOSITY_VERBOSE
+        with mocked_ctx() as mctx:
+            mctx.output_verbosity = T.test_logger.VERBOSITY_VERBOSE
             fake_violation = [
                 ('fake_class1', 'fake_method1', 'fake_violation1', 5),
             ]
             self.mock_store.violation_counts.return_value = fake_violation
 
             self.reporter.report()
-            ctx.output_stream.write.assert_called_with("%s.%s\t%s\t%s\n" % fake_violation[0])
+            mctx.output_stream.write.assert_called_with("%s.%s\t%s\t%s\n" % fake_violation[0])
 
 class ViolationStoreTestCase(T.TestCase):
 
@@ -273,7 +250,6 @@ class ViolationCollectorTestCase(T.TestCase):
     @T.class_setup
     def setup_fake_violator(self):
         self.fake_violator = "fake_class,fake_method,fake_module"
-        self.fake_violator_line =  self.fake_violator + ViolationCollector.VIOLATOR_DESC_END
 
     def test_report_violation(self):
         with mocked_collector() as collector:
@@ -281,29 +257,6 @@ class ViolationCollectorTestCase(T.TestCase):
             fake_violation = ('fake_syscall', 'fake_path')
             collector.report_violation(fake_violator, fake_violation)
             assert collector.store.add_violation.called
-
-    def test_get_last_violator(self):
-        with mocked_collector() as collector:
-            T.assert_equal(
-                collector._get_last_violator(self.fake_violator_line),
-                tuple(self.fake_violator.split(','))
-            )
-
-    def test_get_violator(self):
-        with mocked_collector() as collector:
-            # ViolationCollector.get_violator() will try to get the most recent
-            # violator (test method) by reading from a pipe. collector's epoll
-            # attribute is just a Mock and here we provide a fake event with a
-            # fake file descriptor that get_violator should try reading from.
-            collector.epoll.poll.return_value = [['fake_file_descriptor']]
-            with mock.patch('testify.plugins.violation_collector.os') as mock_os:
-                mock_os.read.return_value = self.fake_violator_line
-                collector._get_last_violator = mock.Mock()
-
-                collector.get_violator()
-                
-                mock_os.read.assert_called_with('fake_file_descriptor', collector.MAX_VIOLATOR_LINE)
-                collector._get_last_violator.assert_called_with(self.fake_violator_line)
 
 
 class ViolationCollectorPipelineTestCase(T.TestCase):

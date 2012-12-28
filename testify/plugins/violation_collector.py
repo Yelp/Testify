@@ -157,8 +157,8 @@ class ViolationStore:
 
     def add_test(self, testinfo):
         try:
-            testinfo.update(self.info)
             testinfo.update({'start_time': time.time()})
+            testinfo.update(self.info)
             self.conn.execute(self.Tests.insert(), testinfo)
         except Exception, e:
             logging.error('Exception inserting testinfo: %r' % e)
