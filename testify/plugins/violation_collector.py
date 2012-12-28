@@ -113,7 +113,6 @@ class ViolationStore:
         SA.Column('syscall_args', SA.Text, nullable=True),
         SA.Column('start_time', SA.Integer),
     )
-    SA.Index('ix_syscall_signature', Violations.c.syscall, Violations.c.syscall_args)
     
     Tests = SA.Table(
         'catbox_tests', metadata,
@@ -126,8 +125,6 @@ class ViolationStore:
         SA.Column('class_name', SA.Text, nullable=False),
         SA.Column('method_name', SA.Text, nullable=False),
     )
-    SA.Index('ix_build', Tests.c.branch, Tests.c.revision, Tests.c.submitstamp)
-    SA.Index('ix_individual_test', Tests.c.module, Tests.c.class_name, Tests.c.method_name)
 
     def __init__(self, options):
         self.options = options
