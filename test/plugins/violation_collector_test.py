@@ -22,7 +22,6 @@ from testify.plugins.violation_collector import run_in_catbox
 from testify.plugins.violation_collector import sqlite_dbpath
 from testify.plugins.violation_collector import writeln
 
-from testify.plugins.violation_collector import ViolationCollector
 from testify.plugins.violation_collector import ViolationReporter
 from testify.plugins.violation_collector import ViolationStore
 
@@ -39,11 +38,13 @@ def mocked_store():
         mock_options.violation_dburl = "fake db url"
         mock_options.build_info = None
 
-        ViolationStore.metadata = mock.Mock()
-        ViolationStore.Violations = mock.Mock()
-        ViolationStore.Tests = mock.Mock()
+        with contextlib.nested(
+            mock.patch.object(ViolationStore, 'metadata'),
+            mock.patch.object(ViolationStore, 'Violations'),
+            mock.patch.object(ViolationStore, 'Tests'),
+        ):
+            yield ViolationStore(mock_options)
 
-        yield ViolationStore(mock_options)
 
 @contextlib.contextmanager
 def sqlite_store():
@@ -58,17 +59,9 @@ def sqlite_store():
 
 
 @contextlib.contextmanager
-def mocked_collector(store):
-    with mock.patch.object(ViolationCollector, 'init_store'):
-        mock_options = mock.Mock()
-        collector = ViolationCollector(mock_options)
-        collector.store = store
-        yield collector
-
-@contextlib.contextmanager
-def mocked_reporter(collector):
+def mocked_reporter(store):
     mock_options = mock.Mock()
-    reporter = ViolationReporter(mock_options, collector)
+    reporter = ViolationReporter(mock_options, store)
     yield reporter
 
 
@@ -93,7 +86,7 @@ class HelperFunctionsTestCase(T.TestCase):
 
             collect("fake_violation1", "", "")
 
-            assert mock_ctx.collector.report_violation.called
+            assert mock_ctx.store.add_violation.called
 
     def test_run_in_catbox(self):
         with mock.patch('testify.plugins.violation_collector.catbox') as mock_catbox:
@@ -155,12 +148,10 @@ class ViolationReporterTestCase(T.TestCase):
         }
         self.mock_result.configure_mocks(**result_attrs)
         store = mock.Mock()
-        with mocked_collector(store) as collector:
-            with mocked_reporter(collector) as reporter:
-                self.mock_store = store
-                self.mock_collector = collector
-                self.reporter = reporter
-                yield
+        with mocked_reporter(store) as reporter:
+            self.mock_store = store
+            self.reporter = reporter
+            yield
 
     @T.setup
     def setup_fake_violations(self):
@@ -173,19 +164,19 @@ class ViolationReporterTestCase(T.TestCase):
 
     def test_test_case_start(self):
         self.reporter.test_case_start(self.mock_result)
-        assert self.mock_collector.store.add_test.called
+        assert self.mock_store.add_test.called
 
     def test_test_start(self):
         self.reporter.test_start(self.mock_result)
-        assert self.mock_collector.store.add_test.called
+        assert self.mock_store.add_test.called
 
     def test_class_setup_start(self):
         self.reporter.class_setup_start(self.mock_result)
-        assert self.mock_collector.store.add_test.called
+        assert self.mock_store.add_test.called
 
     def test_class_teardown_start(self):
         self.reporter.class_teardown_start(self.mock_result)
-        assert self.mock_collector.store.add_test.called
+        assert self.mock_store.add_test.called
 
     def test_get_syscall_count(self):
         T.assert_equal(
@@ -222,6 +213,7 @@ class ViolationReporterTestCase(T.TestCase):
             self.reporter.report()
             mctx.output_stream.write.assert_called_with("%s.%s\t%s\t%s\n" % fake_violation[0])
 
+
 class ViolationStoreTestCase(T.TestCase):
 
     def test_connect(self):
@@ -231,42 +223,26 @@ class ViolationStoreTestCase(T.TestCase):
 
     def test_add_test(self):
         with mocked_store() as mock_store:
-            fake_test = mock.Mock()
-            mock_store.add_test(fake_test)
+            mock_store._set_last_test_id = mock.Mock()
+            mock_store.add_test("fake_module", "fake_class", "fake_method")
 
-            fake_test.update.assert_called_with(mock_store.info)
             assert mock_store.conn.execute.called
             assert mock_store.Tests.insert.called
 
     def test_add_violation(self):
-        with mocked_store() as store:
+        with mocked_store() as mock_store:
             fake_test_id = 1
             fake_violation = mock.Mock()
-            store.get_last_test_id = mock.Mock()
-            store.get_last_test_id.return_value = fake_test_id
+            mock_store.get_last_test_id = mock.Mock()
+            mock_store.get_last_test_id.return_value = fake_test_id
 
-            store.add_violation(fake_violation)
+            mock_store.add_violation(fake_violation)
 
             call_to_violation_update = fake_violation.update.call_args[0]
             first_arg_to_violation_update = call_to_violation_update[0]
             T.assert_equal(first_arg_to_violation_update, {'test_id': fake_test_id})
-            assert store.conn.execute.called
-            assert store.Violations.insert.called
-
-
-class ViolationCollectorTestCase(T.TestCase):
-
-    @T.class_setup
-    def setup_fake_violator(self):
-        self.fake_violator = "fake_class,fake_method,fake_module"
-
-    def test_report_violation(self):
-        store = mock.Mock()
-        with mocked_collector(store) as collector:
-            fake_violator = ('fake_test_case', 'fake_method', 'fake_module')
-            fake_violation = ('fake_syscall', 'fake_path')
-            collector.report_violation(fake_violator, fake_violation)
-            assert collector.store.add_violation.called
+            assert mock_store.conn.execute.called
+            assert mock_store.Violations.insert.called
 
 
 class ViolationCollectorPipelineTestCase(T.TestCase):
@@ -316,19 +292,18 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
             raise Exception, msg + msg_pcre
 
         with sqlite_store() as store:
-            with mocked_collector(store) as collector:
-                with mocked_reporter(collector) as reporter:
-                    ctx.collector = collector
+            with mocked_reporter(store) as reporter:
+                ctx.store = store
 
-                    # Runing the test case inside catbox, we'll catch
-                    # violating syscalls and catbox will call our logger
-                    # function (collect)
-                    runner = T.test_runner.TestRunner(test_case, test_reporters=[reporter])
-                    run_in_catbox(runner.run, collect, [])
+                # Runing the test case inside catbox, we'll catch
+                # violating syscalls and catbox will call our logger
+                # function (collect)
+                runner = T.test_runner.TestRunner(test_case, test_reporters=[reporter])
+                run_in_catbox(runner.run, collect, [])
 
-                    yield store.violation_counts()
+                yield store.violation_counts()
 
-                    ctx.collector = None
+                ctx.store = None
 
     def test_violation_collector_pipeline(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCase) as violations:

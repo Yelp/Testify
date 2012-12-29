@@ -3,6 +3,7 @@ import json
 import logging
 import operator
 import os
+import select
 import sys
 import time
 
@@ -17,9 +18,8 @@ import yaml
 from testify import test_reporter
 from testify import test_logger
 
-
 class _Context(object):
-    collector = None
+    store = None
     output_stream = None
     output_verbosity = test_logger.VERBOSITY_NORMAL
 
@@ -88,18 +88,25 @@ def writeln(msg, verbosity=None):
         ctx.output_stream.flush()
 
 
-def collect(operation, path, resolved_path):
+def collect(syscall, path, resolved_path):
     '''This is the 'logger' method passed to catbox. This method
     will be triggered at each catbox violation.
     '''
     global ctx
     try:
-        violator = ctx.collector.store.get_last_test()
-        violation = (operation, resolved_path)
-        ctx.collector.report_violation(violator, violation)
+        writeln(
+            'CATBOX_VIOLATION: %s, %s' % (syscall, resolved_path),
+            test_logger.VERBOSITY_VERBOSE
+        )
+
+        ctx.store.add_violation({
+            'syscall': syscall,
+            'syscall_args': resolved_path,
+            'start_time': time.time()
+        })
     except Exception, e:
         # No way to recover in here, just report error and violation
-        sys.stderr.write('Error collecting violation data. Error %r. Violation: %r\n' % (e, (operation, resolved_path)))
+        sys.stderr.write('Error collecting violation data. Error %r. Violation: %r\n' % (e, (syscall, resolved_path)))
 
 
 class ViolationStore:
@@ -126,6 +133,9 @@ class ViolationStore:
         SA.Column('method_name', SA.Text, nullable=False),
     )
 
+    TEST_ID_DESC_END = '#'
+    MAX_TEST_ID_LINE = 1024 * 10
+
     def __init__(self, options):
         self.options = options
         self.dburl = self.options.violation_dburl or SA.engine.url.URL(**yaml.safe_load(open(self.options.violation_dbconfig)))
@@ -142,9 +152,22 @@ class ViolationStore:
             if os.path.exists(dbpath):
                 os.unlink(dbpath)
 
-        self.engine, self.conn = self.connect()
+        self.last_test_id = 0
+        self._setup_pipe()
 
-    def connect(self):
+        self.engine, self.conn = self._connect_db()
+
+    def _setup_pipe(self):
+        # Adding tests and adding violations to the database is done
+        # through different processes. We use this pipe to update the last
+        # test id to be used while inserting Violations. Although it is
+        # possible to get it from the database we'll use the pipe not to
+        # make a db query each time we add a violation.
+        self.test_id_read_fd, self.test_id_write_fd = os.pipe()
+        self.epoll = select.epoll()
+        self.epoll.register(self.test_id_read_fd, select.EPOLLIN | select.EPOLLET)
+
+    def _connect_db(self):
         engine = SA.create_engine(self.dburl)
         conn = engine.connect()
         if is_sqlite_filepath(self.dburl):
@@ -152,11 +175,41 @@ class ViolationStore:
         self.metadata.create_all(engine)
         return engine, conn
 
-    def add_test(self, testinfo):
+    def _set_last_test_id(self, test_id):
+        if self.test_id_read_fd:
+            os.close(self.test_id_read_fd)
+            self.test_id_read_fd = None
+
+        os.write(self.test_id_write_fd, '%d%s' % (test_id, self.TEST_ID_DESC_END))
+
+    def _parse_last_test_id(self, data):
+        # get last non empty string as violator line
+        test_id_str = data.split(self.TEST_ID_DESC_END)[-2]
+        return int(test_id_str)
+
+    def get_last_test_id(self):
+        if self.test_id_write_fd:
+            os.close(self.test_id_write_fd)
+            self.test_id_write_fd = None
+
+        events = self.epoll.poll(.01)
+        if events:
+            read = os.read(events[0][0], self.MAX_TEST_ID_LINE)
+            if read:
+                self.last_test_id = self._parse_last_test_id(read)
+        return self.last_test_id
+
+    def add_test(self, module, class_name, method_name):
         try:
-            testinfo.update({'start_time': time.time()})
+            testinfo = {
+                'module': module,
+                'class_name': class_name,
+                'method_name': method_name,
+                'start_time': time.time(),
+            }
             testinfo.update(self.info)
-            self.conn.execute(self.Tests.insert(), testinfo)
+            result = self.conn.execute(self.Tests.insert(), testinfo)
+            self._set_last_test_id(result.lastrowid)
         except Exception, e:
             logging.error('Exception inserting testinfo: %r' % e)
 
@@ -174,6 +227,7 @@ class ViolationStore:
             self.Tests.c.method_name,
             self.Violations.c.syscall,
             SA.sql.func.count(self.Violations.c.syscall).label('count')
+
         ]).where(
             self.Violations.c.test_id == self.Tests.c.id
         ).group_by(
@@ -187,55 +241,11 @@ class ViolationStore:
             violations.append((row['class_name'], row['method_name'], row['syscall'], row['count']))
         return violations
 
-    def get_last_test_id(self):
-        query = SA.sql.select([
-            SA.sql.func.max(self.Tests.c.id).label('count')
-        ])
-        return self.conn.execute(query).scalar()
-
-    def get_last_test(self):
-        query = SA.sql.select([
-            self.Tests.c.module,
-            self.Tests.c.class_name,
-            self.Tests.c.method_name,
-        ]).order_by(self.Tests.c.id.desc()).limit(1)
-        return self.conn.execute(query).fetchone()
-
-
-class ViolationCollector:
-    store = None
-
-    UNDEFINED_VIOLATOR = ('UndefinedTestCase', 'UndefinedMethod', 'UndefinedPath')
-
-    def __init__(self, options):
-        self.options = options
-        self.init_store()
-
-    def init_store(self):
-        self.store = ViolationStore(self.options)
-
-    def report_violation(self, violator, violation):
-        if violator == self.UNDEFINED_VIOLATOR:
-            # This is coming from Testify, not from a TestCase. Ignoring.
-            return
-
-        module, test_case, method = violator
-        syscall, resolved_path = violation
-        writeln(
-            'CATBOX_VIOLATION: %s.%s %r' % (test_case, method, violation),
-            test_logger.VERBOSITY_VERBOSE
-        )
-        self.store.add_violation({
-                'syscall': syscall,
-                'syscall_args': resolved_path,
-                'start_time': time.time()
-        })
-
 
 class ViolationReporter(test_reporter.TestReporter):
-    def __init__(self, options, violation_collector):
+    def __init__(self, options, store):
         self.options = options
-        self.collector = violation_collector
+        self.store = store
         super(ViolationReporter, self).__init__(self)
 
     def __update_violator(self, result):
@@ -243,11 +253,7 @@ class ViolationReporter(test_reporter.TestReporter):
         test_case_name = method['class']
         test_method_name = method['name']
         module_path = method['module']
-        self.collector.store.add_test({
-            'method_name' : test_method_name,
-            'class_name' : test_case_name,
-            'module' : module_path
-        })
+        self.store.add_test(module_path, test_case_name, test_method_name)
 
     def test_case_start(self, result):
         self.__update_violator(result)
@@ -284,7 +290,7 @@ class ViolationReporter(test_reporter.TestReporter):
         return sum(count for (syscall, count) in syscall_violation_counts)
 
     def report(self):
-        violations = self.collector.store.violation_counts()
+        violations = self.store.violation_counts()
         if ctx.output_verbosity == test_logger.VERBOSITY_VERBOSE:
             self._report_verbose(violations)
         elif ctx.output_verbosity >= test_logger.VERBOSITY_NORMAL:
@@ -342,7 +348,7 @@ def prepare_test_program(options, program):
     if options.catbox_violations:
         ctx.output_stream = sys.stderr # TODO: Use logger?
         ctx.output_verbosity = options.verbosity
-        ctx.collector = ViolationCollector(options)
+        ctx.store = ViolationStore(options)
         def _run():
             return run_in_catbox(
                 program.__original_run__,
@@ -365,5 +371,5 @@ def build_test_reporters(options):
             msg = 'Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support.'
             msg += msg_pcre
             raise Exception, msg
-        return [ViolationReporter(options, ctx.collector)]
+        return [ViolationReporter(options, ctx.store)]
     return []
