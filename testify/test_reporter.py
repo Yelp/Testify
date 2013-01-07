@@ -58,6 +58,7 @@ class TestReporter(object):
         pass
 
     def test_case_start(self, result):
+        """Called when a test case is being run. Gets passed the special "run" method as a TestResult."""
         pass
 
     def test_case_complete(self, result):
