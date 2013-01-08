@@ -109,7 +109,7 @@ def collect(syscall, path, resolved_path):
         sys.stderr.write('Error collecting violation data. Error %r. Violation: %r\n' % (e, (syscall, resolved_path)))
 
 
-class ViolationStore:
+class ViolationStore(object):
     metadata = SA.MetaData()
     
     Violations = SA.Table(
