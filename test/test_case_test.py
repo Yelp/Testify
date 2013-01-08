@@ -569,6 +569,12 @@ class CallbacksGetCalledTest(TestCase):
             (TestCase.EVENT_ON_COMPLETE_TEST_CASE, 'run'),
         ])
 
+
+class TestCaseKeepsReferenceToResultsForTestMethod(TestCase):
+    def test_reference_to_results(self):
+        assert self.test_result
+
+
 if __name__ == '__main__':
     run()
 
