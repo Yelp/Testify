@@ -168,7 +168,7 @@ class ViolationStore:
         not to make a db query each time we add a violation (and would
         really work when there is multiple builders writing to the
         database).
-		"""
+        """
         self.test_id_read_fd, self.test_id_write_fd = os.pipe()
         self.epoll = select.epoll()
         self.epoll.register(self.test_id_read_fd, select.EPOLLIN | select.EPOLLET)
@@ -182,6 +182,9 @@ class ViolationStore:
         return engine, conn
 
     def _set_last_test_id(self, test_id):
+        """Set the latest test id inserted to the database. See the
+        _setup_pipe's docstring for details.
+        """
         if self.test_id_read_fd:
             os.close(self.test_id_read_fd)
             self.test_id_read_fd = None
@@ -189,11 +192,14 @@ class ViolationStore:
         os.write(self.test_id_write_fd, '%d%s' % (test_id, self.TEST_ID_DESC_END))
 
     def _parse_last_test_id(self, data):
-        # get last non empty string as violator line
+        """Get last non empty string as violator line."""
         test_id_str = data.split(self.TEST_ID_DESC_END)[-2]
         return int(test_id_str)
 
     def get_last_test_id(self):
+        """Get the latest test id inserted to the database. See the
+        setup_pipe's docstring for details.
+        """
         if self.test_id_write_fd:
             os.close(self.test_id_write_fd)
             self.test_id_write_fd = None
