@@ -158,11 +158,17 @@ class ViolationStore:
         self.engine, self.conn = self._connect_db()
 
     def _setup_pipe(self):
-        # Adding tests and adding violations to the database is done
-        # through different processes. We use this pipe to update the last
-        # test id to be used while inserting Violations. Although it is
-        # possible to get it from the database we'll use the pipe not to
-        # make a db query each time we add a violation.
+        """Setup a pipe to enable communication between parent and
+        traced child processes.
+
+        Adding tests and adding violations to the database is done
+        through different processes. We use this pipe to update the
+        last test id to be used while inserting Violations. Although
+        it is possible to get it from the database we'll use the pipe
+        not to make a db query each time we add a violation (and would
+        really work when there is multiple builders writing to the
+        database).
+		"""
         self.test_id_read_fd, self.test_id_write_fd = os.pipe()
         self.epoll = select.epoll()
         self.epoll.register(self.test_id_read_fd, select.EPOLLIN | select.EPOLLET)
