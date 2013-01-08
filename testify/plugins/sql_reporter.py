@@ -134,9 +134,18 @@ class SQLReporter(test_reporter.TestReporter):
             }
         ))
 
+    def class_teardown_complete(self, result):
+        """If there was an error during class_teardown, insert the result
+        containing the error into the queue that report_results pulls from.
+        """
+        if not result['success']:
+            self.result_queue.put(result)
+
     def test_complete(self, result):
         """Insert a result into the queue that report_results pulls from."""
-        self.result_queue.put(result)
+        # Test methods named 'run' are special. See TestCase.run().
+        if not result['method']['name'] == 'run':
+            self.result_queue.put(result)
 
     def test_discovery_failure(self, exc):
         """Set the discovery_failure flag to True and method_count to 0."""

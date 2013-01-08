@@ -60,14 +60,16 @@ class TestResult(object):
     def end_in_failure(self, exception_info):
         if not self.complete:
             self._complete()
-            self.failure = True
-            self.exception_info = exception_info
+        self.success = False
+        self.failure = True
+        self.exception_info = exception_info
 
     def end_in_error(self, exception_info):
         if not self.complete:
             self._complete()
-            self.error = True
-            self.exception_info = exception_info
+        self.success = False
+        self.error = True
+        self.exception_info = exception_info
 
     def end_in_success(self):
         if not self.complete:
@@ -135,3 +137,5 @@ class TestResult(object):
                 'fixture_type' : None if not inspection.is_fixture_method(self.test_method) else self.test_method._fixture_type,
             }
         }
+
+# vim: set ts=4 sts=4 sw=4 et:

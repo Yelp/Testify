@@ -5,7 +5,7 @@ except ImportError:
 
 setup(
     name="testify",
-    version="0.3.3",
+    version="0.3.5",
     provides=["testify"],
     author="Yelp",
     author_email="yelplabs@yelp.com",
@@ -19,8 +19,8 @@ setup(
         "Intended Audience :: Developers",
         "Development Status :: 4 - Beta",
     ],
-    install_requires=['PyYaml', 'SQLAlchemy', 'Tornado'],
-    packages=["testify", "testify.utils", "testify.plugins"],
+    install_requires=['Mock', 'PyYaml', 'SQLAlchemy', 'Tornado'],
+    packages=["testify", "testify.contrib", "testify.utils", "testify.plugins"],
     scripts=['bin/testify'],
     long_description="""Testify - A Testing Framework
 

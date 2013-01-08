@@ -1,10 +1,13 @@
+import logging
 import threading
 import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
-from testify import assert_equal, class_setup, setup, teardown, test_case, test_runner_server
-from testify.test_logger import _log
+from test_logger_test import ExceptionInClassFixtureSampleTests
+from testify import assert_equal, assert_in, assert_raises_and_contains, class_setup, class_teardown, setup, teardown, test_case, test_runner_server
 from testify.utils import turtle
+
+_log = logging.getLogger('testify')
 
 
 def get_test(server, runner_id):
@@ -23,6 +26,7 @@ def get_test(server, runner_id):
     server.get_next_test(runner_id, inner, inner_empty)
     sem.acquire()
 
+    # Verify only one test was received.
     (test_received,) = tests_received
     return test_received
 
@@ -39,9 +43,33 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
 
         self.dummy_test_case = DummyTestCase
 
-    def start_server(self, test_reporters=None):
+    def run_test(self, runner_id, should_pass=True):
+        self.test_instance = self.dummy_test_case(should_pass=should_pass)
+        for event in [
+            test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
+            test_case.TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
+            test_case.TestCase.EVENT_ON_COMPLETE_TEST_CASE,
+        ]:
+            self.test_instance.register_callback(
+                event,
+                lambda result: self.server.report_result(runner_id, result),
+            )
+
+        self.test_instance.run()
+
+    def get_seen_methods(self, test_complete_calls):
+        seen_methods = set()
+        for call in test_complete_calls:
+            args = call[0]
+            first_arg = args[0]
+            first_method_name = first_arg['method']['name']
+            seen_methods.add(first_method_name)
+        return seen_methods
+
+    def start_server(self, test_reporters=None, failure_limit=None):
         if test_reporters is None:
-            test_reporters = []
+            self.test_reporter = turtle.Turtle()
+            test_reporters = [self.test_reporter]
 
         self.server = test_runner_server.TestRunnerServer(
             self.dummy_test_case,
@@ -55,6 +83,7 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
             serve_port=0,
             test_reporters=test_reporters,
             plugin_modules=[],
+            failure_limit=failure_limit,
         );
 
         def catch_exceptions_in_thread():
@@ -123,20 +152,12 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         assert test
         tornado.ioloop.IOLoop.instance().add_callback(lambda: self.server.check_in_class(runner, test['class_path'], timed_out=True))
 
-    def run_test(self, runner_id, should_pass=True):
-        test_instance = self.dummy_test_case(should_pass=should_pass)
-        test_instance.register_callback(
-            test_case.TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
-            lambda result: self.server.report_result(runner_id, result)
-        )
-        test_instance.run()
-
     def test_passing_tests_run_only_once(self):
         """Start a server with one test case to run. Make sure it hands out that test, report it as success, then make sure it gives us nothing else."""
         first_test = get_test(self.server, 'runner1')
 
         assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(first_test['methods'], ['test'])
+        assert_equal(first_test['methods'], ['test', 'run'])
 
         self.run_test('runner1')
 
@@ -147,13 +168,13 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         """Start a server with one test case to run. Make sure it hands out that test, report it as failure, then make sure it gives us the same one, then nothing else."""
         first_test = get_test(self.server, 'runner1')
         assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(first_test['methods'], ['test'])
+        assert_equal(first_test['methods'], ['test', 'run'])
 
         self.run_test('runner1', should_pass=False)
 
         second_test = get_test(self.server, 'runner2')
         assert_equal(second_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(second_test['methods'], ['test'])
+        assert_equal(second_test['methods'], ['test', 'run'])
 
         self.run_test('runner2', should_pass=False)
 
@@ -254,5 +275,328 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
 
         if failures:
             raise Exception(' '.join(failures))
+
+
+class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTestCase):
+    """Child classes should set:
+
+    - self.dummy_test_case - a test case that raises an exception during a
+      class_setup or the setup phase of a class_setup_teardown
+
+    - self.class_setup_teardown_method_name - the name of the method which will raise an
+      exception
+
+    This class's test method will do the rest.
+    """
+
+    __test__ = False
+
+    def test_exception_in_setup_phase(self):
+        """If a class_setup method raises an exception, this exception is
+        reported as an error in all of the test methods in the test case. The
+        methods are then treated as flakes and re-run.
+        """
+        # Pull and run the test case, thereby causing class_setup to run.
+        test_case = get_test(self.server, 'runner')
+        assert_equal(len(test_case['methods']), 3)
+        # The last method will be the special 'run' method which signals the
+        # entire test case is complete (including class_teardown).
+        assert_equal(test_case['methods'][-1], 'run')
+
+        self.run_test('runner')
+
+        # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
+        # don't especially care about it, but it's in there.
+        #
+        # Exceptions during execution of class_setup cause test methods to fail
+        # and get requeued as flakes. They aren't reported now because they
+        # aren't complete.
+        expected_methods = set(['classTearDown', 'run'])
+        # self.run_test configures us up to collect results submitted at
+        # class_teardown completion time. class_setup_teardown methods report
+        # the result of their teardown phase at "class_teardown completion"
+        # time. So, when testing the setup phase of class_setup_teardown, we
+        # will see an "extra" method.
+        #
+        # Child classes which exercise class_setup_teardown will set
+        # self.class_setup_teardown_method_name so we can add it to
+        # expected_methods here.
+        if hasattr(self, 'class_setup_teardown_method_name'):
+            expected_methods.add(self.class_setup_teardown_method_name)
+        seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
+        # This produces a clearer diff than simply asserting the sets are
+        # equal.
+        assert_equal(expected_methods.symmetric_difference(seen_methods), set())
+
+        # Verify the failed test case is re-queued for running.
+        assert_equal(self.server.test_queue.empty(), False)
+        requeued_test_case = get_test(self.server, 'runner2')
+        assert_in(self.dummy_test_case.__name__, requeued_test_case['class_path'])
+
+        # Reset reporter.
+        self.test_reporter.test_complete = turtle.Turtle()
+
+        # Run tests again.
+        self.run_test('runner2')
+
+        # This time, test methods have been re-run as flakes. Now that these
+        # methods are are complete, they should be reported.
+        expected_methods = set(['test1', 'test2', 'classTearDown', 'run'])
+        if hasattr(self, 'class_setup_teardown_method_name'):
+            expected_methods.add(self.class_setup_teardown_method_name)
+        seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
+        # This produces a clearer diff than simply asserting the sets are
+        # equal.
+        assert_equal(expected_methods.symmetric_difference(seen_methods), set())
+
+        # Verify no more test cases have been re-queued for running.
+        assert_equal(self.server.test_queue.empty(), True)
+
+class TestRunnerServerExceptionInClassSetupTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
+    def build_test_case(self):
+        self.dummy_test_case = ExceptionInClassFixtureSampleTests.FakeClassSetupTestCase
+
+
+class TestRunnerServerExceptionInSetupPhaseOfClassSetupTeardownTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
+    def build_test_case(self):
+        self.dummy_test_case = ExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase
+        self.class_setup_teardown_method_name = 'class_setup_teardown_raises_exception_in_setup_phase'
+
+
+class TestRunnerServerExceptionInTeardownPhaseBaseTestCase(TestRunnerServerBaseTestCase):
+    """Child classes should set:
+
+    - self.dummy_test_case - a test case that raises an exception during a
+      class_teardown or the teardown phase of a class_setup_teardown
+
+    - self.teardown_method_name - the name of the method which will raise an
+      exception
+
+    This class's test method will do the rest.
+    """
+
+    __test__ = False
+
+    def test_exception_in_teardown_phase(self):
+        # Pull and run the test case, thereby causing class_teardown to run.
+        test_case = get_test(self.server, 'runner')
+        assert_equal(len(test_case['methods']), 3)
+        # The last method will be the special 'run' method which signals the
+        # entire test case is complete (including class_teardown).
+        assert_equal(test_case['methods'][-1], 'run')
+
+        self.run_test('runner')
+
+        # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
+        # don't especially care about it, but it's in there.
+        expected_methods = set(['test1', 'test2', self.teardown_method_name, 'classTearDown', 'run'])
+        seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
+        # This produces a clearer diff than simply asserting the sets are
+        # equal.
+        assert_equal(expected_methods.symmetric_difference(seen_methods), set())
+
+        # Verify the failed class_teardown method is not re-queued for running
+        # -- it doesn't make sense to re-run a "flaky" class_teardown.
+        assert_equal(self.server.test_queue.empty(), True)
+
+
+class TestRunnerServerExceptionInClassTeardownTestCase(TestRunnerServerExceptionInTeardownPhaseBaseTestCase):
+    def build_test_case(self):
+        self.dummy_test_case = ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase
+        self.teardown_method_name = 'class_teardown_raises_exception'
+
+
+class TestRunnerServerExceptionInTeardownPhaseOfClassSetupTeardownTestCase(TestRunnerServerExceptionInTeardownPhaseBaseTestCase):
+    def build_test_case(self):
+        self.dummy_test_case = ExceptionInClassFixtureSampleTests.FakeTeardownPhaseOfClassSetupTeardownTestCase
+        self.teardown_method_name = 'class_setup_teardown_raises_exception_in_teardown_phase'
+
+
+class FailureLimitTestCaseMixin(object):
+    """A mixin containing dummy test cases for verifying failure limit behavior."""
+
+    class FailureLimitTestCase(test_case.TestCase):
+        """Basic test case containing test methods which fail."""
+        TEST_CASE_FAILURE_LIMIT = 0
+
+        def __init__(self, *args, **kwargs):
+            test_case.TestCase.__init__(self, *args, **kwargs)
+            self.failure_limit = self.TEST_CASE_FAILURE_LIMIT
+
+        def test1(self):
+            assert False, "I am the first failure. failure_limit is %s" % self.failure_limit
+
+        def test2(self):
+            assert False, "I am the second (and last) failure. failure_limit is %s" % self.failure_limit
+
+        def test3(self):
+            assert False, "This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit)
+
+    class TestCaseFailureLimitTestCase(FailureLimitTestCase):
+        TEST_CASE_FAILURE_LIMIT = 2
+
+    class FailureLimitClassTeardownFailureTestCase(FailureLimitTestCase):
+        """Add failing class_teardown methods to FailureLimitTestCase."""
+
+        CLASS_TEARDOWN_FAILURES = 2
+
+        @class_teardown
+        def teardown1(self):
+            assert False, "I am the failure beyond the last failure. failure_limit is %s" % self.failure_limit
+
+        @class_teardown
+        def teardown2(self):
+            assert False, "I am the second failure beyond the last failure. failure_limit is %s" % self.failure_limit
+
+    class TestCaseFailureLimitClassTeardownFailureTestCase(FailureLimitClassTeardownFailureTestCase):
+        TEST_CASE_FAILURE_LIMIT = 2
+
+    class FailureLimitClassTeardownErrorTestCase(FailureLimitTestCase):
+        """Add to FailureLimitTestCase class_teardown methods which raises exceptions."""
+
+        CLASS_TEARDOWN_FAILURES = 2
+
+        @class_teardown
+        def teardown_1(self):
+            raise Exception("I am the failure beyond the last failure. failure_limit is %s" % self.failure_limit)
+
+        @class_teardown
+        def teardown_2(self):
+            raise Exception("I am the second failure beyond the last failure. failure_limit is %s" % self.failure_limit)
+
+    class TestCaseFailureLimitClassTeardownErrorTestCase(FailureLimitClassTeardownErrorTestCase):
+        TEST_CASE_FAILURE_LIMIT = 2
+
+
+class TestCaseFailureLimitTestCase(TestRunnerServerBaseTestCase, FailureLimitTestCaseMixin):
+    """Verify that test methods are not run after TestCase.failure_limit is
+    reached.
+    """
+
+    def build_test_case(self):
+        self.dummy_test_case = FailureLimitTestCaseMixin.TestCaseFailureLimitTestCase
+
+    def test_methods_are_not_run_after_failure_limit_reached(self):
+        get_test(self.server, 'runner')
+        self.run_test('runner')
+        # Verify that only N failing tests are run, where N is the test case's
+        # failure_limit.
+        assert_equal(self.test_instance.failure_count, self.dummy_test_case.TEST_CASE_FAILURE_LIMIT)
+
+
+class TestCaseFailureLimitClassTeardownFailureTestCase(TestRunnerServerBaseTestCase, FailureLimitTestCaseMixin):
+    """Verify that failures in class_teardown methods are counted even after
+    failure_limit is reached.
+    """
+
+    def build_test_case(self):
+        self.dummy_test_case = FailureLimitTestCaseMixin.TestCaseFailureLimitClassTeardownFailureTestCase
+
+    def test_methods_are_not_run_after_failure_limit_reached(self):
+        get_test(self.server, 'runner')
+        self.run_test('runner')
+        # Let N = the test case's failure limit
+        # Let C = the number of class_teardown methods with failures
+        # N failing tests will run, followed by C class_teardown methods.
+        # So the test case's failure_count should be N + C.
+        assert_equal(self.test_instance.failure_count, self.dummy_test_case.TEST_CASE_FAILURE_LIMIT + self.dummy_test_case.CLASS_TEARDOWN_FAILURES)
+
+
+class TestCaseFailureLimitClassTeardownErrorTestCase(TestCaseFailureLimitClassTeardownFailureTestCase):
+    """Verify that errors in class_teardown methods are counted even after
+    failure_limit is reached.
+
+    We modify the dummy test case to have class_teardown methods which raise
+    exceptions and let the test methods from the parent class do the
+    verification.
+    """
+
+    def build_test_case(self):
+        self.dummy_test_case = FailureLimitTestCaseMixin.TestCaseFailureLimitClassTeardownErrorTestCase
+
+
+class TestRunnerServerFailureLimitTestCase(TestRunnerServerBaseTestCase, FailureLimitTestCaseMixin):
+    """Verify that test methods are not run after TestRunnerServer.failure_limit is
+    reached.
+    """
+
+    TEST_RUNNER_SERVER_FAILURE_LIMIT = 2
+
+    def build_test_case(self):
+        self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitTestCase
+
+    def start_server(self):
+        """Call parent's start_server but with a failure_limit."""
+        super(TestRunnerServerFailureLimitTestCase, self).start_server(failure_limit=self.TEST_RUNNER_SERVER_FAILURE_LIMIT)
+
+    def test_methods_are_not_run_after_failure_limit_reached(self):
+        assert_equal(self.server.failure_count, 0)
+        get_test(self.server, 'runner')
+        assert_raises_and_contains(
+            ValueError,
+            'FailureLimitTestCase not checked out.',
+            self.run_test,
+            'runner',
+        )
+        # Verify that only N failing tests are run, where N is the server's
+        # failure_limit.
+        assert_equal(self.server.failure_count, self.TEST_RUNNER_SERVER_FAILURE_LIMIT)
+
+
+class TestRunnerServerFailureLimitClassTeardownFailureTestCase(TestRunnerServerBaseTestCase, FailureLimitTestCaseMixin):
+    """Verify that test methods are not run after TestRunnerServer.failure_limit is
+    reached, but class_teardown methods (which might continue to bump
+    failure_count) are still run.
+    """
+
+    TEST_RUNNER_SERVER_FAILURE_LIMIT = 2
+
+    def build_test_case(self):
+        self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitClassTeardownFailureTestCase
+
+    def start_server(self):
+        """Call parent's start_server but with a failure_limit."""
+        super(TestRunnerServerFailureLimitClassTeardownFailureTestCase, self).start_server(failure_limit=self.TEST_RUNNER_SERVER_FAILURE_LIMIT)
+
+    def test_class_teardown_counted_as_failure_after_limit_reached(self):
+        assert_equal(self.server.failure_count, 0)
+        get_test(self.server, 'runner')
+
+        # The following behavior is bad because it doesn't allow clients to
+        # report class_teardown failures (which they are contractually
+        # obligated to run regardless of any failure limit). See
+        # https://github.com/Yelp/Testify/issues/120 for ideas about how to fix
+        # this.
+        #
+        # For now, we write this test to pin down the existing behavior and
+        # notice if it changes.
+        test_case_name = self.dummy_test_case.__name__
+        assert_raises_and_contains(
+            ValueError,
+            '%s not checked out.' % test_case_name,
+            self.run_test,
+            'runner',
+        )
+        # Verify that only N failing tests are run, where N is the server's
+        # failure_limit.
+        #
+        # Once issue #120 is fixed, the failure count should (probably) be
+        # TEST_RUNNER_SERVER_FAILURE_LIMIT + CLASS_TEARDOWN_FAILURES.
+        assert_equal(self.server.failure_count, self.TEST_RUNNER_SERVER_FAILURE_LIMIT)
+
+
+class TestRunnerServerFailureLimitClassTeardownErrorTestCase(TestRunnerServerFailureLimitClassTeardownFailureTestCase):
+    """Verify that test methods are not run after TestRunnerServer.failure_limit is
+    reached, but class_teardown methods (which might continue to bump
+    failure_count) are still run.
+
+    We modify the dummy test case to have class_teardown methods which raise
+    exceptions and let the test methods from the parent class do the
+    verification.
+    """
+
+    def build_test_case(self):
+        self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitClassTeardownErrorTestCase
+
 
 # vim: set ts=4 sts=4 sw=4 et:

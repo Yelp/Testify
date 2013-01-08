@@ -4,6 +4,7 @@ import tornado.httpserver
 import tornado.web
 import Queue
 
+from test.test_logger_test import ExceptionInClassFixtureSampleTests
 from testify import assert_equal, setup_teardown, TestCase
 from testify.test_runner import TestRunner
 from testify.plugins.http_reporter import HTTPReporter
@@ -72,10 +73,10 @@ class HTTPReporterTestCase(TestCase):
         runner = TestRunner(DummyTestCase, test_reporters=[HTTPReporter(None, self.connect_addr, 'runner1')])
         runner.run()
 
-        (only_result,) = self.results_reported
-        assert_equal(only_result['runner_id'], 'runner1')
-        assert_equal(only_result['method']['class'], 'DummyTestCase')
-        assert_equal(only_result['method']['name'], 'test')
+        (method_result, test_case_result) = self.results_reported
+        assert_equal(method_result['runner_id'], 'runner1')
+        assert_equal(method_result['method']['class'], 'DummyTestCase')
+        assert_equal(method_result['method']['name'], 'test')
 
     def test_http_reporter_tries_twice(self):
         self.status_codes.put(409)
@@ -84,8 +85,24 @@ class HTTPReporterTestCase(TestCase):
         runner = TestRunner(DummyTestCase, test_reporters=[HTTPReporter(None, self.connect_addr, 'tries_twice')])
         runner.run()
 
-        (first, second) = self.results_reported
+        (first, second, test_case_result) = self.results_reported
 
         assert_equal(first['runner_id'], 'tries_twice')
         assert_equal(first, second)
 
+    def test_http_reporter_completed_test_case(self):
+        runner = TestRunner(DummyTestCase, test_reporters=[HTTPReporter(None, self.connect_addr, 'runner1')])
+        runner.run()
+
+        (test_method_result, test_case_result) = self.results_reported
+        assert_equal(test_case_result['method']['name'], 'run')
+
+    def test_http_reporter_class_teardown_exception(self):
+        runner = TestRunner(ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, test_reporters=[HTTPReporter(None, self.connect_addr, 'runner1')])
+        runner.run()
+
+        (test1_method_result, test2_method_result, class_teardown_result, test_case_result) = self.results_reported
+        assert_equal(test_case_result['method']['name'], 'run')
+
+
+# vim: set ts=4 sts=4 sw=4 et:

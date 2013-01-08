@@ -8,11 +8,15 @@ The server keeps track of the overall status of the run and manages timeouts and
 
 from __future__ import with_statement
 
-from test_logger import _log
+import logging
+
+from test_case import FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS
 from test_runner import TestRunner
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
+
+_log = logging.getLogger('testify')
 
 try:
     import simplejson as json
@@ -169,7 +173,13 @@ class TestRunnerServer(TestRunner):
         if d['runner'] != runner_id:
             raise ValueError("Class %s checked out by runner %s, not %s" % (class_path, d['runner'], runner_id))
         if result['method']['name'] not in d['methods']:
-            raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
+            # If class_teardown failed, the client will send us a result to let us
+            # know. If that happens, don't worry about the apparently un-checked
+            # out test method.
+            if result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
+                pass
+            else:
+                raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
         if result['success']:
             d['passed_methods'][result['method']['name']] = result
@@ -182,11 +192,12 @@ class TestRunnerServer(TestRunner):
 
         d['timeout_time'] = time.time() + self.runner_timeout
 
-        d['methods'].remove(result['method']['name'])
+        # class_teardowns are special.
+        if result['method']['fixture_type'] not in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
+            d['methods'].remove(result['method']['name'])
 
         if not d['methods']:
             self.check_in_class(runner_id, class_path, finished=True)
-
 
     def run(self):
         class TestsHandler(tornado.web.RequestHandler):
@@ -263,6 +274,11 @@ class TestRunnerServer(TestRunner):
                 }
 
                 if test_dict['methods']:
+                    # When the client has finished running the entire TestCase,
+                    # it will signal us by sending back a result with method
+                    # name 'run'. Add this result to the list we expect to get
+                    # back from the client.
+                    test_dict['methods'].append('run')
                     self.test_queue.put(0, test_dict)
 
             # Start an HTTP server.
@@ -323,28 +339,55 @@ class TestRunnerServer(TestRunner):
 
         d = self.checked_out.pop(class_path)
 
-        for method, result_dict in itertools.chain(
-                    d['passed_methods'].iteritems(),
-                    ((method, result) for (method, result) in d['failed_methods'].iteritems() if early_shutdown or (class_path, method) in self.failed_rerun_methods),
-                ):
+        passed_methods = list(d['passed_methods'].items())
+        failed_methods = list(d['failed_methods'].items())
+        early_shutdown_methods = []
+        failed_methods_already_rerun = []
+        unexpected_failed_methods = []
+        requeue_methods = []
+
+        for method, result in failed_methods:
+            if (class_path, method) in self.failed_rerun_methods:
+                failed_methods_already_rerun.append((method, result))
+            elif result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
+                unexpected_failed_methods.append((method, result))
+            elif early_shutdown:
+                early_shutdown_methods.append((method, result))
+                requeue_methods.append((method, result))
+            else:
+                requeue_methods.append((method, result))
+
+        tests_to_report = itertools.chain(
+            passed_methods,
+            early_shutdown_methods,
+            failed_methods_already_rerun,
+            unexpected_failed_methods,
+        )
+        for method, result_dict in tests_to_report:
             for reporter in self.test_reporters:
                 result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
                 reporter.test_start(result_dict)
                 reporter.test_complete(result_dict)
 
-        #Requeue failed tests
+        # Requeue failed tests
         requeue_dict = {
             'last_runner' : runner,
             'class_path' : d['class_path'],
             'methods' : [],
         }
 
-        for method, result_dict in d['failed_methods'].iteritems():
-            if (class_path, method) not in self.failed_rerun_methods:
-                requeue_dict['methods'].append(method)
-                self.failed_rerun_methods.add((class_path, method))
-                result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
-                self.previous_run_results[(class_path, method)] = result_dict
+        for method, result_dict in requeue_methods:
+            requeue_dict['methods'].append(method)
+            self.failed_rerun_methods.add((class_path, method))
+            result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
+            self.previous_run_results[(class_path, method)] = result_dict
+
+        if requeue_dict['methods']:
+            # When the client has finished running the entire TestCase,
+            # it will signal us by sending back a result with method
+            # name 'run'. Add this result to the list we expect to get
+            # back from the client.
+            requeue_dict['methods'].append('run')
 
         if finished:
             if len(d['methods']) != 0:

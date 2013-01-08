@@ -1,10 +1,25 @@
+python-testify (0.3.5) unstable; urgency=low
+
+  * Fix issue #116:
+  * Report exceptions raised during class_setup and class_teardown instead of swallowing them.
+  * Report exceptions raised during class_setup_teardown instead of crashing Testify.
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Fri, 07 Dec 2012 00:05:51 -0800
+
+python-testify (0.3.4) unstable; urgency=low
+
+  * Fix issue #104 (module-level suites for unittest.TestCase).
+  * Include testify.contrib.
+  * Partial implementation (TextLogger and SqlReporter only) of reporting problems in class_teardown.
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Fri, 19 Oct 2012 09:01:23 -0700
+
 python-testify (0.3.3) unstable; urgency=low
 
   * Add a test for unknown import errors.
   * Fix Issue 105: UnitTest test cases kill clients in client-server mode.
   * Fix --list-suites.
   * Add length cap for the SQL reporter.
-
 
  -- Tyler Roscoe <troscoe@yelp.com>  Wed, 11 Jul 2012 18:18:48 -0700
 
