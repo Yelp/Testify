@@ -133,7 +133,7 @@ class ViolationStore(object):
         SA.Column('method_name', SA.Text, nullable=False),
     )
 
-    TEST_ID_DESC_END = '#'
+    TEST_ID_DESC_END = ','
     MAX_TEST_ID_LINE = 1024 * 10
 
     def __init__(self, options):
