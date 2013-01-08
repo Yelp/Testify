@@ -281,26 +281,14 @@ class ViolationReporter(test_reporter.TestReporter):
     def test_case_start(self, result):
         self.__update_violator(result)
 
-    def test_case_complete(self, result):
-        pass
-
     def test_start(self, result):
         self.__update_violator(result)
-
-    def test_complete(self, result):
-        pass
 
     def class_setup_start(self, result):
         self.__update_violator(result)
 
-    def class_setup_complete(self, result):
-        pass
-
     def class_teardown_start(self, result):
         self.__update_violator(result)
-
-    def class_teardown_complete(self, result):
-        pass
 
     def get_syscall_count(self, violations):
         syscall_violations = []
