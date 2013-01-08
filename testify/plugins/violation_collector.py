@@ -186,6 +186,12 @@ class ViolationStore:
         _setup_pipe's docstring for details.
         """
         if self.test_id_read_fd:
+            # If this method is called it means that we're in the
+            # traced child process. Reporter (running in the traced
+            # child process) will ultimately call this method to write
+            # the test id to the pipe when we start running a test
+            # method. Closing the read end of the pipe as we don't
+            # need to read/write from there.
             os.close(self.test_id_read_fd)
             self.test_id_read_fd = None
 
@@ -201,6 +207,11 @@ class ViolationStore:
         setup_pipe's docstring for details.
         """
         if self.test_id_write_fd:
+            # If this method is called it means that we're in the
+            # parent process. Parent process will use this method to
+            # read from pipe and learn about the running test method
+            # to report violations. Closing the write end of the pipe
+            # as we don't need to read/write from there.
             os.close(self.test_id_write_fd)
             self.test_id_write_fd = None
 
