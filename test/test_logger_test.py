@@ -4,9 +4,9 @@ from mock import patch
 
 from test.discovery_failure_test import BrokenImportTestCase
 from testify import TestCase, assert_equal, assert_in, class_setup, class_setup_teardown, class_teardown, run, setup, teardown
-from testify.test_logger import TextTestLogger, VERBOSITY_NORMAL
+from testify.test_logger import ColorlessTextTestLogger, TextTestLogger, VERBOSITY_NORMAL
 from testify.test_runner import TestRunner
-from testify.utils import turtle
+from testify.utils import stringdiffer, turtle
 
 
 class TextLoggerBaseTestCase(TestCase):
@@ -221,6 +221,24 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
             class_teardown_result = self.logger.results[-1]
             assert_in('FakeTestException', test1_raises_result['exception_info_pretty'])
             assert_in('FakeClassFixtureException', class_teardown_result['exception_info_pretty'])
+
+
+class ColorlessTextTestLoggerTestCase(TestCase):
+
+    class MockOptionsColor(object):
+        no_color = False
+
+    class MockOptionsNoColor(object):
+        no_color = True
+
+    def test_highlight_marker(self):
+        ColorlessTextTestLogger(self.MockOptionsColor())
+        colored_highlight_marker = stringdiffer.HighlightMarker()
+        assert_equal(colored_highlight_marker.color, True)
+
+        ColorlessTextTestLogger(self.MockOptionsNoColor())
+        colorless_highlight_marker = stringdiffer.HighlightMarker()
+        assert_equal(colorless_highlight_marker.color, False)
 
 
 if __name__ == '__main__':
