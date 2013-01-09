@@ -23,6 +23,7 @@ import subprocess
 import sys
 
 from testify import test_reporter
+from testify.utils.stringdiffer import HighlightMarker
 
 # Beyond the nicely formatted test output provided by the test logger classes, we
 # also want to make basic test running /result info available via standard python logger
@@ -259,6 +260,13 @@ class TextTestLogger(TestLoggerBase):
 
 
 class ColorlessTextTestLogger(TextTestLogger):
+    def __init__(self, options, stream=sys.stdout):
+        """Override the behavior of HighlightMarker to respect the options
+        passed to TestRunner.
+        """
+        super(TextTestLogger, self).__init__(options, stream)
+        HighlightMarker.color = not options.no_color
+
     def _colorize(self, message, color=None):
         return message
 

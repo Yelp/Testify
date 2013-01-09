@@ -6,12 +6,21 @@ from testify import run
 from testify import assert_between
 from testify import assert_equal
 from testify import assert_not_reached
+from testify.utils import stringdiffer
+
+
+def create_expected_string(string):
+    highlight = stringdiffer.HighlightMarker()
+    return string.format(
+        start=highlight.start,
+        end=highlight.end
+    )
 
 
 class DiffMessageTestCase(TestCase):
 
     def test_shows_string_diffs(self):
-        expected = 'Diff:\nl: abc<>\nr: abc<def>'
+        expected = create_expected_string('Diff:\nl: abc{start}{end}\nr: abc{start}def{end}')
         diff_message = assertions._diff_message('abc', 'abcdef')
         assert_equal(expected, diff_message)
 
@@ -22,36 +31,37 @@ class DiffMessageTestCase(TestCase):
         class AbcDefRepr(object):
             __repr__ = lambda self: 'abcdef'
 
-        expected = 'Diff:\nl: abc<>\nr: abc<def>'
+        expected = create_expected_string('Diff:\nl: abc{start}{end}\nr: abc{start}def{end}')
         diff_message = assertions._diff_message(AbcRepr(), AbcDefRepr())
         assert_equal(expected, diff_message)
 
 
 class AssertBetweenTestCase(TestCase):
 
-	def test_argument_order(self):
-		try:
-			assert_between(1, 2, 3)
-		except AssertionError:
-			assert False, "Expected assert_between(1, 2, 3) to pass."
+    def test_argument_order(self):
+        try:
+            assert_between(1, 2, 3)
+        except AssertionError:
+            assert False, "Expected assert_between(1, 2, 3) to pass."
 
-		try:
-			assert_between(2, 1, 3)
-			assert False, "Expected assert_between(2, 1, 3) to fail."
-		except AssertionError:
-			pass
+        try:
+            assert_between(2, 1, 3)
+            assert False, "Expected assert_between(2, 1, 3) to fail."
+        except AssertionError:
+            pass
 
 
 class AssertEqualTestCase(TestCase):
 
     def test_shows_pretty_diff_output(self):
-        expected = \
+        expected = create_expected_string(
             'assertion failed: l == r\n' \
             "l: 'that reviewboard differ is awesome'\n" \
             "r: 'dat reviewboard differ is ozsom'\n\n" \
             'Diff:' \
-            '\nl: <th>at reviewboard differ is <awe>som<e>\n' \
-            'r: <d>at reviewboard differ is <oz>som<>'
+            '\nl: {start}th{end}at reviewboard differ is {start}awe{end}som{start}e{end}\n' \
+            'r: {start}d{end}at reviewboard differ is {start}oz{end}som{start}{end}'
+        )
 
         try:
             assert_equal('that reviewboard differ is awesome',

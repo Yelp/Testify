@@ -3,11 +3,29 @@ Inter-line differ, for readable diffs in test assertion failure messages.
 
 Based around a differ borrowed from Review Board.
 """
+import os
+import sys
+
 from difflib import SequenceMatcher
 
 
-LEFT_HIGHLIGHT_CHARACTER = '\033[1;31m'
-RIGHT_HIGHLIGHT_CHARACTER = '\033[0m'
+class HighlightMarker(object):
+
+    color = bool(os.isatty(sys.stdout.fileno()))
+
+    @property
+    def start(self):
+        if self.color:
+            return '\033[1;31m'
+        else:
+            return '<'
+
+    @property
+    def end(self):
+        if self.color:
+            return '\033[0m'
+        else:
+            return '>'
 
 
 # Borrowed from
@@ -64,16 +82,18 @@ def highlight_regions(string, regions):
     >>> highlight_regions('This is a string.', [(0, 3), (8, 9)])
     '<Thi>s is <a> string.'
     """
+    highlight = HighlightMarker()
+
     string = list(string)
     # Inserting into the middle of a list shifts all the elements over by one.
     # Each time a markup element is added, increase a result string's insertion
     # offset.
     offset = 0
 
-    for beginning, end in sorted(regions or []):
-        string.insert(offset + beginning, LEFT_HIGHLIGHT_CHARACTER)
+    for start, end in sorted(regions or []):
+        string.insert(offset + start, highlight.start)
         offset +=1
-        string.insert(offset + end, RIGHT_HIGHLIGHT_CHARACTER)
+        string.insert(offset + end, highlight.end)
         offset +=1
 
     return ''.join(string)
