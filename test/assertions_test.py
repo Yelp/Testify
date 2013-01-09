@@ -136,51 +136,51 @@ class AssertRaisesAsCallableTestCase(TestCase):
         assertions.assert_raises(GoodArguments, check_arguments, arg1, arg2, kwarg=kwarg)
 
 
-class AssertRaisesParticularExceptionTestCase(TestCase):
+class AssertRaisesSuchThatTestCase(TestCase):
 
     def test_fails_when_no_exception_is_raised(self):
         """Tests that the assertion fails when no exception is raised."""
-        test_nothing = lambda e: None
+        exists = lambda e: True
         with assertions.assert_raises(AssertionError):
-            with assertions.assert_raises_particular_exception(Exception, test_nothing):
+            with assertions.assert_raises_such_that(Exception, exists):
                 pass
 
     def test_fails_when_wrong_exception_is_raised(self):
-        """Tests that when an unexpected exception is raised, that it is 
+        """Tests that when an unexpected exception is raised, that it is
         passed through and the assertion fails."""
-        test_nothing = lambda e: None
+        exists = lambda e: True
         # note: in assert_raises*, if the exception raised is not of the
         # expected type, that exception just falls through
         with assertions.assert_raises(Exception):
-            with assertions.assert_raises_particular_exception(AssertionError, test_nothing):
+            with assertions.assert_raises_such_that(AssertionError, exists):
                 raise Exception("the wrong exception")
 
     def test_fails_when_exception_test_fails(self):
-        """Tests that when an exception of the right type that fails the 
+        """Tests that when an exception of the right type that fails the
         passed in exception test is raised, the assertion fails."""
-        test_exception_has_two_args = lambda e: assertions.assert_length(e.args, 2)
+        has_two_args = lambda e: assertions.assert_length(e.args, 2)
         with assertions.assert_raises(AssertionError):
-            with assertions.assert_raises_particular_exception(Exception, test_exception_has_two_args):
+            with assertions.assert_raises_such_that(Exception, has_two_args):
                 raise Exception("only one argument")
 
     def test_passes_when_correct_exception_is_raised(self):
-        """Tests that when an exception of the right type that passes the 
+        """Tests that when an exception of the right type that passes the
         exception test is raised, the assertion passes."""
-        test_exception_has_two_args = lambda e: assertions.assert_length(e.args, 2)
-        with assertions.assert_raises_particular_exception(Exception, test_exception_has_two_args):
+        has_two_args = lambda e: assertions.assert_length(e.args, 2)
+        with assertions.assert_raises_such_that(Exception, has_two_args):
             raise Exception("first", "second")
 
     def test_callable_is_called_with_all_arguments(self):
-        """Tests that the callable form works properly, with all arguments 
+        """Tests that the callable form works properly, with all arguments
         passed through."""
-        test_foo_message = lambda e: str(e) == 'foo'
+        message_is_foo = lambda e: assert_equal(str(e), 'foo')
         class GoodArguments(Exception): pass
         arg1, arg2, kwarg = object(), object(), object()
         def check_arguments(*args, **kwargs):
             assert_equal((arg1, arg2), args)
             assert_equal({'kwarg': kwarg}, kwargs)
             raise GoodArguments('foo')
-        assertions.assert_raises_particular_exception(GoodArguments, test_foo_message, check_arguments, arg1, arg2, kwarg=kwarg)
+        assertions.assert_raises_such_that(GoodArguments, message_is_foo, check_arguments, arg1, arg2, kwarg=kwarg)
 
 
 class AssertRaisesAndContainsTestCase(TestCase):
@@ -291,7 +291,7 @@ class AssertEmptyTestCase(TestCase):
         def yield_nothing():
             if False:
                 yield 0
-  
+
         assertions.assert_empty(yield_nothing())
 
     def test_fails_on_nonempty_list(self):
@@ -316,13 +316,13 @@ class AssertEmptyTestCase(TestCase):
         def message_has_no_sample(exception):
             assertions.assert_equal(str(exception), expected_message)
 
-        with assertions.assert_raises_particular_exception(
+        with assertions.assert_raises_such_that(
                 AssertionError, message_has_no_sample):
             assertions.assert_empty(iterable, max_elements_to_print=0)
 
     def test_max_elements_to_print_gt_len_means_whole_iterable_sample_message(self):
         """
-        Tests that when max_elements_to_print is greater than the length of 
+        Tests that when max_elements_to_print is greater than the length of
         the whole iterable, the whole iterable is printed.
         """
         elements = [1, 2, 3, 4, 5]
@@ -333,13 +333,13 @@ class AssertEmptyTestCase(TestCase):
         def message_has_whole_iterable_sample(exception):
             assertions.assert_equal(str(exception), expected_message)
 
-        with assertions.assert_raises_particular_exception(
+        with assertions.assert_raises_such_that(
                 AssertionError, message_has_whole_iterable_sample):
             assertions.assert_empty(iterable, max_elements_to_print=len(elements)+1)
 
     def test_max_elements_to_print_eq_len_means_whole_iterable_sample_message(self):
         """
-        Tests that when max_elements_to_print is equal to the length of 
+        Tests that when max_elements_to_print is equal to the length of
         the whole iterable, the whole iterable is printed.
         """
         elements = [1, 2, 3, 4, 5]
@@ -350,13 +350,13 @@ class AssertEmptyTestCase(TestCase):
         def message_has_whole_iterable_sample(exception):
             assertions.assert_equal(str(exception), expected_message)
 
-        with assertions.assert_raises_particular_exception(
+        with assertions.assert_raises_such_that(
                 AssertionError, message_has_whole_iterable_sample):
             assertions.assert_empty(iterable, max_elements_to_print=len(elements))
 
     def test_max_elements_to_print_lt_len_means_partial_iterable_sample_message(self):
         """
-        Tests that when max_elements_to_print is less than the length of the 
+        Tests that when max_elements_to_print is less than the length of the
         whole iterable, the first max_elements_to_print elements are printed.
         """
         elements = [1, 2, 3, 4, 5]
@@ -368,12 +368,12 @@ class AssertEmptyTestCase(TestCase):
         def message_has_whole_iterable_sample(exception):
             assertions.assert_equal(str(exception), expected_message)
 
-        with assertions.assert_raises_particular_exception(
+        with assertions.assert_raises_such_that(
                 AssertionError, message_has_whole_iterable_sample):
             assertions.assert_empty(iterable, max_elements_to_print=max_elements_to_print)
 
 class AssertNotEmptyTestCase(TestCase):
-    
+
     def test_fails_on_empty_list(self):
         """Test that assert_not_empty fails on an empty list."""
         with assertions.assert_raises(AssertionError):
