@@ -23,7 +23,6 @@ import subprocess
 import sys
 
 from testify import test_reporter
-from testify.utils.stringdiffer import HighlightMarker
 
 VERBOSITY_SILENT    = 0  # Don't say anything, just exit with a status code
 VERBOSITY_NORMAL    = 1  # Output dots for each test method run
@@ -251,13 +250,6 @@ class TextTestLogger(TestLoggerBase):
 
 
 class ColorlessTextTestLogger(TextTestLogger):
-    def __init__(self, options, stream=sys.stdout):
-        """Override the behavior of HighlightMarker to respect the options
-        passed to TestRunner.
-        """
-        super(TextTestLogger, self).__init__(options, stream)
-        HighlightMarker.color = not options.no_color
-
     def _colorize(self, message, color=None):
         return message
 

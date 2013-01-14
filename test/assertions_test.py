@@ -7,21 +7,12 @@ from testify import assert_between
 from testify import assert_dict_subset
 from testify import assert_equal
 from testify import assert_not_reached
-from testify.utils import stringdiffer
-
-
-def create_expected_string(string):
-    highlight = stringdiffer.HighlightMarker()
-    return string.format(
-        start=highlight.start,
-        end=highlight.end
-    )
 
 
 class DiffMessageTestCase(TestCase):
 
     def test_shows_string_diffs(self):
-        expected = create_expected_string('Diff:\nl: abc{start}{end}\nr: abc{start}def{end}')
+        expected = 'Diff:\nl: abc<>\nr: abc<def>'
         diff_message = assertions._diff_message('abc', 'abcdef')
         assert_equal(expected, diff_message)
 
@@ -32,7 +23,7 @@ class DiffMessageTestCase(TestCase):
         class AbcDefRepr(object):
             __repr__ = lambda self: 'abcdef'
 
-        expected = create_expected_string('Diff:\nl: abc{start}{end}\nr: abc{start}def{end}')
+        expected = 'Diff:\nl: abc<>\nr: abc<def>'
         diff_message = assertions._diff_message(AbcRepr(), AbcDefRepr())
         assert_equal(expected, diff_message)
 
@@ -55,14 +46,13 @@ class AssertBetweenTestCase(TestCase):
 class AssertEqualTestCase(TestCase):
 
     def test_shows_pretty_diff_output(self):
-        expected = create_expected_string(
+        expected = \
             'assertion failed: l == r\n' \
             "l: 'that reviewboard differ is awesome'\n" \
             "r: 'dat reviewboard differ is ozsom'\n\n" \
             'Diff:' \
-            '\nl: {start}th{end}at reviewboard differ is {start}awe{end}som{start}e{end}\n' \
-            'r: {start}d{end}at reviewboard differ is {start}oz{end}som{start}{end}'
-        )
+            '\nl: <th>at reviewboard differ is <awe>som<e>\n' \
+            'r: <d>at reviewboard differ is <oz>som<>'
 
         try:
             assert_equal('that reviewboard differ is awesome',
