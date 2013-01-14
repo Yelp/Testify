@@ -37,10 +37,10 @@ class TestTextLoggerDiscoveryFailureTestCase(BrokenImportTestCase):
 class ColorlessTextTestLoggerTestCase(TestCase):
 
     class MockOptionsColor(object):
-        no_color = False
+        disable_color = False
 
     class MockOptionsNoColor(object):
-        no_color = True
+        disable_color = True
 
     def test_highlight_marker(self):
         ColorlessTextTestLogger(self.MockOptionsColor())
