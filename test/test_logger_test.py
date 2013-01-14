@@ -226,10 +226,10 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
 class ColorlessTextTestLoggerTestCase(TestCase):
 
     class MockOptionsColor(object):
-        disable_color = False
+        no_color = False
 
     class MockOptionsNoColor(object):
-        disable_color = True
+        no_color = True
 
     def test_highlight_marker(self):
         ColorlessTextTestLogger(self.MockOptionsColor())
