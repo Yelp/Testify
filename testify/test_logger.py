@@ -256,7 +256,7 @@ class ColorlessTextTestLogger(TextTestLogger):
         passed to TestRunner.
         """
         super(TextTestLogger, self).__init__(options, stream)
-        HighlightMarker.color = not options.disable_color
+        HighlightMarker.color = not options.no_color
 
     def _colorize(self, message, color=None):
         return message
