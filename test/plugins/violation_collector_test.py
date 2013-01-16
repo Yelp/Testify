@@ -124,16 +124,21 @@ class HelperFunctionsTestCase(T.TestCase):
 
     def test_writeln_with_verbosity_silent(self):
         with mocked_ctx() as mctx:
+            # when ctx.output_verbosity is defined as silent and we
+            # want to write a message in in VERBOSITY_SILENT, we
+            # should still see the message.
+            verbosity = T.test_logger.VERBOSITY_SILENT
             mctx.output_verbosity = T.test_logger.VERBOSITY_SILENT
             msg = "test message"
 
-            writeln(msg)
+            writeln(msg, verbosity)
 
             mctx.output_stream.write.assert_called_with(msg + "\n")
             assert mctx.output_stream.flush.called
 
     def test_writeln_with_verbosity_verbose(self):
         with mocked_ctx() as mctx:
+            # should see verbose messages in a verbose context.
             verbosity = T.test_logger.VERBOSITY_VERBOSE
             msg = "test message"
             mctx.output_verbosity = verbosity
@@ -142,6 +147,17 @@ class HelperFunctionsTestCase(T.TestCase):
 
             mctx.output_stream.write.assert_called_with(msg + "\n")
             assert mctx.output_stream.flush.called
+
+    def test_writeln_with_verbosity_verbose_in_silent_context(self):
+        with mocked_ctx() as mctx:
+            # when the context is defined as silent, verbose level
+            # messages should be ignored.
+            mctx.output_verbosity = T.test_logger.VERBOSITY_SILENT
+            msg = "test message"
+
+            writeln(msg, T.test_logger.VERBOSITY_VERBOSE)
+
+            T.assert_equal(mctx.output_stream.flush.called, False)
 
 
 class ViolationReporterTestCase(T.TestCase):
