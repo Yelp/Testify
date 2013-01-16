@@ -2,6 +2,7 @@ import contextlib
 import os
 import socket
 import tempfile
+import time
 
 catbox = None
 try:
@@ -82,9 +83,19 @@ class HelperFunctionsTestCase(T.TestCase):
 
     def test_collect(self):
         with mocked_ctx() as mock_ctx:
-            collect("fake_violation1", "", "")
+            fake_time = 10
+            with mock.patch.object(time, 'time', return_value=fake_time):
+                fake_violation = "fake_violation1"
+                fake_resolved_path = "fake_resolved_path"
+                collect(fake_violation, "", fake_resolved_path)
 
-            assert mock_ctx.store.add_violation.called
+                fake_violation_data = {
+                    'syscall': fake_violation,
+                    'syscall_args': fake_resolved_path,
+                    'start_time': fake_time
+                }
+                mock_ctx.store.add_violation.assert_called_with(fake_violation_data)
+
 
     def test_run_in_catbox(self):
         with mock.patch('testify.plugins.violation_collector.catbox') as mock_catbox:
