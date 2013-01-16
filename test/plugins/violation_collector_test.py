@@ -26,7 +26,7 @@ from testify.plugins.violation_collector import ViolationReporter
 from testify.plugins.violation_collector import ViolationStore
 
 @contextlib.contextmanager
-def mocked_ctx(verbosity=None):
+def mocked_ctx():
     with mock.patch('testify.plugins.violation_collector.ctx') as mock_ctx:
         yield mock_ctx
 
