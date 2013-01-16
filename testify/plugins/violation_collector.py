@@ -67,8 +67,6 @@ def run_in_catbox(method, logger, paths):
     violations by syscalls if the syscall is call writing to a path in
     the writable paths list.
     '''
-    if not catbox: return method()
-
     return catbox.run(
         method,
         collect_only=True,
