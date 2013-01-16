@@ -82,8 +82,6 @@ class HelperFunctionsTestCase(T.TestCase):
 
     def test_collect(self):
         with mocked_ctx() as mock_ctx:
-            mock_ctx.collector.get_violator.return_value = "fake_class1,fake_method1,tests.fake_module1"
-
             collect("fake_violation1", "", "")
 
             assert mock_ctx.store.add_violation.called
