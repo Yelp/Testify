@@ -81,7 +81,7 @@ class HelperFunctionsTestCase(T.TestCase):
         T.assert_equal(cleandict(dirty_dict, allowed_keys=['a']), clean_dict)
 
     def test_collect(self):
-        with mock.patch('testify.plugins.violation_collector.ctx') as mock_ctx:
+        with mocked_ctx() as mock_ctx:
             mock_ctx.collector.get_violator.return_value = "fake_class1,fake_method1,tests.fake_module1"
 
             collect("fake_violation1", "", "")
