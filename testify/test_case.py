@@ -425,6 +425,10 @@ class TestCase(object):
         for test_method in self.runnable_test_methods():
 
             result = TestResult(test_method)
+            # Sometimes, test cases want to take further action based on
+            # results, e.g. further clean-up or reporting if a test method
+            # fails. (Yelp's Selenium test cases do this.)
+            test_method.im_self.test_result = result
 
             try:
                 self._method_level = True # Flag that we're currently running method-level stuff (rather than class-level)
