@@ -14,8 +14,6 @@
 
 import hashlib
 import logging
-import sqlalchemy as SA
-from testify import test_reporter
 
 try:
     import simplejson as json
@@ -28,6 +26,14 @@ import yaml
 import time
 import threading
 import Queue
+
+SA = None
+try:
+    import sqlalchemy as SA
+except ImportError:
+    pass
+
+from testify import test_reporter
 
 metadata = SA.MetaData()
 
@@ -309,6 +315,9 @@ def add_command_line_options(parser):
 
 def build_test_reporters(options):
     if options.reporting_db_config or options.reporting_db_url:
+        if not SA:
+            msg = 'SQL Reporter plugin requires sqlalchemy and you do not have it installed in your PYTHONPATH.\n'
+            raise Exception, msg
         return [SQLReporter(options)]
     else:
         return []

@@ -12,7 +12,12 @@ try:
     import catbox
 except ImportError:
     pass
-import sqlalchemy as SA
+
+SA = None
+try:
+    import sqlalchemy as SA
+except ImportError:
+    pass
 import yaml
 
 from testify import test_reporter
@@ -371,6 +376,9 @@ def prepare_test_program(options, program):
 def build_test_reporters(options):
     global ctx
     if options.catbox_violations:
+        if not sys.platform.startswith('linux'):
+            msg = 'Violation collection plugin is Linux-specific. Please either run your tests on Linux or disable the plugin.'
+            raise Exception, msg
         msg_pcre = '\nhttps://github.com/Yelp/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
         if not catbox:
             msg = 'Violation collection requires catbox and you do not have it installed in your PYTHONPATH.\n'
@@ -379,6 +387,9 @@ def build_test_reporters(options):
         if catbox and not catbox.has_pcre():
             msg = 'Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support.'
             msg += msg_pcre
+            raise Exception, msg
+        if not SA:
+            msg = 'Violation collection requires sqlalchemy and you do not have it installed in your PYTHONPATH.\n'
             raise Exception, msg
         return [ViolationReporter(options, ctx.store)]
     return []
