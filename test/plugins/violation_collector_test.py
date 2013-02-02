@@ -314,7 +314,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
         if not catbox:
             msg = 'Violation collection pipeline tests require catbox.\n'
             msg_pcre = 'https://github.com/Yelp/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
-            raise Exception, msg + msg_pcre
+            raise ImportError, msg + msg_pcre
 
         with sqlite_store() as store:
             with mocked_reporter(store) as reporter:
