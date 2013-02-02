@@ -34,17 +34,23 @@ def mocked_ctx():
 
 @contextlib.contextmanager
 def mocked_store():
+    def mock_init_database(obj):
+        obj.metadata = mock.MagicMock()
+        obj.Violations = mock.MagicMock()
+        obj.Tests = mock.MagicMock()
+
     with mock.patch('testify.plugins.violation_collector.SA'):
         mock_options = mock.Mock()
         mock_options.violation_dburl = "fake db url"
         mock_options.build_info = None
 
-        with contextlib.nested(
-            mock.patch.object(ViolationStore, 'metadata'),
-            mock.patch.object(ViolationStore, 'Violations'),
-            mock.patch.object(ViolationStore, 'Tests'),
-        ):
-            yield ViolationStore(mock_options)
+        # we're doing our own method paching here because
+        # mock.patch.object's side_effect functions are not passed in
+        # the object.
+        original_init_database = ViolationStore.init_database
+        ViolationStore.init_database = mock_init_database
+        yield ViolationStore(mock_options)
+        ViolationStore.init_database = original_init_database
 
 
 @contextlib.contextmanager

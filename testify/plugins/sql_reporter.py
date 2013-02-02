@@ -49,9 +49,10 @@ class SQLReporter(test_reporter.TestReporter):
             'pool_recycle' : 3600,
         })
 
+        self.init_database()
         self.engine = SA.create_engine(dburl, **create_engine_opts)
         self.conn = self.engine.connect()
-        metadata.create_all(self.engine)
+        self.metadata.create_all(self.engine)
 
         self.build_id = self.create_build_row(options.build_info)
         self.start_time = time.time()
@@ -59,7 +60,7 @@ class SQLReporter(test_reporter.TestReporter):
         # Cache of (module,class_name,method_name) => test id
         self.test_id_cache = dict(
                 ((row[self.Tests.c.module], row[self.Tests.c.class_name], row[self.tests.c.method_name]), row[self.tests.c.id])
-                for row in self.conn.execute(self.tests.select())
+                for row in self.conn.execute(self.Tests.select())
             )
 
         self.result_queue = Queue.Queue()
@@ -75,9 +76,9 @@ class SQLReporter(test_reporter.TestReporter):
         super(SQLReporter, self).__init__(options, *args, **kwargs)
 
     def init_database(self):
-        metadata = SA.MetaData()
+        self.metadata = SA.MetaData()
 
-        self.Tests = SA.Table('tests', metadata,
+        self.Tests = SA.Table('tests', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
             SA.Column('module', SA.String(255)),
             SA.Column('class_name', SA.String(255)),
@@ -85,14 +86,14 @@ class SQLReporter(test_reporter.TestReporter):
         )
         SA.Index('ix_individual_test', self.Tests.c.module, self.Tests.c.class_name, self.Tests.c.method_name, unique=True)
 
-        self.Failures = SA.Table('failures', metadata,
+        self.Failures = SA.Table('failures', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
             SA.Column('error', SA.Text, nullable=False),
             SA.Column('traceback', SA.Text, nullable=False),
             SA.Column('hash', SA.String(40), unique=True, nullable=False),
         )
 
-        self.Builds = SA.Table('builds', metadata,
+        self.Builds = SA.Table('builds', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
             SA.Column('buildbot', SA.Integer, nullable=False),
             SA.Column('buildnumber', SA.Integer, nullable=False),
@@ -107,7 +108,7 @@ class SQLReporter(test_reporter.TestReporter):
         )
         SA.Index('ix_individual_run', self.Builds.c.buildbot, self.Builds.c.buildname, self.Builds.c.buildnumber, self.Builds.c.revision, unique=True)
 
-        self.TestResults = SA.Table('test_results', metadata,
+        self.TestResults = SA.Table('test_results', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
             SA.Column('test', SA.Integer, index=True, nullable=False),
             SA.Column('failure', SA.Integer, index=True),
@@ -194,28 +195,28 @@ class SQLReporter(test_reporter.TestReporter):
             }
 
         def get_test_id(module, class_name, method_name):
-            """Get the ID of the self.tests row that corresponds to this test. If the row doesn't exist, insert one"""
+            """Get the ID of the self.Tests row that corresponds to this test. If the row doesn't exist, insert one"""
 
             cached_result = self.test_id_cache.get((module, class_name, method_name), None)
             if cached_result is not None:
                 return cached_result
 
             query = SA.select(
-                [self.tests.c.id],
+                [self.Tests.c.id],
                 SA.and_(
-                    self.tests.c.module == module,
-                    self.tests.c.class_name == class_name,
-                    self.tests.c.method_name == method_name,
+                    self.Tests.c.module == module,
+                    self.Tests.c.class_name == class_name,
+                    self.Tests.c.method_name == method_name,
                 )
             )
 
-            # Most of the time, the self.tests row will already exist for this test (it's been run before.)
+            # Most of the time, the self.Tests row will already exist for this test (it's been run before.)
             row = conn.execute(query).fetchone()
             if row:
-                return row[self.tests.c.id]
+                return row[self.Tests.c.id]
             else:
                 # Not there (this test hasn't been run before); create it
-                results = conn.execute(self.tests.insert({
+                results = conn.execute(self.Tests.insert({
                     'module' : module,
                     'class_name' : class_name,
                     'method_name' : method_name,

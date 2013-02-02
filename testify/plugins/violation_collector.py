@@ -125,6 +125,8 @@ class ViolationStore(object):
         else:
             self.info = {'branch': '', 'revision': '', 'submitstamp': time.time()}
 
+        self.init_database()
+
         if is_sqlite_filepath(self.dburl):
             if self.dburl.find(':memory:') > -1:
                 raise ValueError('Can not use sqlite memory database for ViolationStore')
@@ -138,10 +140,10 @@ class ViolationStore(object):
         self.engine, self.conn = self._connect_db()
 
     def init_database(self):
-        metadata = SA.MetaData()
+        self.metadata = SA.MetaData()
 
         self.Violations = SA.Table(
-            'catbox_violations', metadata,
+            'catbox_violations', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
             SA.Column('test_id', SA.Integer, index=True, nullable=False),
             SA.Column('syscall', SA.String(20), nullable=False),
@@ -150,7 +152,7 @@ class ViolationStore(object):
         )
 
         self.Tests = SA.Table(
-            'catbox_tests', metadata,
+            'catbox_tests', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
             SA.Column('branch', SA.Text),
             SA.Column('revision', SA.Text),

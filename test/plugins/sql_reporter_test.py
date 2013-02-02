@@ -18,7 +18,7 @@ except ImportError:
 from test.discovery_failure_test import BrokenImportTestCase
 from test.test_logger_test import ExceptionInClassFixtureSampleTests
 from testify import TestCase, assert_equal, assert_gt, assert_in,  assert_in_range, setup_teardown
-from testify.plugins.sql_reporter import add_command_line_options
+from testify.plugins.sql_reporter import add_command_line_options, SQLReporter
 from testify.test_result import TestResult
 from testify.test_runner import TestRunner
 
@@ -68,7 +68,7 @@ class SQLReporterBaseTestCase(TestCase):
         """Return a list of tests and their results from SA connection `conn`."""
         return list(conn.execute(SA.select(
             columns=self.reporter.TestResults.columns + self.reporter.Tests.columns,
-            from_obj=TestResults.join(self.reporter.Tests, self.reporter.TestResults.c.test == self.reporter.Tests.c.id)
+            from_obj=self.reporter.TestResults.join(self.reporter.Tests, self.reporter.TestResults.c.test == self.reporter.Tests.c.id)
         )))
 
 
@@ -135,7 +135,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         conn = self.reporter.conn
 
         test_case = DummyTestCase()
-        results = [self.reporter.TestResult(test_case.test_pass) for _ in xrange(3)]
+        results = [TestResult(test_case.test_pass) for _ in xrange(3)]
 
         previous_run = None
         for result in results:
@@ -162,7 +162,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         conn = self.reporter.conn
 
         test_case = DummyTestCase()
-        result = self.reporter.TestResult(test_case.test_fail)
+        result = TestResult(test_case.test_fail)
         result.start()
         result.end_in_failure((type(AssertionError), AssertionError('A' * 200), None))
 
@@ -244,7 +244,7 @@ class SQLReporterTestCompleteIgnoresResultsForRun(SQLReporterBaseTestCase):
         assert_equal(self.reporter.result_queue.qsize(), 0)
 
         test_case = DummyTestCase()
-        fake_test_result = self.reporter.TestResult(test_case.run)
+        fake_test_result = TestResult(test_case.run)
         self.reporter.test_complete(fake_test_result.to_dict())
 
         assert_equal(self.reporter.result_queue.qsize(), 0)
