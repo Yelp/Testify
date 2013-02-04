@@ -14,8 +14,6 @@
 
 import hashlib
 import logging
-import sqlalchemy as SA
-from testify import test_reporter
 
 try:
     import simplejson as json
@@ -29,55 +27,20 @@ import time
 import threading
 import Queue
 
-metadata = SA.MetaData()
+SA = None
+try:
+    import sqlalchemy as SA
+except ImportError:
+    pass
 
-Tests = SA.Table('tests', metadata,
-    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-    SA.Column('module', SA.String(255)),
-    SA.Column('class_name', SA.String(255)),
-    SA.Column('method_name', SA.String(255)),
-)
-SA.Index('ix_individual_test', Tests.c.module, Tests.c.class_name, Tests.c.method_name, unique=True)
-
-Failures = SA.Table('failures', metadata,
-    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-    SA.Column('error', SA.Text, nullable=False),
-    SA.Column('traceback', SA.Text, nullable=False),
-    SA.Column('hash', SA.String(40), unique=True, nullable=False),
-)
-
-Builds = SA.Table('builds', metadata,
-    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-    SA.Column('buildbot', SA.Integer, nullable=False),
-    SA.Column('buildnumber', SA.Integer, nullable=False),
-    SA.Column('buildname', SA.String(40), nullable=False),
-    SA.Column('branch', SA.String(255), index=True, nullable=False),
-    SA.Column('revision', SA.String(40), index=True, nullable=False),
-    SA.Column('end_time', SA.Integer, index=True, nullable=True),
-    SA.Column('run_time', SA.Float, nullable=True),
-    SA.Column('method_count', SA.Integer, nullable=True),
-    SA.Column('submit_time', SA.Integer, index=True, nullable=True),
-    SA.Column('discovery_failure', SA.Boolean, default=False, nullable=True),
-)
-SA.Index('ix_individual_run', Builds.c.buildbot, Builds.c.buildname, Builds.c.buildnumber, Builds.c.revision, unique=True)
-
-TestResults = SA.Table('test_results', metadata,
-    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-    SA.Column('test', SA.Integer, index=True, nullable=False),
-    SA.Column('failure', SA.Integer, index=True),
-    SA.Column('build', SA.Integer, index=True, nullable=False),
-    SA.Column('end_time', SA.Integer, index=True, nullable=False),
-    SA.Column('run_time', SA.Float, index=True, nullable=False),
-    SA.Column('runner_id', SA.String(255), index=True, nullable=True),
-    SA.Column('previous_run', SA.Integer, index=False, nullable=True),
-)
-SA.Index('ix_build_test_failure', TestResults.c.build, TestResults.c.test, TestResults.c.failure)
+from testify import test_reporter
 
 def md5(s):
     return hashlib.md5(s.encode('utf8') if isinstance(s, unicode) else s).hexdigest()
 
 
 class SQLReporter(test_reporter.TestReporter):
+
     def __init__(self, options, *args, **kwargs):
         dburl = options.reporting_db_url or SA.engine.url.URL(**yaml.safe_load(open(options.reporting_db_config)))
 
@@ -86,17 +49,18 @@ class SQLReporter(test_reporter.TestReporter):
             'pool_recycle' : 3600,
         })
 
+        self.init_database()
         self.engine = SA.create_engine(dburl, **create_engine_opts)
         self.conn = self.engine.connect()
-        metadata.create_all(self.engine)
+        self.metadata.create_all(self.engine)
 
         self.build_id = self.create_build_row(options.build_info)
         self.start_time = time.time()
 
         # Cache of (module,class_name,method_name) => test id
         self.test_id_cache = dict(
-                ((row[Tests.c.module], row[Tests.c.class_name], row[Tests.c.method_name]), row[Tests.c.id])
-                for row in self.conn.execute(Tests.select())
+                ((row[self.Tests.c.module], row[self.Tests.c.class_name], row[self.Tests.c.method_name]), row[self.Tests.c.id])
+                for row in self.conn.execute(self.Tests.select())
             )
 
         self.result_queue = Queue.Queue()
@@ -111,11 +75,57 @@ class SQLReporter(test_reporter.TestReporter):
 
         super(SQLReporter, self).__init__(options, *args, **kwargs)
 
+    def init_database(self):
+        self.metadata = SA.MetaData()
+
+        self.Tests = SA.Table('tests', self.metadata,
+            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('module', SA.String(255)),
+            SA.Column('class_name', SA.String(255)),
+            SA.Column('method_name', SA.String(255)),
+        )
+        SA.Index('ix_individual_test', self.Tests.c.module, self.Tests.c.class_name, self.Tests.c.method_name, unique=True)
+
+        self.Failures = SA.Table('failures', self.metadata,
+            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('error', SA.Text, nullable=False),
+            SA.Column('traceback', SA.Text, nullable=False),
+            SA.Column('hash', SA.String(40), unique=True, nullable=False),
+        )
+
+        self.Builds = SA.Table('builds', self.metadata,
+            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('buildbot', SA.Integer, nullable=False),
+            SA.Column('buildnumber', SA.Integer, nullable=False),
+            SA.Column('buildname', SA.String(40), nullable=False),
+            SA.Column('branch', SA.String(255), index=True, nullable=False),
+            SA.Column('revision', SA.String(40), index=True, nullable=False),
+            SA.Column('end_time', SA.Integer, index=True, nullable=True),
+            SA.Column('run_time', SA.Float, nullable=True),
+            SA.Column('method_count', SA.Integer, nullable=True),
+            SA.Column('submit_time', SA.Integer, index=True, nullable=True),
+            SA.Column('discovery_failure', SA.Boolean, default=False, nullable=True),
+        )
+        SA.Index('ix_individual_run', self.Builds.c.buildbot, self.Builds.c.buildname, self.Builds.c.buildnumber, self.Builds.c.revision, unique=True)
+
+        self.TestResults = SA.Table('test_results', self.metadata,
+            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('test', SA.Integer, index=True, nullable=False),
+            SA.Column('failure', SA.Integer, index=True),
+            SA.Column('build', SA.Integer, index=True, nullable=False),
+            SA.Column('end_time', SA.Integer, index=True, nullable=False),
+            SA.Column('run_time', SA.Float, index=True, nullable=False),
+            SA.Column('runner_id', SA.String(255), index=True, nullable=True),
+            SA.Column('previous_run', SA.Integer, index=False, nullable=True),
+        )
+        SA.Index('ix_build_test_failure', self.TestResults.c.build, self.TestResults.c.test, self.TestResults.c.failure)
+
+
     def create_build_row(self, build_info):
         if not build_info:
             raise ValueError("Build info must be specified when reporting to a database.")
         info_dict = json.loads(build_info)
-        results = self.conn.execute(Builds.insert({
+        results = self.conn.execute(self.Builds.insert({
             'buildbot' : info_dict['buildbot'],
             'buildnumber' : info_dict['buildnumber'],
             'branch' : info_dict['branch'],
@@ -127,8 +137,8 @@ class SQLReporter(test_reporter.TestReporter):
 
     def test_counts(self, test_case_count, test_method_count):
         """Store the number of tests so we can determine progress."""
-        self.conn.execute(SA.update(Builds,
-            whereclause=(Builds.c.id == self.build_id),
+        self.conn.execute(SA.update(self.Builds,
+            whereclause=(self.Builds.c.id == self.build_id),
             values={
                 'method_count' : test_method_count,
             }
@@ -149,8 +159,8 @@ class SQLReporter(test_reporter.TestReporter):
 
     def test_discovery_failure(self, exc):
         """Set the discovery_failure flag to True and method_count to 0."""
-        self.conn.execute(SA.update(Builds,
-            whereclause=(Builds.c.id == self.build_id),
+        self.conn.execute(SA.update(self.Builds,
+            whereclause=(self.Builds.c.id == self.build_id),
             values={
                 'discovery_failure' : True,
                 'method_count' : 0,
@@ -172,7 +182,7 @@ class SQLReporter(test_reporter.TestReporter):
 
     def report_results(self):
         """A worker func that runs in another thread and reports results to the database.
-        Create a TestResults row from a test result dict. Also inserts the previous_run row."""
+        Create a self.TestResults row from a test result dict. Also inserts the previous_run row."""
         def create_row_to_insert(result, previous_run_id=None):
             return {
                 'test' : get_test_id(result['method']['module'], result['method']['class'], result['method']['name']),
@@ -185,28 +195,28 @@ class SQLReporter(test_reporter.TestReporter):
             }
 
         def get_test_id(module, class_name, method_name):
-            """Get the ID of the Tests row that corresponds to this test. If the row doesn't exist, insert one"""
+            """Get the ID of the self.Tests row that corresponds to this test. If the row doesn't exist, insert one"""
 
             cached_result = self.test_id_cache.get((module, class_name, method_name), None)
             if cached_result is not None:
                 return cached_result
 
             query = SA.select(
-                [Tests.c.id],
+                [self.Tests.c.id],
                 SA.and_(
-                    Tests.c.module == module,
-                    Tests.c.class_name == class_name,
-                    Tests.c.method_name == method_name,
+                    self.Tests.c.module == module,
+                    self.Tests.c.class_name == class_name,
+                    self.Tests.c.method_name == method_name,
                 )
             )
 
-            # Most of the time, the Tests row will already exist for this test (it's been run before.)
+            # Most of the time, the self.Tests row will already exist for this test (it's been run before.)
             row = conn.execute(query).fetchone()
             if row:
-                return row[Tests.c.id]
+                return row[self.Tests.c.id]
             else:
                 # Not there (this test hasn't been run before); create it
-                results = conn.execute(Tests.insert({
+                results = conn.execute(self.Tests.insert({
                     'module' : module,
                     'class_name' : class_name,
                     'method_name' : method_name,
@@ -225,15 +235,15 @@ class SQLReporter(test_reporter.TestReporter):
             exc_hash = md5(traceback)
 
             query = SA.select(
-                [Failures.c.id],
-                Failures.c.hash == exc_hash,
+                [self.Failures.c.id],
+                self.Failures.c.hash == exc_hash,
             )
             row = conn.execute(query).fetchone()
             if row:
-                return row[Failures.c.id]
+                return row[self.Failures.c.id]
             else:
                 # We haven't inserted this row yet; insert it and re-query.
-                results = conn.execute(Failures.insert({
+                results = conn.execute(self.Failures.insert({
                     'hash' : exc_hash,
                     'error' : error,
                     'traceback': traceback,
@@ -243,7 +253,7 @@ class SQLReporter(test_reporter.TestReporter):
         def insert_single_run(result):
             """Recursively insert a run and its previous runs."""
             previous_run_id = insert_single_run(result['previous_run']) if result['previous_run'] else None
-            results = conn.execute(TestResults.insert(create_row_to_insert(result, previous_run_id=previous_run_id)))
+            results = conn.execute(self.TestResults.insert(create_row_to_insert(result, previous_run_id=previous_run_id)))
             return results.lastrowid
 
         conn = self.engine.connect()
@@ -272,7 +282,7 @@ class SQLReporter(test_reporter.TestReporter):
 
             for chunk in chunks:
                 try:
-                    conn.execute(TestResults.insert(),
+                    conn.execute(self.TestResults.insert(),
                         [create_row_to_insert(result, result.get('previous_run_id', None)) for result in chunk]
                     )
                 except Exception, e:
@@ -287,8 +297,8 @@ class SQLReporter(test_reporter.TestReporter):
     def report(self):
         self.end_time = time.time()
         self.result_queue.join()
-        query = SA.update(Builds,
-            whereclause=(Builds.c.id == self.build_id),
+        query = SA.update(self.Builds,
+            whereclause=(self.Builds.c.id == self.build_id),
             values={
                 'end_time' : self.end_time,
                 'run_time' : self.end_time - self.start_time,
@@ -309,8 +319,10 @@ def add_command_line_options(parser):
 
 def build_test_reporters(options):
     if options.reporting_db_config or options.reporting_db_url:
+        if not SA:
+            msg = 'SQL Reporter plugin requires sqlalchemy and you do not have it installed in your PYTHONPATH.\n'
+            raise ImportError, msg
         return [SQLReporter(options)]
-    else:
-        return []
+    return []
 
 # vim: set ts=4 sts=4 sw=4 et:
