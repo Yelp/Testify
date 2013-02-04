@@ -59,7 +59,7 @@ class SQLReporter(test_reporter.TestReporter):
 
         # Cache of (module,class_name,method_name) => test id
         self.test_id_cache = dict(
-                ((row[self.Tests.c.module], row[self.Tests.c.class_name], row[self.tests.c.method_name]), row[self.tests.c.id])
+                ((row[self.Tests.c.module], row[self.Tests.c.class_name], row[self.Tests.c.method_name]), row[self.Tests.c.id])
                 for row in self.conn.execute(self.Tests.select())
             )
 
