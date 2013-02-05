@@ -12,7 +12,12 @@ try:
     import catbox
 except ImportError:
     pass
-import sqlalchemy as SA
+
+SA = None
+try:
+    import sqlalchemy as SA
+except ImportError:
+    pass
 import yaml
 
 from testify import test_reporter
@@ -108,29 +113,6 @@ def collect(syscall, path, resolved_path):
 
 
 class ViolationStore(object):
-    metadata = SA.MetaData()
-    
-    Violations = SA.Table(
-        'catbox_violations', metadata,
-        SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-        SA.Column('test_id', SA.Integer, index=True, nullable=False),
-        SA.Column('syscall', SA.String(20), nullable=False),
-        SA.Column('syscall_args', SA.Text, nullable=True),
-        SA.Column('start_time', SA.Integer),
-    )
-    
-    Tests = SA.Table(
-        'catbox_tests', metadata,
-        SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-        SA.Column('branch', SA.Text),
-        SA.Column('revision', SA.Text),
-        SA.Column('submitstamp', SA.Integer),
-        SA.Column('start_time', SA.Integer),
-        SA.Column('module', SA.Text, nullable=False),
-        SA.Column('class_name', SA.Text, nullable=False),
-        SA.Column('method_name', SA.Text, nullable=False),
-    )
-
     TEST_ID_DESC_END = ','
     MAX_TEST_ID_LINE = 1024 * 10
 
@@ -143,6 +125,8 @@ class ViolationStore(object):
         else:
             self.info = {'branch': '', 'revision': '', 'submitstamp': time.time()}
 
+        self.init_database()
+
         if is_sqlite_filepath(self.dburl):
             if self.dburl.find(':memory:') > -1:
                 raise ValueError('Can not use sqlite memory database for ViolationStore')
@@ -154,6 +138,30 @@ class ViolationStore(object):
         self._setup_pipe()
 
         self.engine, self.conn = self._connect_db()
+
+    def init_database(self):
+        self.metadata = SA.MetaData()
+
+        self.Violations = SA.Table(
+            'catbox_violations', self.metadata,
+            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('test_id', SA.Integer, index=True, nullable=False),
+            SA.Column('syscall', SA.String(20), nullable=False),
+            SA.Column('syscall_args', SA.Text, nullable=True),
+            SA.Column('start_time', SA.Integer),
+        )
+
+        self.Tests = SA.Table(
+            'catbox_tests', self.metadata,
+            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('branch', SA.Text),
+            SA.Column('revision', SA.Text),
+            SA.Column('submitstamp', SA.Integer),
+            SA.Column('start_time', SA.Integer),
+            SA.Column('module', SA.Text, nullable=False),
+            SA.Column('class_name', SA.Text, nullable=False),
+            SA.Column('method_name', SA.Text, nullable=False),
+        )
 
     def _setup_pipe(self):
         """Setup a pipe to enable communication between parent and
@@ -355,6 +363,22 @@ def add_command_line_options(parser):
 def prepare_test_program(options, program):
     global ctx
     if options.catbox_violations:
+        if not sys.platform.startswith('linux'):
+            msg = 'Violation collection plugin is Linux-specific. Please either run your tests on Linux or disable the plugin.'
+            raise Exception, msg
+        msg_pcre = '\nhttps://github.com/Yelp/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
+        if not catbox:
+            msg = 'Violation collection requires catbox and you do not have it installed in your PYTHONPATH.\n'
+            msg += msg_pcre
+            raise ImportError, msg
+        if catbox and not catbox.has_pcre():
+            msg = 'Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support.'
+            msg += msg_pcre
+            raise ImportError, msg
+        if not SA:
+            msg = 'Violation collection requires sqlalchemy and you do not have it installed in your PYTHONPATH.\n'
+            raise ImportError, msg
+
         ctx.output_stream = sys.stderr # TODO: Use logger?
         ctx.output_verbosity = options.verbosity
         ctx.store = ViolationStore(options)
@@ -371,14 +395,5 @@ def prepare_test_program(options, program):
 def build_test_reporters(options):
     global ctx
     if options.catbox_violations:
-        msg_pcre = '\nhttps://github.com/Yelp/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
-        if not catbox:
-            msg = 'Violation collection requires catbox and you do not have it installed in your PYTHONPATH.\n'
-            msg += msg_pcre
-            raise Exception, msg
-        if catbox and not catbox.has_pcre():
-            msg = 'Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support.'
-            msg += msg_pcre
-            raise Exception, msg
         return [ViolationReporter(options, ctx.store)]
     return []
