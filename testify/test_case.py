@@ -625,7 +625,7 @@ def suite(*args, **kwargs):
         if not hasattr(function, '_suites'):
             function._suites = set()
         if args and (conditions is None or bool(conditions) is True):
-            function._suites.update(set(args))
+            function._suites = set(function._suites) | set(args)
             if reason:
                 if not hasattr(function, '_suite_reasons'):
                     function._suite_reasons = []
