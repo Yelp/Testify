@@ -2,6 +2,7 @@ import itertools
 import unittest
 
 from testify import assert_equal
+from testify import assert_not_equal
 from testify import class_setup
 from testify import class_setup_teardown
 from testify import class_teardown
@@ -12,6 +13,7 @@ from testify import setup_teardown
 from testify import teardown
 from testify import TestCase
 from testify import test_runner
+from testify import suite
 
 
 class TestMethodsGetRun(TestCase):
@@ -577,6 +579,36 @@ class TestCaseKeepsReferenceToResultsForTestMethod(TestCase):
     def test_reference_to_results(self):
         assert self.test_result
 
+
+class SuiteDecoratorTest(TestCase):
+
+    def test_suite_pollution_with_suites_attribute(self):
+        """Test if suite decorator modifies the object's attribute
+        objects instead of assigning a new object. Modifying _suite
+        attribute objects causes suite pollution in TestCases.
+
+        Here we test if the _suites attribute's id() remains the same
+        to verify suite decorator does not modify the object's
+        attribute object.
+        """
+
+        def function_to_decorate():
+            pass
+
+        function_to_decorate._suites = set(['fake_suite_1'])
+
+        suites_before_decoration = function_to_decorate._suites
+
+        function_to_decorate = suite('fake_suite_2')(function_to_decorate)
+
+        suites_after_decoration =  function_to_decorate._suites
+
+        assert_not_equal(
+            id(suites_before_decoration),
+            id(suites_after_decoration),
+            "suites decorator modifies the object's _suite attribute"
+        )
+        
 
 if __name__ == '__main__':
     run()
