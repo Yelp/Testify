@@ -3,6 +3,7 @@ import unittest
 
 from testify import assert_equal
 from testify import assert_not_equal
+from testify import assert_in
 from testify import class_setup
 from testify import class_setup_teardown
 from testify import class_teardown
@@ -608,7 +609,37 @@ class SuiteDecoratorTest(TestCase):
             id(suites_after_decoration),
             "suites decorator modifies the object's _suite attribute"
         )
+
+
+class FailingTeardownMethodsTest(TestCase):
+
+    def test_class_with_two_failing_teardown_methods(self):
+
+        class ClassWithTwoFailingTeardownMethods(TestCase):
+
+            methods_ran = []
+
+            def test_method(self):
+                self.methods_ran.append("test_method")
+                assert False
+
+            @teardown
+            def first_teardown(self):
+                self.methods_ran.append("first_teardown")
+                assert False
+
+            @teardown
+            def second_teardown(self):
+                self.methods_ran.append("second_teardown")
+                assert False
+
+        inner_test_case = ClassWithTwoFailingTeardownMethods()
+        inner_test_case.run()
         
+        assert_in("test_method", inner_test_case.methods_ran)
+        assert_in("first_teardown", inner_test_case.methods_ran)
+        assert_in("second_teardown", inner_test_case.methods_ran)
+
 
 if __name__ == '__main__':
     run()
