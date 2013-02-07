@@ -465,10 +465,8 @@ class TestCase(object):
 
                     # finally, run the teardown phase
                     self._stage = self.STAGE_TEARDOWN
-                    def _teardown_block():
-                        for fixture_method in self.teardown_fixtures:
-                            fixture_method()
-                    self.__execute_block_recording_exceptions(_teardown_block, result)
+                    for fixture_method in self.teardown_fixtures:
+                        self.__execute_block_recording_exceptions(fixture_method, result)
 
                 # if nothing's gone wrong, it's not about to start
                 if not result.complete:
