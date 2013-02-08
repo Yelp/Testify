@@ -711,6 +711,10 @@ class let(object):
             self._register_reset_after_test_completion(test_case)
         return self._result
 
+    def __set__(self, test_case, value):
+        self._save_result(value)
+        self._register_reset_after_test_completion(test_case)
+
     def _save_result(self, result):
         self._result = result
 
