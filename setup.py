@@ -5,7 +5,7 @@ except ImportError:
 
 setup(
     name="testify",
-    version="0.3.7",
+    version="0.3.8",
     provides=["testify"],
     author="Yelp",
     author_email="yelplabs@yelp.com",

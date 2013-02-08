@@ -1,3 +1,9 @@
+python-testify (0.3.8) lucid; urgency=low
+
+  * run all teardown methods of a test method. 
+
+ -- Baris Metin <bmetin@yelp.com>  Thu, 07 Feb 2013 16:45:40 -0800
+
 python-testify (0.3.7) lucid; urgency=low
 
   * fix suite pollution caused by @suite decorator.
