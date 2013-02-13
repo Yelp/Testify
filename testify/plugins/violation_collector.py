@@ -1,3 +1,4 @@
+import fcntl
 import itertools
 import json
 import logging
@@ -176,6 +177,8 @@ class ViolationStore(object):
         database).
         """
         self.test_id_read_fd, self.test_id_write_fd = os.pipe()
+
+        fcntl.fcntl(self.test_id_read_fd, fcntl.F_SETFL, os.O_NONBLOCK)
         self.epoll = select.epoll()
         self.epoll.register(self.test_id_read_fd, select.EPOLLIN | select.EPOLLET)
 
@@ -222,10 +225,11 @@ class ViolationStore(object):
             self.test_id_write_fd = None
 
         events = self.epoll.poll(.01)
-        if events:
-            read = os.read(events[0][0], self.MAX_TEST_ID_LINE)
-            if read:
-                self.last_test_id = self._parse_last_test_id(read)
+        for fileno, event in events:
+            if event == select.EPOLLIN:
+                read = os.read(fileno, self.MAX_TEST_ID_LINE)
+                if read:
+                    self.last_test_id = self._parse_last_test_id(read)
         return self.last_test_id
 
     def add_test(self, module, class_name, method_name):
