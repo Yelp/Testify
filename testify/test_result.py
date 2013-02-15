@@ -25,16 +25,20 @@ from testify.utils import inspection
 try:
     try:
         # IPython >= 0.11
-        from IPython.core.ultratb import ColorTB
-        _hush_pyflakes = [ColorTB]
+        from IPython.core.ultratb import ListTB
+        _hush_pyflakes = [ListTB]
         del _hush_pyflakes
     except ImportError:
         # IPython < 0.11
-        from IPython.ultraTB import ColorTB
+        from IPython.ultraTB import ListTB
 
-    fancy_tb_formatter = ColorTB().text
+    list_tb = ListTB(color_scheme='Linux')
+    def fancy_tb_formatter(etype, value, tb, length=None):
+        tb = traceback.extract_tb(tb, limit=length)
+        return list_tb.text(etype, value, tb, context=0)
 except ImportError:
     fancy_tb_formatter = None
+
 
 class TestResult(object):
     def __init__(self, test_method, runner_id=None):
