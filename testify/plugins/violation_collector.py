@@ -1,3 +1,4 @@
+import fcntl
 import itertools
 import json
 import logging
@@ -137,7 +138,7 @@ class ViolationStore(object):
         self.last_test_id = 0
         self._setup_pipe()
 
-        self.engine, self.conn = self._connect_db()
+        self.engine = self.conn = None
 
     def init_database(self):
         self.metadata = SA.MetaData()
@@ -176,6 +177,8 @@ class ViolationStore(object):
         database).
         """
         self.test_id_read_fd, self.test_id_write_fd = os.pipe()
+
+        fcntl.fcntl(self.test_id_read_fd, fcntl.F_SETFL, os.O_NONBLOCK)
         self.epoll = select.epoll()
         self.epoll.register(self.test_id_read_fd, select.EPOLLIN | select.EPOLLET)
 
@@ -222,13 +225,22 @@ class ViolationStore(object):
             self.test_id_write_fd = None
 
         events = self.epoll.poll(.01)
-        if events:
-            read = os.read(events[0][0], self.MAX_TEST_ID_LINE)
-            if read:
-                self.last_test_id = self._parse_last_test_id(read)
+        for fileno, event in events:
+            if event == select.EPOLLIN:
+                read = os.read(fileno, self.MAX_TEST_ID_LINE)
+                if read:
+                    self.last_test_id = self._parse_last_test_id(read)
         return self.last_test_id
 
     def add_test(self, module, class_name, method_name):
+        if self.engine is None and self.conn is None:
+            # We are in the traced child process and this is the first
+            # request to add a test to the database. We should create
+            # a connection for this process. Note that making the
+            # connection earlier would not work as the connection
+            # object would be shared by two processes and cause
+            # deadlock in mysql client library.
+            self.engine, self.conn = self._connect_db()
         try:
             testinfo = {
                 'module': module,
@@ -243,6 +255,14 @@ class ViolationStore(object):
             logging.error('Exception inserting testinfo: %r' % e)
 
     def add_violation(self, violation):
+        if self.engine is None and self.conn is None:
+            # We are in the parent process and this is the first
+            # request to add a violation to the database. We should
+            # create a connection for this process.
+            #
+            # As in add_test (see above), making the connection
+            # earlier would not work due due to deadlock issues.
+            self.engine, self.conn = self._connect_db()
         try:
             test_id = self.get_last_test_id()
             violation.update({'test_id': test_id})
