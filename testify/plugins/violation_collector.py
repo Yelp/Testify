@@ -138,7 +138,7 @@ class ViolationStore(object):
         self.last_test_id = 0
         self._setup_pipe()
 
-        self.engine, self.conn = self._connect_db()
+        self.engine = self.conn = None
 
     def init_database(self):
         self.metadata = SA.MetaData()
@@ -233,6 +233,8 @@ class ViolationStore(object):
         return self.last_test_id
 
     def add_test(self, module, class_name, method_name):
+        if self.engine is None and self.conn is None:
+            self.engine, self.conn = self._connect_db()
         try:
             testinfo = {
                 'module': module,
@@ -247,6 +249,8 @@ class ViolationStore(object):
             logging.error('Exception inserting testinfo: %r' % e)
 
     def add_violation(self, violation):
+        if self.engine is None and self.conn is None:
+            self.engine, self.conn = self._connect_db()
         try:
             test_id = self.get_last_test_id()
             violation.update({'test_id': test_id})

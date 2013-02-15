@@ -249,14 +249,15 @@ class ViolationStoreTestCase(T.TestCase):
 
     def test_connect(self):
         with mocked_store() as mock_store:
-            assert mock_store.engine.connect.called
-            assert mock_store.metadata.create_all.called
+            T.assert_equal(mock_store.engine, None)
+            T.assert_equal(mock_store.conn, None)
 
     def test_add_test(self):
         with mocked_store() as mock_store:
             mock_store._set_last_test_id = mock.Mock()
             mock_store.add_test("fake_module", "fake_class", "fake_method")
 
+            assert mock_store.engine.connect.called
             assert mock_store.conn.execute.called
             assert mock_store.Tests.insert.called
 
@@ -272,6 +273,8 @@ class ViolationStoreTestCase(T.TestCase):
             call_to_violation_update = fake_violation.update.call_args[0]
             first_arg_to_violation_update = call_to_violation_update[0]
             T.assert_equal(first_arg_to_violation_update, {'test_id': fake_test_id})
+
+            assert mock_store.engine.connect.called
             assert mock_store.conn.execute.called
             assert mock_store.Violations.insert.called
 
