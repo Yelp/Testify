@@ -234,6 +234,12 @@ class ViolationStore(object):
 
     def add_test(self, module, class_name, method_name):
         if self.engine is None and self.conn is None:
+            # We are in the traced child process and this is the first
+            # request to add a test to the database. We should create
+            # a connection for this process. Note that making the
+            # connection earlier would not work as the connection
+            # object would be shared by two processes and cause
+            # deadlock in mysql client library.
             self.engine, self.conn = self._connect_db()
         try:
             testinfo = {
@@ -250,6 +256,12 @@ class ViolationStore(object):
 
     def add_violation(self, violation):
         if self.engine is None and self.conn is None:
+            # We are in the parent process and this is the first
+            # request to add a violation to the database. We should
+            # create a connection for this process.
+            #
+            # As in add_test (see above), making the connection
+            # earlier would not work due due to deadlock issues.
             self.engine, self.conn = self._connect_db()
         try:
             test_id = self.get_last_test_id()

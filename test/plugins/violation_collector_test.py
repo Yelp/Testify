@@ -247,7 +247,7 @@ class ViolationReporterTestCase(T.TestCase):
 
 class ViolationStoreTestCase(T.TestCase):
 
-    def test_connect(self):
+    def test_violation_store_does_not_connect_db_when_initialized(self):
         with mocked_store() as mock_store:
             T.assert_equal(mock_store.engine, None)
             T.assert_equal(mock_store.conn, None)
