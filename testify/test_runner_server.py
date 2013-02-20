@@ -28,7 +28,6 @@ import logging
 
 import Queue
 import time
-import itertools
 
 class AsyncDelayedQueue(object):
     def __init__(self):
@@ -347,17 +346,24 @@ class TestRunnerServer(TestRunner):
 
         for method, result in failed_methods:
             if self.disable_requeueing == True:
+                # requeueing is disabled we'll report failed methods immediately.
                 tests_to_report.append((method, result))
-            elif (class_path, method) in self.failed_rerun_methods:
-                tests_to_report.append((method, result))
-            elif result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
-                tests_to_report.append((method, result))
-            elif early_shutdown:
-                tests_to_report.append((method, result))
-                if self.disable_requeueing != True:
-                    requeue_methods.append((method, result))
+
             else:
-                if self.disable_requeueing != True:
+                if (class_path, method) in self.failed_rerun_methods:
+                    # failed methods already rerun, no need to requeue.
+                    tests_to_report.append((method, result))
+
+                elif result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
+                    # Unexpexpected fixture failures, we'll report but no need to requeue.
+                    tests_to_report.append((method, result))
+
+                elif early_shutdown:
+                    # Server is shutting down. Just report the failure, no need to requeue.
+                    tests_to_report.append((method, result))
+
+                else:
+                    # Otherwise requeue the method to be run on a different builder.
                     requeue_methods.append((method, result))
 
         for method, result_dict in tests_to_report:
