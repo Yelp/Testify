@@ -342,29 +342,24 @@ class TestRunnerServer(TestRunner):
 
         passed_methods = list(d['passed_methods'].items())
         failed_methods = list(d['failed_methods'].items())
-        early_shutdown_methods = []
-        failed_methods_already_rerun = []
-        unexpected_failed_methods = []
+        tests_to_report = passed_methods[:]
         requeue_methods = []
 
-        if self.disable_requeueing != True:
-            for method, result in failed_methods:
-                if (class_path, method) in self.failed_rerun_methods:
-                    failed_methods_already_rerun.append((method, result))
-                elif result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
-                    unexpected_failed_methods.append((method, result))
-                elif early_shutdown:
-                    early_shutdown_methods.append((method, result))
+        for method, result in failed_methods:
+            if self.disable_requeueing == True:
+                tests_to_report.append((method, result))
+            elif (class_path, method) in self.failed_rerun_methods:
+                tests_to_report.append((method, result))
+            elif result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
+                tests_to_report.append((method, result))
+            elif early_shutdown:
+                tests_to_report.append((method, result))
+                if self.disable_requeueing != True:
                     requeue_methods.append((method, result))
-                else:
+            else:
+                if self.disable_requeueing != True:
                     requeue_methods.append((method, result))
 
-        tests_to_report = itertools.chain(
-            passed_methods,
-            early_shutdown_methods,
-            failed_methods_already_rerun,
-            unexpected_failed_methods,
-        )
         for method, result_dict in tests_to_report:
             for reporter in self.test_reporters:
                 result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)

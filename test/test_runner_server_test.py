@@ -39,6 +39,7 @@ def disable_requeueing(server):
     yield
     server.disable_requeueing = orig_disable_requeueing
 
+
 class TestRunnerServerBaseTestCase(test_case.TestCase):
     __test__ = False
 
@@ -225,6 +226,20 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
             self.timeout_class('runner1', first_test)
 
             assert_equal(get_test(self.server, 'runner2'), None)
+
+    def test_report_when_requeueing_is_disabled(self):
+        with disable_requeueing(self.server):
+            first_test = get_test(self.server, 'runner1')
+            assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
+            assert_equal(first_test['methods'], ['test', 'run'])
+
+            self.run_test('runner1', should_pass=False)
+
+            test_complete_calls = self.test_reporter.test_complete.calls
+            test_complete_call_args = [call[0] for call in test_complete_calls]
+            test_results = [args[0] for args in test_complete_call_args]
+            full_names = [test_result['method']['full_name'] for test_result in test_results]
+            assert any(name == 'test.test_runner_server_test DummyTestCase.test' for name in full_names)
 
     def test_fail_then_timeout_twice(self):
         """Fail, then time out, then time out again, then time out again.
