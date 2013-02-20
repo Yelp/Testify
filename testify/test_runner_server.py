@@ -128,6 +128,7 @@ class TestRunnerServer(TestRunner):
         self.server_timeout = kwargs['options'].server_timeout
         self.shutdown_delay_for_connection_close = kwargs['options'].shutdown_delay_for_connection_close
         self.shutdown_delay_for_outstanding_runners = kwargs['options'].shutdown_delay_for_outstanding_runners
+        self.disable_requeueing = kwargs['options'].disable_requeueing
 
         self.test_queue = AsyncDelayedQueue()
         self.checked_out = {} # Keyed on class path (module class).
@@ -346,16 +347,17 @@ class TestRunnerServer(TestRunner):
         unexpected_failed_methods = []
         requeue_methods = []
 
-        for method, result in failed_methods:
-            if (class_path, method) in self.failed_rerun_methods:
-                failed_methods_already_rerun.append((method, result))
-            elif result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
-                unexpected_failed_methods.append((method, result))
-            elif early_shutdown:
-                early_shutdown_methods.append((method, result))
-                requeue_methods.append((method, result))
-            else:
-                requeue_methods.append((method, result))
+        if self.disable_requeueing != True:
+            for method, result in failed_methods:
+                if (class_path, method) in self.failed_rerun_methods:
+                    failed_methods_already_rerun.append((method, result))
+                elif result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
+                    unexpected_failed_methods.append((method, result))
+                elif early_shutdown:
+                    early_shutdown_methods.append((method, result))
+                    requeue_methods.append((method, result))
+                else:
+                    requeue_methods.append((method, result))
 
         tests_to_report = itertools.chain(
             passed_methods,
@@ -423,7 +425,7 @@ class TestRunnerServer(TestRunner):
                     }
                 }
 
-                if (class_path, method) not in self.timeout_rerun_methods:
+                if (class_path, method) not in self.timeout_rerun_methods and self.disable_requeueing != True:
                     requeue_dict['methods'].append(method)
                     self.timeout_rerun_methods.add((class_path, method))
                     self.previous_run_results[(class_path, method)] = result_dict
