@@ -346,7 +346,7 @@ class TestRunnerServer(TestRunner):
 
         for method, result in failed_methods:
             if self.disable_requeueing == True:
-                # requeueing is disabled we'll report failed methods immediately.
+                # If requeueing is disabled we'll report failed methods immediately.
                 tests_to_report.append((method, result))
 
             else:

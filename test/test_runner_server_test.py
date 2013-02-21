@@ -5,7 +5,18 @@ import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
 from test_logger_test import ExceptionInClassFixtureSampleTests
-from testify import assert_equal, assert_in, assert_raises_and_contains, class_setup, class_teardown, setup, teardown, test_case, test_runner_server
+from testify import (
+    assert_equal,
+    assert_in,
+    assert_any_match_regex,
+    assert_raises_and_contains,
+    class_setup,
+    class_teardown,
+    setup,
+    teardown,
+    test_case,
+    test_runner_server
+)
 from testify.utils import turtle
 
 _log = logging.getLogger('testify')
@@ -239,7 +250,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
             test_complete_call_args = [call[0] for call in test_complete_calls]
             test_results = [args[0] for args in test_complete_call_args]
             full_names = [test_result['method']['full_name'] for test_result in test_results]
-            assert any(name == 'test.test_runner_server_test DummyTestCase.test' for name in full_names)
+            assert_any_match_regex('test.test_runner_server_test DummyTestCase.test', full_names)
 
     def test_fail_then_timeout_twice(self):
         """Fail, then time out, then time out again, then time out again.
