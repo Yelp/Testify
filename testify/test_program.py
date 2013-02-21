@@ -129,6 +129,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--retry-limit', action="store", dest="retry_limit", type="int", default=60, help="Number of times to try connecting to the server before exiting.")
     parser.add_option('--retry-interval', action="store", dest="retry_interval", type="int", default=2, help="Interval, in seconds, between trying to connect to the server.")
     parser.add_option('--reconnect-retry-limit', action="store", dest="reconnect_retry_limit", type="int", default=5, help="Number of times to try reconnecting to the server before exiting if we have previously connected.")
+    parser.add_option('--disable-requeueing', action="store_true", dest="disable_requeueing", help="Disable re-queueing/re-running failed tests on a different builder.")
 
     parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None, help="Quit after this many test failures.")
     parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300, help="How long to wait to wait for activity from a test runner before requeuing the tests it has checked out.")
