@@ -219,8 +219,8 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
             assert_equal(len(self.logger.results), 3)
             test1_raises_result = self.logger.results[0]
             class_teardown_result = self.logger.results[-1]
-            assert_in('FakeTestException', test1_raises_result['exception_info_pretty'])
-            assert_in('FakeClassFixtureException', class_teardown_result['exception_info_pretty'])
+            assert_in('FakeTestException', str(test1_raises_result['exception_info_pretty']))
+            assert_in('FakeClassFixtureException', str(class_teardown_result['exception_info_pretty']))
 
 
 if __name__ == '__main__':
