@@ -55,6 +55,7 @@ class SQLReporter(test_reporter.TestReporter):
         self.metadata.create_all(self.engine)
 
         self.build_id = self.create_build_row(options.build_info)
+        self.buildbot_run_id = options.build_info['buildbot_run_id']
         self.start_time = time.time()
 
         # Cache of (module,class_name,method_name) => test id
@@ -114,6 +115,7 @@ class SQLReporter(test_reporter.TestReporter):
             SA.Column('test', SA.Integer, index=True, nullable=False),
             SA.Column('failure', SA.Integer, index=True),
             SA.Column('build', SA.Integer, index=True, nullable=False),
+            SA.Column('buildbot_run_id', SA.String(16), index=True, nullable=True),
             SA.Column('end_time', SA.Integer, index=True, nullable=False),
             SA.Column('run_time', SA.Float, index=True, nullable=False),
             SA.Column('runner_id', SA.String(255), index=True, nullable=True),
@@ -190,6 +192,7 @@ class SQLReporter(test_reporter.TestReporter):
                 'test' : get_test_id(result['method']['module'], result['method']['class'], result['method']['name']),
                 'failure' : get_failure_id(result['exception_info']),
                 'build' : self.build_id,
+                'buildbot_run_id' : self.buildbot_run_id,
                 'end_time' : result['end_time'],
                 'run_time' : result['run_time'],
                 'runner_id' : result['runner_id'],
