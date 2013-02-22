@@ -42,13 +42,14 @@ class SQLReporterBaseTestCase(TestCase):
 
         parser = OptionParser()
         add_command_line_options(parser)
+        self.fake_buildbot_run_id = 'A' * 16
         (options, args) = parser.parse_args([
             '--reporting-db-url', 'sqlite://',
             '--sql-reporting-frequency', '0.05',
             '--build-info', json.dumps({
                 'buildbot' : 1,
                 'buildnumber' : 1,
-                'buildbot_run_id': "A"*16,
+                'buildbot_run_id': self.fake_buildbot_run_id,
                 'branch' : 'a_branch_name',
                 'revision' : 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
                 'buildname' : 'a_build_name'
@@ -85,6 +86,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         assert_equal(build['buildname'], 'a_build_name')
         assert_equal(build['branch'], 'a_branch_name')
         assert_equal(build['revision'], 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+        assert_equal(build['buildbot_run_id'], self.fake_buildbot_run_id)
 
         # Method count should be None until we discover (which is part of running)
         assert_equal(build['method_count'], None)
@@ -108,9 +110,13 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         assert 'discovery_failure' in build
         assert_equal(build['discovery_failure'], False)
 
-        # Check that we have one failure and one pass, and that they're the right tests.
+        # Check test results and their buildbot_run_ids
         test_results = self._get_test_results(conn)
         assert_equal(len(test_results), 2)
+        for test_result in test_results:
+            assert_equal(test_result['buildbot_run_id'], self.fake_buildbot_run_id)
+
+        # Check that we have one failure and one pass, and that they're the right tests.
         (passed_test,) = [r for r in test_results if not r['failure']]
         (failed_test,) = [r for r in test_results if r['failure']]
 
