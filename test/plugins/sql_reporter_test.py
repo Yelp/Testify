@@ -1,6 +1,7 @@
 from mock import patch
 import time
 from optparse import OptionParser
+import uuid
 
 try:
     import simplejson as json
@@ -48,6 +49,7 @@ class SQLReporterBaseTestCase(TestCase):
             '--build-info', json.dumps({
                 'buildbot' : 1,
                 'buildnumber' : 1,
+                'buildbot_run_id': str(uuid.uuid4()),
                 'branch' : 'a_branch_name',
                 'revision' : 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
                 'buildname' : 'a_build_name'

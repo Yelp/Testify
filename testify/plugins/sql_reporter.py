@@ -95,6 +95,7 @@ class SQLReporter(test_reporter.TestReporter):
 
         self.Builds = SA.Table('builds', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('buildbot_run_id', SA.String(16), index=True, nullable=True),
             SA.Column('buildbot', SA.Integer, nullable=False),
             SA.Column('buildnumber', SA.Integer, nullable=False),
             SA.Column('buildname', SA.String(40), nullable=False),
@@ -126,6 +127,7 @@ class SQLReporter(test_reporter.TestReporter):
             raise ValueError("Build info must be specified when reporting to a database.")
         info_dict = json.loads(build_info)
         results = self.conn.execute(self.Builds.insert({
+            'buildbot_run_id' : info_dict['buildbot_run_id'],
             'buildbot' : info_dict['buildbot'],
             'buildnumber' : info_dict['buildnumber'],
             'branch' : info_dict['branch'],
