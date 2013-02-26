@@ -110,11 +110,9 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         assert 'discovery_failure' in build
         assert_equal(build['discovery_failure'], False)
 
-        # Check test results and their buildbot_run_ids
+        # Check test results.
         test_results = self._get_test_results(conn)
         assert_equal(len(test_results), 2)
-        for test_result in test_results:
-            assert_equal(test_result['buildbot_run_id'], self.fake_buildbot_run_id)
 
         # Check that we have one failure and one pass, and that they're the right tests.
         (passed_test,) = [r for r in test_results if not r['failure']]
