@@ -54,7 +54,11 @@ class SQLReporter(test_reporter.TestReporter):
         self.conn = self.engine.connect()
         self.metadata.create_all(self.engine)
 
-        self.build_id = self.create_build_row(options.build_info)
+        if not options.build_info:
+            raise ValueError("Build info must be specified when reporting to a database.")
+        
+        build_info_dict = json.loads(options.build_info)
+        self.build_id = self.create_build_row(build_info_dict)
         self.start_time = time.time()
 
         # Cache of (module,class_name,method_name) => test id
@@ -95,6 +99,7 @@ class SQLReporter(test_reporter.TestReporter):
 
         self.Builds = SA.Table('builds', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('buildbot_run_id', SA.String(16), index=True, nullable=True),
             SA.Column('buildbot', SA.Integer, nullable=False),
             SA.Column('buildnumber', SA.Integer, nullable=False),
             SA.Column('buildname', SA.String(40), nullable=False),
@@ -121,11 +126,9 @@ class SQLReporter(test_reporter.TestReporter):
         SA.Index('ix_build_test_failure', self.TestResults.c.build, self.TestResults.c.test, self.TestResults.c.failure)
 
 
-    def create_build_row(self, build_info):
-        if not build_info:
-            raise ValueError("Build info must be specified when reporting to a database.")
-        info_dict = json.loads(build_info)
+    def create_build_row(self, info_dict):
         results = self.conn.execute(self.Builds.insert({
+            'buildbot_run_id' : info_dict['buildbot_run_id'],
             'buildbot' : info_dict['buildbot'],
             'buildnumber' : info_dict['buildnumber'],
             'branch' : info_dict['branch'],
