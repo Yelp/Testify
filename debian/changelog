@@ -1,3 +1,9 @@
+python-testify (0.3.10) lucid; urgency=low
+
+  * sql_reporter plugin: add a (unique) buildbot run identifier 
+
+ -- Baris Metin <bmetin@yelp.com>  Tue, 26 Feb 2013 10:55:05 -0800
+
 python-testify (0.3.9) lucid; urgency=low
 
   * fix summary printing wrong frame on failures.
