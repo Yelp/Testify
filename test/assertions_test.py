@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 from __future__ import with_statement
 
 from testify import TestCase
@@ -62,6 +63,13 @@ class AssertEqualTestCase(TestCase):
         else:
             assert False, 'Expected `AssertionError`.'
 
+    def test_unicode_diff(self):
+        ascii_string = 'abc'
+        unicode_string = u'ü and some more'
+        def assert_with_unicode_msg():
+            assert_equal(unicode_string, ascii_string)
+        assertions.assert_raises_and_contains(AssertionError, 'abc', assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'and some more', assert_with_unicode_msg)
 
 class MyException(Exception):
     pass

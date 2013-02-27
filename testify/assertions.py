@@ -225,8 +225,8 @@ def _diff_message(lhs, rhs):
 
     NOTE: Only works well for strings not containing newlines.
     """
-    lhs = repr(lhs) if not isinstance(lhs, basestring) else lhs
-    rhs = repr(rhs) if not isinstance(rhs, basestring) else rhs
+    lhs = repr(lhs) if not type(lhs) is str else lhs
+    rhs = repr(rhs) if not type(rhs) is str else rhs
 
     return 'Diff:\nl: %s\nr: %s' % stringdiffer.highlight(lhs, rhs)
 
