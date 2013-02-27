@@ -707,9 +707,12 @@ class let(object):
         if test_case is None:
             return self
         if self._result is self._unsaved:
-            self._save_result(self._func(test_case))
-            self._register_reset_after_test_completion(test_case)
+            self.__set__(test_case, self._func(test_case))
         return self._result
+
+    def __set__(self, test_case, value):
+        self._save_result(value)
+        self._register_reset_after_test_completion(test_case)
 
     def _save_result(self, result):
         self._result = result
