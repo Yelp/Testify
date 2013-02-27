@@ -498,6 +498,7 @@ class LetTest(TestCase):
         assert_equal(self.counter.next(), 0)
         assert_equal(self.counter.next(), 1)
 
+
 class LetWithLambdaTest(TestCase):
 
     counter = let(lambda self: itertools.count(0))
@@ -509,9 +510,34 @@ class LetWithLambdaTest(TestCase):
         assert_equal(self.counter.next(), 0)
         assert_equal(self.counter.next(), 1)
 
+
 class LetWithSubclassTest(LetWithLambdaTest):
     """Test that @let is inherited correctly."""
     pass
+
+
+class ClobberLetTest(TestCase):
+    """Test overwritting a let does not break subsequent tests.
+
+    Because we are unsure which test will run first, two tests will clobber a
+    let that is asserted about in the other test.
+    """
+
+    @let
+    def something(self):
+        return 1
+
+    @let
+    def something_else(self):
+        return 2
+
+    def test_something(self):
+        self.something_else = 3
+        assert_equal(self.something, 1)
+
+    def test_something_else(self):
+        self.something = 4
+        assert_equal(self.something_else, 2)
 
 
 class CallbacksGetCalledTest(TestCase):
