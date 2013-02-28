@@ -225,11 +225,12 @@ def _diff_message(lhs, rhs):
 
     NOTE: Only works well for strings not containing newlines.
     """
-    lhs = repr(lhs) if not type(lhs) is str else lhs
-    rhs = repr(rhs) if not type(rhs) is str else rhs
+    lhs = _to_characters(lhs)
+    rhs = _to_characters(rhs)
 
-    return 'Diff:\nl: %s\nr: %s' % stringdiffer.highlight(lhs, rhs)
-
+    message = u'Diff:\nl: %s\nr: %s' % stringdiffer.highlight(lhs, rhs)
+    # Python2 exceptions require bytes.
+    return message.encode('UTF-8')
 
 def assert_equal(lval, rval, message=None):
     """Assert that lval and rval are equal."""
@@ -607,3 +608,24 @@ def assert_exactly_one(*args, **kwargs):
         raise AssertionError("Expected exactly one True (got %d) args: %r" % (len(true_args), args))
 
     return true_args[0]
+
+
+def _to_characters(x):
+    """Return characters that represent the object `x`, come hell or high water."""
+    if isinstance(x, unicode):
+        return x
+    try:
+        return unicode(x, 'UTF-8')
+    except UnicodeDecodeError:
+        return unicode(x, 'latin1')
+    except TypeError:
+        # We're only allowed to specify an encoding for str values, for whatever reason.
+        try:
+            return unicode(x)
+        except UnicodeDecodeError:
+            # You get this (for example) when an error object contains utf8 bytes.
+            try:
+                return unicode(str(x), 'UTF-8')
+            except UnicodeDecodeError:
+                return unicode(str(x), 'latin1')
+# vim:et:sts=4:sw=4:

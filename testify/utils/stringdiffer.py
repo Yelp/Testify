@@ -35,7 +35,7 @@ def get_line_changed_regions(oldline, newline):
 
     for tag, i1, i2, j1, j2 in differ.get_opcodes():
         if tag == "equal":
-            if (i2 - i1 < 3) or (j2 - j1 < 3):
+            if ((i2 - i1 < 3) or (j2 - j1 < 3)) and (i1, j1) != (0, 0):
                 back = (j2 - j1, i2 - i1)
             continue
 
@@ -110,3 +110,4 @@ def highlight(old, new):
     oldchanges, newchanges = get_line_changed_regions(old, new)
     return HighlightedDiff(highlight_regions(old, oldchanges),
                            highlight_regions(new, newchanges))
+# vim:et:sts=4:sw=4:
