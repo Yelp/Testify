@@ -112,6 +112,24 @@ class AssertEqualTestCase(TestCase):
         ):
             assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
 
+    def test_str_versus_unicode_diff(self):
+        """Real-world example from https://github.com/Yelp/Testify/issues/144#issuecomment-14188539
+        A good assert_equal implementation will clearly show that these have completely different character contents.
+        """
+        unicode_string = u'm\xc3\xbcnchen'
+        byte_string = 'm\xc3\xbcnchen'
+        assert_equal(unicode_string, byte_string)
+
+        def assert_with_unicode_msg():
+            assert_equal(unicode_string, byte_string)
+        for content in (
+                r"l: u'm\xc3\xbcnchen'",
+                r"r: 'm\xc3\xabnchen'",
+                "l: m<Ã¼>nchen",
+                "r: m<ü>nchen",
+        ):
+            assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
+
 class MyException(Exception):
     pass
 
