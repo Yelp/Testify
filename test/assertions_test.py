@@ -118,13 +118,12 @@ class AssertEqualTestCase(TestCase):
         """
         unicode_string = u'm\xc3\xbcnchen'
         byte_string = 'm\xc3\xbcnchen'
-        assert_equal(unicode_string, byte_string)
 
         def assert_with_unicode_msg():
             assert_equal(unicode_string, byte_string)
         for content in (
                 r"l: u'm\xc3\xbcnchen'",
-                r"r: 'm\xc3\xabnchen'",
+                r"r: 'm\xc3\xbcnchen'",
                 "l: m<Ã¼>nchen",
                 "r: m<ü>nchen",
         ):

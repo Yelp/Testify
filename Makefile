@@ -36,6 +36,6 @@ clean:
 		find . -name "._*" -delete
 
 test:
-	PYTHONPATH=. $(PYTHON) ./bin/testify test
+	PYTHONPATH=. $(PYTHON) ./bin/testify --verbose --summary test
 
 .PHONY: test
