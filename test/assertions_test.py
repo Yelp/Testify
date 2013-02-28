@@ -84,20 +84,33 @@ class AssertEqualTestCase(TestCase):
         utf8_string = unicode_string.encode('utf8')
         def assert_with_unicode_msg():
             assert_equal(unicode_string, utf8_string)
-        assertions.assert_raises_and_contains(AssertionError, "l: u'm\\xfcnchen'", assert_with_unicode_msg)
-        assertions.assert_raises_and_contains(AssertionError, "r: 'm\\xc3\\xbcnchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, r"l: u'm\xfcnchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, r"r: 'm\xc3\xbcnchen'", assert_with_unicode_msg)
         assertions.assert_raises_and_contains(AssertionError, 'l: münchen', assert_with_unicode_msg)
         assertions.assert_raises_and_contains(AssertionError, 'r: münchen', assert_with_unicode_msg)
 
     def test_bytes_diff(self):
-        unicode_string = 'm\xeenchen'
-        utf8_string = 'm\xaanchen'
+        byte_string1 = 'm\xeenchen'
+        byte_string2 = 'm\xaanchen'
         def assert_with_unicode_msg():
-            assert_equal(unicode_string, utf8_string)
-        assertions.assert_raises_and_contains(AssertionError, "l: 'm\\xeenchen'", assert_with_unicode_msg)
-        assertions.assert_raises_and_contains(AssertionError, "r: 'm\\xaanchen'", assert_with_unicode_msg)
+            assert_equal(byte_string1, byte_string2)
+        assertions.assert_raises_and_contains(AssertionError, r"l: 'm\xeenchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, r"r: 'm\xaanchen'", assert_with_unicode_msg)
         assertions.assert_raises_and_contains(AssertionError, 'l: <mî>nchen', assert_with_unicode_msg)
         assertions.assert_raises_and_contains(AssertionError, 'r: <mª>nchen', assert_with_unicode_msg)
+
+    def test_utf8_diff(self):
+        utf8_string1 = u'münchen'.encode('utf8')
+        utf8_string2 = u'mënchen'.encode('utf8')
+        def assert_with_unicode_msg():
+            assert_equal(utf8_string1, utf8_string2)
+        for content in (
+                r"l: 'm\xc3\xbcnchen'",
+                r"r: 'm\xc3\xabnchen'",
+                "l: <mü>nchen",
+                "r: <më>nchen",
+        ):
+            assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
 
 class MyException(Exception):
     pass
