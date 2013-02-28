@@ -443,7 +443,7 @@ def assert_is(left, right, msg="expected %(left)r is %(right)r"):
 
 
 def assert_is_not(left, right, msg="expected %(left)r is not %(right)r"):
-    """Assert that left and right are the same object"""
+    """Assert that left and right are NOT the same object"""
     assert left is not right, msg % {'left':left, 'right':right}
 
 
