@@ -96,8 +96,8 @@ class AssertEqualTestCase(TestCase):
             assert_equal(byte_string1, byte_string2)
         assertions.assert_raises_and_contains(AssertionError, r"l: 'm\xeenchen'", assert_with_unicode_msg)
         assertions.assert_raises_and_contains(AssertionError, r"r: 'm\xaanchen'", assert_with_unicode_msg)
-        assertions.assert_raises_and_contains(AssertionError, 'l: <mî>nchen', assert_with_unicode_msg)
-        assertions.assert_raises_and_contains(AssertionError, 'r: <mª>nchen', assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'l: m<î>nchen', assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'r: m<ª>nchen', assert_with_unicode_msg)
 
     def test_utf8_diff(self):
         utf8_string1 = u'münchen'.encode('utf8')
@@ -107,8 +107,8 @@ class AssertEqualTestCase(TestCase):
         for content in (
                 r"l: 'm\xc3\xbcnchen'",
                 r"r: 'm\xc3\xabnchen'",
-                "l: <mü>nchen",
-                "r: <më>nchen",
+                "l: m<ü>nchen",
+                "r: m<ë>nchen",
         ):
             assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
 

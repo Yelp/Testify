@@ -34,3 +34,8 @@ clean:
 		rm -rf build/ MANIFEST
 		find . -name '*.pyc' -delete
 		find . -name "._*" -delete
+
+test:
+	PYTHONPATH=. $(PYTHON) ./bin/testify test
+
+.PHONY: test
