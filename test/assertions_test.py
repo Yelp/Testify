@@ -71,6 +71,64 @@ class AssertEqualTestCase(TestCase):
         assertions.assert_raises_and_contains(AssertionError, 'abc', assert_with_unicode_msg)
         assertions.assert_raises_and_contains(AssertionError, 'and some more', assert_with_unicode_msg)
 
+    def test_unicode_diff2(self):
+        unicode_string = u'Thę quıćk brōwń fōx jumpęd ōvęr thę łąźy dōğ.'
+        utf8_string = u'Thę quıćk brōwń fōx jumpęd ōvęr thę łąży dōğ.'
+        def assert_with_unicode_msg():
+            assertions.assert_equal(unicode_string, utf8_string)
+        assertions.assert_raises_and_contains(AssertionError, 'łą<ź>y', assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'łą<ż>y', assert_with_unicode_msg)
+        
+    def test_unicode_diff3(self):
+        unicode_string = u'münchen'
+        utf8_string = unicode_string.encode('utf8')
+        def assert_with_unicode_msg():
+            assert_equal(unicode_string, utf8_string)
+        assertions.assert_raises_and_contains(AssertionError, r"l: u'm\xfcnchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, r"r: 'm\xc3\xbcnchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'l: münchen', assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'r: münchen', assert_with_unicode_msg)
+
+    def test_bytes_diff(self):
+        byte_string1 = 'm\xeenchen'
+        byte_string2 = 'm\xaanchen'
+        def assert_with_unicode_msg():
+            assert_equal(byte_string1, byte_string2)
+        assertions.assert_raises_and_contains(AssertionError, r"l: 'm\xeenchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, r"r: 'm\xaanchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'l: m<î>nchen', assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'r: m<ª>nchen', assert_with_unicode_msg)
+
+    def test_utf8_diff(self):
+        utf8_string1 = u'münchen'.encode('utf8')
+        utf8_string2 = u'mënchen'.encode('utf8')
+        def assert_with_unicode_msg():
+            assert_equal(utf8_string1, utf8_string2)
+        for content in (
+                r"l: 'm\xc3\xbcnchen'",
+                r"r: 'm\xc3\xabnchen'",
+                "l: m<ü>nchen",
+                "r: m<ë>nchen",
+        ):
+            assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
+
+    def test_str_versus_unicode_diff(self):
+        """Real-world example from https://github.com/Yelp/Testify/issues/144#issuecomment-14188539
+        A good assert_equal implementation will clearly show that these have completely different character contents.
+        """
+        unicode_string = u'm\xc3\xbcnchen'
+        byte_string = 'm\xc3\xbcnchen'
+
+        def assert_with_unicode_msg():
+            assert_equal(unicode_string, byte_string)
+        for content in (
+                r"l: u'm\xc3\xbcnchen'",
+                r"r: 'm\xc3\xbcnchen'",
+                "l: m<Ã¼>nchen",
+                "r: m<ü>nchen",
+        ):
+            assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
+
 class MyException(Exception):
     pass
 
@@ -411,3 +469,4 @@ class AssertNotEmptyTestCase(TestCase):
 
 if __name__ == '__main__':
     run()
+# vim:et:sts=4:sw=4:
