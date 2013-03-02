@@ -10,6 +10,12 @@ try:
 except ImportError:
     pass
 
+SA = None
+try:
+    import sqlalchemy as SA
+except ImportError:
+    pass
+
 import mock
 
 import testify as T
@@ -26,6 +32,9 @@ from testify.plugins.violation_collector import writeln
 from testify.plugins.violation_collector import ViolationReporter
 from testify.plugins.violation_collector import ViolationStore
 
+from testify.plugins.violation_collector import TEST_METHOD_TYPE
+
+
 @contextlib.contextmanager
 def mocked_ctx():
     with mock.patch('testify.plugins.violation_collector.ctx') as mock_ctx:
@@ -37,7 +46,7 @@ def mocked_store():
     def mock_init_database(obj):
         obj.metadata = mock.MagicMock()
         obj.Violations = mock.MagicMock()
-        obj.Tests = mock.MagicMock()
+        obj.Methods = mock.MagicMock()
 
     with mock.patch('testify.plugins.violation_collector.SA'):
         mock_options = mock.Mock()
@@ -195,19 +204,19 @@ class ViolationReporterTestCase(T.TestCase):
 
     def test_test_case_start(self):
         self.reporter.test_case_start(self.mock_result)
-        assert self.mock_store.add_test.called
+        assert self.mock_store.add_method.called
 
     def test_test_start(self):
         self.reporter.test_start(self.mock_result)
-        assert self.mock_store.add_test.called
+        assert self.mock_store.add_method.called
 
     def test_class_setup_start(self):
         self.reporter.class_setup_start(self.mock_result)
-        assert self.mock_store.add_test.called
+        assert self.mock_store.add_method.called
 
     def test_class_teardown_start(self):
         self.reporter.class_teardown_start(self.mock_result)
-        assert self.mock_store.add_test.called
+        assert self.mock_store.add_method.called
 
     def test_get_syscall_count(self):
         T.assert_equal(
@@ -252,14 +261,14 @@ class ViolationStoreTestCase(T.TestCase):
             T.assert_equal(mock_store.engine, None)
             T.assert_equal(mock_store.conn, None)
 
-    def test_add_test(self):
+    def test_add_method(self):
         with mocked_store() as mock_store:
             mock_store._set_last_test_id = mock.Mock()
-            mock_store.add_test("fake_module", "fake_class", "fake_method")
+            mock_store.add_method("fake_module", "fake_class", "fake_method", TEST_METHOD_TYPE)
 
             assert mock_store.engine.connect.called
             assert mock_store.conn.execute.called
-            assert mock_store.Tests.insert.called
+            assert mock_store.Methods.insert.called
 
     def test_add_violation(self):
         with mocked_store() as mock_store:
@@ -338,6 +347,32 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
                 yield store.violation_counts()
 
                 ctx.store = None
+
+    def test_catbox_methods_inserts(self):
+        with self.run_testcase_in_catbox(self.ViolatingTestCase):
+            query = SA.sql.select([
+                ctx.store.Methods.c.class_name,
+                ctx.store.Methods.c.method_name,
+                ctx.store.Methods.c.method_type,
+            ]).where(
+                SA.and_(
+                    ctx.store.Methods.c.class_name == 'ViolatingTestCase',
+                    ctx.store.Methods.c.method_name == 'test_filesystem_violation',
+                    ctx.store.Methods.c.method_type == TEST_METHOD_TYPE,
+                )
+            )
+            result = ctx.store.conn.execute(query).fetchone()
+            T.assert_equal(result, ('ViolatingTestCase', 'test_filesystem_violation', TEST_METHOD_TYPE))
+
+    def test_catbox_violations_inserts(self):
+        with self.run_testcase_in_catbox(self.ViolatingTestCase):
+            query = SA.sql.select([
+                ctx.store.Violations.c.syscall,
+            ]).where(
+                ctx.store.Violations.c.syscall == 'socketcall',
+            )
+            result = ctx.store.conn.execute(query).fetchall()
+            T.assert_equal(len(result), 1)
 
     def test_violation_collector_pipeline(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCase) as violations:
