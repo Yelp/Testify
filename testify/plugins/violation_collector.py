@@ -24,6 +24,19 @@ import yaml
 from testify import test_reporter
 from testify import test_logger
 
+
+method_types = ('undefined', 'test', 'setup', 'teardown', 'class_setup', 'class_teardown')
+
+(
+    UNDEFINED_METHOD_TYPE,
+    TEST_METHOD_TYPE,
+    SETUP_METHOD_TYPE,
+    TEARDOWN_METHOD_TYPE,
+    CLASS_SETUP_METHOD_TYPE,
+    CLASS_TEARDOWN_METHOD_TYPE
+) = method_types
+
+
 class _Context(object):
     store = None
     output_stream = None
@@ -122,9 +135,9 @@ class ViolationStore(object):
         self.dburl = self.options.violation_dburl or SA.engine.url.URL(**yaml.safe_load(open(self.options.violation_dbconfig)))
         if options.build_info:
             info = json.loads(options.build_info)
-            self.info = cleandict(info, ['branch', 'revision', 'submitstamp'])
+            self.info = cleandict(info, ['branch', 'revision', 'buildbot_run_id'])
         else:
-            self.info = {'branch': '', 'revision': '', 'submitstamp': time.time()}
+            self.info = {'branch': '', 'revision': '', 'buildbot_run_id': None}
 
         self.init_database()
 
@@ -152,16 +165,17 @@ class ViolationStore(object):
             SA.Column('start_time', SA.Integer),
         )
 
-        self.Tests = SA.Table(
-            'catbox_tests', self.metadata,
+        self.Methods = SA.Table(
+            'catbox_methods', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('buildbot_run_id', SA.String(36), index=True, nullable=True),
             SA.Column('branch', SA.Text),
             SA.Column('revision', SA.Text),
-            SA.Column('submitstamp', SA.Integer),
             SA.Column('start_time', SA.Integer),
             SA.Column('module', SA.Text, nullable=False),
             SA.Column('class_name', SA.Text, nullable=False),
             SA.Column('method_name', SA.Text, nullable=False),
+            SA.Column('method_type', SA.Enum(*method_types), nullable=False),
         )
 
     def _setup_pipe(self):
@@ -232,7 +246,7 @@ class ViolationStore(object):
                     self.last_test_id = self._parse_last_test_id(read)
         return self.last_test_id
 
-    def add_test(self, module, class_name, method_name):
+    def add_method(self, module, class_name, method_name, method_type):
         if self.engine is None and self.conn is None:
             # We are in the traced child process and this is the first
             # request to add a test to the database. We should create
@@ -247,9 +261,10 @@ class ViolationStore(object):
                 'class_name': class_name,
                 'method_name': method_name,
                 'start_time': time.time(),
+                'method_type': method_type,
             }
             testinfo.update(self.info)
-            result = self.conn.execute(self.Tests.insert(), testinfo)
+            result = self.conn.execute(self.Methods.insert(), testinfo)
             self._set_last_test_id(result.lastrowid)
         except Exception, e:
             logging.error('Exception inserting testinfo: %r' % e)
@@ -260,7 +275,7 @@ class ViolationStore(object):
             # request to add a violation to the database. We should
             # create a connection for this process.
             #
-            # As in add_test (see above), making the connection
+            # As in add_method (see above), making the connection
             # earlier would not work due due to deadlock issues.
             self.engine, self.conn = self._connect_db()
         try:
@@ -272,15 +287,15 @@ class ViolationStore(object):
 
     def violation_counts(self):
         query = SA.sql.select([
-            self.Tests.c.class_name,
-            self.Tests.c.method_name,
+            self.Methods.c.class_name,
+            self.Methods.c.method_name,
             self.Violations.c.syscall,
             SA.sql.func.count(self.Violations.c.syscall).label('count')
 
         ]).where(
-            self.Violations.c.test_id == self.Tests.c.id
+            self.Violations.c.test_id == self.Methods.c.id
         ).group_by(
-            self.Tests.c.class_name, self.Tests.c.method_name, self.Violations.c.syscall
+            self.Methods.c.class_name, self.Methods.c.method_name, self.Violations.c.syscall
         ).order_by(
             'count DESC'
         )
@@ -297,24 +312,24 @@ class ViolationReporter(test_reporter.TestReporter):
         self.store = store
         super(ViolationReporter, self).__init__(self)
 
-    def __update_violator(self, result):
+    def __update_violator(self, result, method_type):
         method = result['method']
         test_case_name = method['class']
         test_method_name = method['name']
         module_path = method['module']
-        self.store.add_test(module_path, test_case_name, test_method_name)
+        self.store.add_method(module_path, test_case_name, test_method_name, method_type)
 
     def test_case_start(self, result):
-        self.__update_violator(result)
+        self.__update_violator(result, UNDEFINED_METHOD_TYPE)
 
     def test_start(self, result):
-        self.__update_violator(result)
+        self.__update_violator(result, TEST_METHOD_TYPE)
 
     def class_setup_start(self, result):
-        self.__update_violator(result)
+        self.__update_violator(result, CLASS_SETUP_METHOD_TYPE)
 
     def class_teardown_start(self, result):
-        self.__update_violator(result)
+        self.__update_violator(result, CLASS_TEARDOWN_METHOD_TYPE)
 
     def get_syscall_count(self, violations):
         syscall_violations = []
