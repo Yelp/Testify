@@ -99,7 +99,7 @@ class SQLReporter(test_reporter.TestReporter):
 
         self.Builds = SA.Table('builds', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-            SA.Column('buildbot_run_id', SA.String(16), index=True, nullable=True),
+            SA.Column('buildbot_run_id', SA.String(36), index=True, nullable=True),
             SA.Column('buildbot', SA.Integer, nullable=False),
             SA.Column('buildnumber', SA.Integer, nullable=False),
             SA.Column('buildname', SA.String(40), nullable=False),

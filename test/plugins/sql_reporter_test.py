@@ -42,7 +42,7 @@ class SQLReporterBaseTestCase(TestCase):
 
         parser = OptionParser()
         add_command_line_options(parser)
-        self.fake_buildbot_run_id = 'A' * 16
+        self.fake_buildbot_run_id = 'A' * 36
         (options, args) = parser.parse_args([
             '--reporting-db-url', 'sqlite://',
             '--sql-reporting-frequency', '0.05',
