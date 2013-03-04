@@ -168,7 +168,7 @@ class ViolationStore(object):
         self.Methods = SA.Table(
             'catbox_methods', self.metadata,
             SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-            SA.Column('buildbot_run_id', SA.String(16), index=True, nullable=True),
+            SA.Column('buildbot_run_id', SA.String(36), index=True, nullable=True),
             SA.Column('branch', SA.Text),
             SA.Column('revision', SA.Text),
             SA.Column('start_time', SA.Integer),
