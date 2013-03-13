@@ -436,6 +436,6 @@ def prepare_test_program(options, program):
 
 def build_test_reporters(options):
     global ctx
-    if options.catbox_violations:        
+    if options.catbox_violations:
         return [ViolationReporter(options, ctx.store)]
     return []
