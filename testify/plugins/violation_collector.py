@@ -310,7 +310,7 @@ class ViolationReporter(test_reporter.TestReporter):
     def __init__(self, options, store):
         self.options = options
         self.store = store
-        super(ViolationReporter, self).__init__(self)
+        super(ViolationReporter, self).__init__(options)
 
     def __update_violator(self, result, method_type):
         method = result['method']
@@ -342,13 +342,14 @@ class ViolationReporter(test_reporter.TestReporter):
         return sum(count for (syscall, count) in syscall_violation_counts)
 
     def report(self):
-        violations = self.store.violation_counts()
-        if ctx.output_verbosity == test_logger.VERBOSITY_VERBOSE:
-            self._report_verbose(violations)
-        elif ctx.output_verbosity >= test_logger.VERBOSITY_NORMAL:
-            self._report_normal(violations)
-        else:
-            self._report_silent(violations)
+        if self.options.disable_violations_summary is not True:
+            violations = self.store.violation_counts()
+            if ctx.output_verbosity == test_logger.VERBOSITY_VERBOSE:
+                self._report_verbose(violations)
+            elif ctx.output_verbosity >= test_logger.VERBOSITY_NORMAL:
+                self._report_normal(violations)
+            else:
+                self._report_silent(violations)
 
     def _report_verbose(self, violations):
         verbosity = test_logger.VERBOSITY_VERBOSE
@@ -393,6 +394,12 @@ def add_command_line_options(parser):
         dest='violation_dbconfig',
         help='Yaml configuration file describing SQL database to store violations.'
     )
+    parser.add_option(
+        '--disable-violations-summary',
+        action='store_true',
+        dest='disable_violations_summary',
+        help='Disable preparing a summary .'
+    )
 
 
 def prepare_test_program(options, program):
@@ -429,6 +436,6 @@ def prepare_test_program(options, program):
 
 def build_test_reporters(options):
     global ctx
-    if options.catbox_violations:
+    if options.catbox_violations:        
         return [ViolationReporter(options, ctx.store)]
     return []
