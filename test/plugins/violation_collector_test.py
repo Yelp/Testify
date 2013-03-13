@@ -190,6 +190,7 @@ class ViolationReporterTestCase(T.TestCase):
         store = mock.Mock()
         with mocked_reporter(store) as reporter:
             self.mock_store = store
+            reporter.options.disable_violations_summary = False
             self.reporter = reporter
             yield
 
@@ -252,6 +253,20 @@ class ViolationReporterTestCase(T.TestCase):
 
             self.reporter.report()
             mctx.output_stream.write.assert_called_with("%s.%s\t%s\t%s\n" % fake_violation[0])
+
+    def test_report_with_violations_summary_disabled(self):
+        with mocked_ctx() as mctx:
+            # reporter is created in a setup method and safe to alter
+            self.reporter.options.disable_violations_summary = True
+
+            mctx.output_verbosity = T.test_logger.VERBOSITY_VERBOSE
+            fake_violation = [
+                ('fake_class1', 'fake_method1', 'fake_violation1', 5),
+            ]
+            self.mock_store.violation_counts.return_value = fake_violation
+
+            self.reporter.report()
+            T.assert_equal(mctx.output_stream.write.called, False)
 
 
 class ViolationStoreTestCase(T.TestCase):
