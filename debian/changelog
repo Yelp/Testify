@@ -1,3 +1,12 @@
+python-testify (0.3.11) lucid; urgency=low
+
+ * better unicode support in assertions.
+ * use buildbot_run_id for catbox_violations.
+ * fix column length for buildbot_run_id.
+ * optionally disable violations summary.
+
+ -- Baris Metin <bmetin@yelp.com>  Thu, 14 Mar 2013 11:28:54 -0700
+
 python-testify (0.3.10) lucid; urgency=low
 
   * sql_reporter plugin: add a (unique) buildbot run identifier 
