@@ -51,10 +51,19 @@ two copies: one in parent (collecting syscall violations) and one in
 the traced child process (running tests).'''
 ctx = _Context()
 
+def get_db_url(options):
+    '''If a configuration file is given, returns the database URL from
+    the configuration file. Otherwise returns violation-db-url option.
+    '''
+    if options.violation_dbconfig:
+        with open(options.violation_dbconfig) as db_config_file:
+            return SA.engine.url.URL(**yaml.safe_load(db_config_file))
+    else:
+        return options.violation_dburl
 
 def is_sqlite_filepath(dburl):
     '''Check if dburl is an sqlite file path.'''
-    return dburl.startswith('sqlite:///')
+    return type(dburl) in (str, unicode) and dburl.startswith('sqlite:///')
 
 
 def sqlite_dbpath(dburl):
@@ -132,7 +141,8 @@ class ViolationStore(object):
 
     def __init__(self, options):
         self.options = options
-        self.dburl = self.options.violation_dburl or SA.engine.url.URL(**yaml.safe_load(open(self.options.violation_dbconfig)))
+
+        self.dburl = get_db_url(self.options)
         if options.build_info:
             info = json.loads(options.build_info)
             self.info = cleandict(info, ['branch', 'revision', 'buildbot_run_id'])
