@@ -24,6 +24,7 @@ from testify.plugins.violation_collector import ctx
 
 from testify.plugins.violation_collector import cleandict
 from testify.plugins.violation_collector import collect
+from testify.plugins.violation_collector import get_db_url
 from testify.plugins.violation_collector import is_sqlite_filepath
 from testify.plugins.violation_collector import run_in_catbox
 from testify.plugins.violation_collector import sqlite_dbpath
@@ -51,6 +52,7 @@ def mocked_store():
     with mock.patch('testify.plugins.violation_collector.SA'):
         mock_options = mock.Mock()
         mock_options.violation_dburl = "fake db url"
+        mock_options.violation_dbconfig = None
         mock_options.build_info = None
 
         # we're doing our own method paching here because
@@ -67,6 +69,7 @@ def sqlite_store():
     test_violations_file = "test_violations.sqlite"
     mock_options = mock.Mock()
     mock_options.violation_dburl = "sqlite:///%s" % test_violations_file
+    mock_options.violation_dbconfig = None
     mock_options.build_info = None
 
     yield ViolationStore(mock_options)
@@ -82,10 +85,37 @@ def mocked_reporter(store):
 
 
 class HelperFunctionsTestCase(T.TestCase):
+    def test_get_db_url_with_dburl(self):
+        options = mock.Mock()
+        options.violation_dburl = 'sqlite:///fake/database'
+        options.violation_dbconfig = None
+        T.assert_equal(get_db_url(options), options.violation_dburl)
+
+    def test_get_db_url_with_dbconfig(self):
+        options = mock.Mock()
+        options.violation_dburl = 'sqlite:///fake/database'
+        options.violation_dbconfig = '/fake/path/to/db/'
+
+        mocked_open = mock.Mock(spec=file)
+        mocked_open.__enter__ = mock.Mock()
+        mocked_open.__exit__ = mock.Mock()
+        with mock.patch(
+            'testify.plugins.violation_collector.open',
+            create=True,
+            return_value=mocked_open
+        ):
+            with mock.patch.object(SA.engine.url, 'URL') as mocked_sa_url:
+                T.assert_not_equal(get_db_url(options), options.violation_dburl)
+                mocked_open.read.assert_called
+                mocked_sa_url.URL.assert_called
+
     def test_is_sqliteurl(self):
         assert is_sqlite_filepath("sqlite:///")
         assert is_sqlite_filepath("sqlite:///test.db")
         assert is_sqlite_filepath("sqlite:////tmp/test-database.sqlite")
+
+        sa_engine_url = SA.engine.url.URL(drivername='mysql', host='fakehost', database='fakedb')
+        T.assert_equal(is_sqlite_filepath(sa_engine_url), False)
 
     def test_sqlite_dbpath(self):
         T.assert_equal(sqlite_dbpath("sqlite:///test.sqlite"), os.path.abspath("test.sqlite"))
