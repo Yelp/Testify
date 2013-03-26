@@ -1,9 +1,15 @@
+python-testify (0.3.12) lucid; urgency=low
+
+  * fix --violation-db-config option
+
+ -- Baris Metin <bmetin@yelp.com>  Tue, 26 Mar 2013 15:50:04 -0700
+
 python-testify (0.3.11) lucid; urgency=low
 
- * better unicode support in assertions.
- * use buildbot_run_id for catbox_violations.
- * fix column length for buildbot_run_id.
- * optionally disable violations summary.
+  * better unicode support in assertions.
+  * use buildbot_run_id for catbox_violations.
+  * fix column length for buildbot_run_id.
+  * optionally disable violations summary.
 
  -- Baris Metin <bmetin@yelp.com>  Thu, 14 Mar 2013 11:28:54 -0700
 
