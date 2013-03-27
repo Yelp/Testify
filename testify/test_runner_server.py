@@ -28,7 +28,6 @@ import logging
 
 import Queue
 import time
-import itertools
 
 class AsyncDelayedQueue(object):
     def __init__(self):
@@ -128,6 +127,7 @@ class TestRunnerServer(TestRunner):
         self.server_timeout = kwargs['options'].server_timeout
         self.shutdown_delay_for_connection_close = kwargs['options'].shutdown_delay_for_connection_close
         self.shutdown_delay_for_outstanding_runners = kwargs['options'].shutdown_delay_for_outstanding_runners
+        self.disable_requeueing = kwargs['options'].disable_requeueing
 
         self.test_queue = AsyncDelayedQueue()
         self.checked_out = {} # Keyed on class path (module class).
@@ -341,28 +341,31 @@ class TestRunnerServer(TestRunner):
 
         passed_methods = list(d['passed_methods'].items())
         failed_methods = list(d['failed_methods'].items())
-        early_shutdown_methods = []
-        failed_methods_already_rerun = []
-        unexpected_failed_methods = []
+        tests_to_report = passed_methods[:]
         requeue_methods = []
 
         for method, result in failed_methods:
-            if (class_path, method) in self.failed_rerun_methods:
-                failed_methods_already_rerun.append((method, result))
-            elif result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
-                unexpected_failed_methods.append((method, result))
-            elif early_shutdown:
-                early_shutdown_methods.append((method, result))
-                requeue_methods.append((method, result))
-            else:
-                requeue_methods.append((method, result))
+            if self.disable_requeueing == True:
+                # If requeueing is disabled we'll report failed methods immediately.
+                tests_to_report.append((method, result))
 
-        tests_to_report = itertools.chain(
-            passed_methods,
-            early_shutdown_methods,
-            failed_methods_already_rerun,
-            unexpected_failed_methods,
-        )
+            else:
+                if (class_path, method) in self.failed_rerun_methods:
+                    # failed methods already rerun, no need to requeue.
+                    tests_to_report.append((method, result))
+
+                elif result['method']['fixture_type'] in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
+                    # Unexpexpected fixture failures, we'll report but no need to requeue.
+                    tests_to_report.append((method, result))
+
+                elif early_shutdown:
+                    # Server is shutting down. Just report the failure, no need to requeue.
+                    tests_to_report.append((method, result))
+
+                else:
+                    # Otherwise requeue the method to be run on a different builder.
+                    requeue_methods.append((method, result))
+
         for method, result_dict in tests_to_report:
             for reporter in self.test_reporters:
                 result_dict['previous_run'] = self.previous_run_results.get((class_path, method), None)
@@ -423,7 +426,7 @@ class TestRunnerServer(TestRunner):
                     }
                 }
 
-                if (class_path, method) not in self.timeout_rerun_methods:
+                if (class_path, method) not in self.timeout_rerun_methods and self.disable_requeueing != True:
                     requeue_dict['methods'].append(method)
                     self.timeout_rerun_methods.add((class_path, method))
                     self.previous_run_results[(class_path, method)] = result_dict

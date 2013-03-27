@@ -1,10 +1,22 @@
+import contextlib
 import logging
 import threading
 import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
 from test_logger_test import ExceptionInClassFixtureSampleTests
-from testify import assert_equal, assert_in, assert_raises_and_contains, class_setup, class_teardown, setup, teardown, test_case, test_runner_server
+from testify import (
+    assert_equal,
+    assert_in,
+    assert_any_match_regex,
+    assert_raises_and_contains,
+    class_setup,
+    class_teardown,
+    setup,
+    teardown,
+    test_case,
+    test_runner_server
+)
 from testify.utils import turtle
 
 _log = logging.getLogger('testify')
@@ -29,6 +41,15 @@ def get_test(server, runner_id):
     # Verify only one test was received.
     (test_received,) = tests_received
     return test_received
+
+
+@contextlib.contextmanager
+def disable_requeueing(server):
+    orig_disable_requeueing = server.disable_requeueing
+    server.disable_requeueing = True
+    yield
+    server.disable_requeueing = orig_disable_requeueing
+
 
 class TestRunnerServerBaseTestCase(test_case.TestCase):
     __test__ = False
@@ -199,6 +220,37 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         assert_equal(first_test['class_path'], second_test['class_path'])
         assert_equal(first_test['methods'], second_test['methods'])
         assert_equal(third_test, None)
+
+    def test_disable_requeueing_on_failure(self):
+        with disable_requeueing(self.server):
+            first_test = get_test(self.server, 'runner1')
+            assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
+            assert_equal(first_test['methods'], ['test', 'run'])
+
+            self.run_test('runner1', should_pass=False)
+
+            assert_equal(get_test(self.server, 'runner2'), None)
+
+    def test_disable_requeueing_on_timeout(self):
+        with disable_requeueing(self.server):
+            first_test = get_test(self.server, 'runner1')
+            self.timeout_class('runner1', first_test)
+
+            assert_equal(get_test(self.server, 'runner2'), None)
+
+    def test_report_when_requeueing_is_disabled(self):
+        with disable_requeueing(self.server):
+            first_test = get_test(self.server, 'runner1')
+            assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
+            assert_equal(first_test['methods'], ['test', 'run'])
+
+            self.run_test('runner1', should_pass=False)
+
+            test_complete_calls = self.test_reporter.test_complete.calls
+            test_complete_call_args = [call[0] for call in test_complete_calls]
+            test_results = [args[0] for args in test_complete_call_args]
+            full_names = [test_result['method']['full_name'] for test_result in test_results]
+            assert_any_match_regex('test.test_runner_server_test DummyTestCase.test', full_names)
 
     def test_fail_then_timeout_twice(self):
         """Fail, then time out, then time out again, then time out again.

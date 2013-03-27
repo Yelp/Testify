@@ -129,6 +129,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--retry-limit', action="store", dest="retry_limit", type="int", default=60, help="Number of times to try connecting to the server before exiting.")
     parser.add_option('--retry-interval', action="store", dest="retry_interval", type="int", default=2, help="Interval, in seconds, between trying to connect to the server.")
     parser.add_option('--reconnect-retry-limit', action="store", dest="reconnect_retry_limit", type="int", default=5, help="Number of times to try reconnecting to the server before exiting if we have previously connected.")
+    parser.add_option('--disable-requeueing', action="store_true", dest="disable_requeueing", help="Disable re-queueing/re-running failed tests on a different builder.")
 
     parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None, help="Quit after this many test failures.")
     parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300, help="How long to wait to wait for activity from a test runner before requeuing the tests it has checked out.")
@@ -168,15 +169,6 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     else:
         runner_action = ACTION_RUN_TESTS
 
-    reporters = []
-    if options.disable_color:
-        reporters.append(test_logger.ColorlessTextTestLogger(options))
-    else:
-        reporters.append(test_logger.TextTestLogger(options))
-
-    for plugin in plugin_modules:
-        if hasattr(plugin, "build_test_reporters"):
-            reporters += plugin.build_test_reporters(options)
 
     test_runner_args = {
         'debugger': options.debugger,
@@ -185,7 +177,6 @@ def parse_test_runner_command_line_args(plugin_modules, args):
         'suites_require': options.suites_require,
         'failure_limit' : options.failure_limit,
         'module_method_overrides': module_method_overrides,
-        'test_reporters': reporters,            # Should be pushed into plugin
         'options': options,
         'plugin_modules': plugin_modules
     }
@@ -216,63 +207,95 @@ class TestProgram(object):
         """Initialize and run the test with the given command_line_args
             command_line_args will be passed to parser.parse_args
         """
+        self.plugin_modules = load_plugins()
         command_line_args = command_line_args or sys.argv[1:]
+        self.runner_action, self.test_path, self.test_runner_args, self.other_opts = parse_test_runner_command_line_args(
+            self.plugin_modules,
+            command_line_args
+        )
 
-        plugin_modules = load_plugins()
+        # allow plugins to modify test program
+        for plugin_mod in self.plugin_modules:
+            if hasattr(plugin_mod, "prepare_test_program"):
+                plugin_mod.prepare_test_program(self.other_opts, self)
 
-        runner_action, test_path, test_runner_args, other_opts = parse_test_runner_command_line_args(plugin_modules, command_line_args)
+        self.run()
 
-        self.setup_logging(other_opts)
+    def get_reporters(self, options, plugin_modules):
+        reporters = []
+        if options.disable_color:
+            reporters.append(test_logger.ColorlessTextTestLogger(options))
+        else:
+            reporters.append(test_logger.TextTestLogger(options))
+
+        for plugin in plugin_modules:
+            if hasattr(plugin, "build_test_reporters"):
+                reporters += plugin.build_test_reporters(options)
+        return reporters
+
+    def run(self):
+        self.setup_logging(self.other_opts)
 
         bucket_overrides = {}
-        if other_opts.bucket_overrides_file:
-            bucket_overrides = get_bucket_overrides(other_opts.bucket_overrides_file)
+        if self.other_opts.bucket_overrides_file:
+            bucket_overrides = get_bucket_overrides(self.other_opts.bucket_overrides_file)
 
-        if other_opts.serve_port:
+        if self.other_opts.serve_port:
             from test_runner_server import TestRunnerServer
             test_runner_class = TestRunnerServer
-            test_runner_args['serve_port'] = other_opts.serve_port
-        elif other_opts.connect_addr:
+            self.test_runner_args['serve_port'] = self.other_opts.serve_port
+        elif self.other_opts.connect_addr:
             from test_runner_client import TestRunnerClient
             test_runner_class = TestRunnerClient
-            test_runner_args['connect_addr'] = other_opts.connect_addr
-            test_runner_args['runner_id'] = other_opts.runner_id
-        elif other_opts.replay_json or other_opts.replay_json_inline:
+            self.test_runner_args['connect_addr'] = self.other_opts.connect_addr
+            self.test_runner_args['runner_id'] = self.other_opts.runner_id
+        elif self.other_opts.replay_json or self.other_opts.replay_json_inline:
             from test_runner_json_replay import TestRunnerJSONReplay
             test_runner_class = TestRunnerJSONReplay
-            test_runner_args['replay_json'] = other_opts.replay_json
-            test_runner_args['replay_json_inline'] = other_opts.replay_json_inline
-        elif other_opts.rerun_test_file:
+            self.test_runner_args['replay_json'] = self.other_opts.replay_json
+            self.test_runner_args['replay_json_inline'] = self.other_opts.replay_json_inline
+        elif self.other_opts.rerun_test_file:
             from test_rerunner import TestRerunner
             test_runner_class = TestRerunner
-            test_runner_args['rerun_test_file'] = other_opts.rerun_test_file
+            self.test_runner_args['rerun_test_file'] = self.other_opts.rerun_test_file
         else:
             test_runner_class = TestRunner
 
-        runner = test_runner_class(
-            test_path,
-            bucket_overrides=bucket_overrides,
-            bucket_count=other_opts.bucket_count,
-            bucket_salt=other_opts.bucket_salt,
-            bucket=other_opts.bucket,
-            **test_runner_args
+        # initialize reporters 
+        self.test_runner_args['test_reporters'] = self.get_reporters(
+            self.other_opts, self.test_runner_args['plugin_modules']
         )
 
-        if runner_action == ACTION_LIST_SUITES:
+        runner = test_runner_class(
+            self.test_path,
+            bucket_overrides=bucket_overrides,
+            bucket_count=self.other_opts.bucket_count,
+            bucket_salt=self.other_opts.bucket_salt,
+            bucket=self.other_opts.bucket,
+            **self.test_runner_args
+        )
+
+        if self.runner_action == ACTION_LIST_SUITES:
             runner.list_suites()
             sys.exit(0)
-        elif runner_action == ACTION_LIST_TESTS:
+        elif self.runner_action == ACTION_LIST_TESTS:
             runner.list_tests()
             sys.exit(0)
-        elif runner_action == ACTION_RUN_TESTS:
+        elif self.runner_action == ACTION_RUN_TESTS:
             label_text = ""
             bucket_text = ""
-            if other_opts.label:
-                label_text = " " + other_opts.label
-            if other_opts.bucket_count:
-                salt_info =  (' [salt: %s]' % other_opts.bucket_salt) if other_opts.bucket_salt else ''
-                bucket_text = " (bucket %d of %d%s)" % (other_opts.bucket, other_opts.bucket_count, salt_info)
+            if self.other_opts.label:
+                label_text = " " + self.other_opts.label
+            if self.other_opts.bucket_count:
+                salt_info =  (' [salt: %s]' % self.other_opts.bucket_salt) if self.other_opts.bucket_salt else ''
+                bucket_text = " (bucket %d of %d%s)" % (self.other_opts.bucket, self.other_opts.bucket_count, salt_info)
             log.info("starting test run%s%s", label_text, bucket_text)
+
+            # Allow plugins to modify the test runner.
+            for plugin_mod in self.test_runner_args['plugin_modules']:
+                if hasattr(plugin_mod, "prepare_test_runner"):
+                    plugin_mod.prepare_test_runner(self.test_runner_args['options'], runner)
+
             result = runner.run()
             sys.exit(not result)
 

@@ -2,6 +2,8 @@ import itertools
 import unittest
 
 from testify import assert_equal
+from testify import assert_not_equal
+from testify import assert_in
 from testify import class_setup
 from testify import class_setup_teardown
 from testify import class_teardown
@@ -12,6 +14,7 @@ from testify import setup_teardown
 from testify import teardown
 from testify import TestCase
 from testify import test_runner
+from testify import suite
 
 
 class TestMethodsGetRun(TestCase):
@@ -560,6 +563,7 @@ class LetTest(TestCase):
         assert_equal(self.counter.next(), 0)
         assert_equal(self.counter.next(), 1)
 
+
 class LetWithLambdaTest(TestCase):
 
     counter = let(lambda self: itertools.count(0))
@@ -571,9 +575,34 @@ class LetWithLambdaTest(TestCase):
         assert_equal(self.counter.next(), 0)
         assert_equal(self.counter.next(), 1)
 
+
 class LetWithSubclassTest(LetWithLambdaTest):
     """Test that @let is inherited correctly."""
     pass
+
+
+class ClobberLetTest(TestCase):
+    """Test overwritting a let does not break subsequent tests.
+
+    Because we are unsure which test will run first, two tests will clobber a
+    let that is asserted about in the other test.
+    """
+
+    @let
+    def something(self):
+        return 1
+
+    @let
+    def something_else(self):
+        return 2
+
+    def test_something(self):
+        self.something_else = 3
+        assert_equal(self.something, 1)
+
+    def test_something_else(self):
+        self.something = 4
+        assert_equal(self.something_else, 2)
 
 
 class CallbacksGetCalledTest(TestCase):
@@ -601,6 +630,7 @@ class CallbacksGetCalledTest(TestCase):
             TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
             TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
             TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
+            TestCase.EVENT_ON_RUN_TEST_CASE,
             TestCase.EVENT_ON_COMPLETE_TEST_CASE,
         )
 
@@ -616,6 +646,8 @@ class CallbacksGetCalledTest(TestCase):
         inner_test_case.run()
 
         assert_equal(calls_to_callback, [
+            (TestCase.EVENT_ON_RUN_TEST_CASE, 'run'),
+
             (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, 'classSetUp'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, 'classSetUp'),
 
@@ -633,6 +665,72 @@ class CallbacksGetCalledTest(TestCase):
 
             (TestCase.EVENT_ON_COMPLETE_TEST_CASE, 'run'),
         ])
+
+
+class TestCaseKeepsReferenceToResultsForTestMethod(TestCase):
+    def test_reference_to_results(self):
+        assert self.test_result
+
+
+class SuiteDecoratorTest(TestCase):
+
+    def test_suite_pollution_with_suites_attribute(self):
+        """Test if suite decorator modifies the object's attribute
+        objects instead of assigning a new object. Modifying _suite
+        attribute objects causes suite pollution in TestCases.
+
+        Here we test if the _suites attribute's id() remains the same
+        to verify suite decorator does not modify the object's
+        attribute object.
+        """
+
+        def function_to_decorate():
+            pass
+
+        function_to_decorate._suites = set(['fake_suite_1'])
+
+        suites_before_decoration = function_to_decorate._suites
+
+        function_to_decorate = suite('fake_suite_2')(function_to_decorate)
+
+        suites_after_decoration =  function_to_decorate._suites
+
+        assert_not_equal(
+            id(suites_before_decoration),
+            id(suites_after_decoration),
+            "suites decorator modifies the object's _suite attribute"
+        )
+
+
+class FailingTeardownMethodsTest(TestCase):
+
+    def test_class_with_two_failing_teardown_methods(self):
+
+        class ClassWithTwoFailingTeardownMethods(TestCase):
+
+            methods_ran = []
+
+            def test_method(self):
+                self.methods_ran.append("test_method")
+                assert False
+
+            @teardown
+            def first_teardown(self):
+                self.methods_ran.append("first_teardown")
+                assert False
+
+            @teardown
+            def second_teardown(self):
+                self.methods_ran.append("second_teardown")
+                assert False
+
+        inner_test_case = ClassWithTwoFailingTeardownMethods()
+        inner_test_case.run()
+        
+        assert_in("test_method", inner_test_case.methods_ran)
+        assert_in("first_teardown", inner_test_case.methods_ran)
+        assert_in("second_teardown", inner_test_case.methods_ran)
+
 
 if __name__ == '__main__':
     run()

@@ -150,9 +150,8 @@ class TestCase(object):
     EVENT_ON_COMPLETE_CLASS_SETUP_METHOD = 4
     EVENT_ON_RUN_CLASS_TEARDOWN_METHOD = 5
     EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD = 6
-    EVENT_ON_RUN_FIXTURE_METHOD = 7
-    EVENT_ON_COMPLETE_FIXTURE_METHOD = 8
-    EVENT_ON_COMPLETE_TEST_CASE = 9
+    EVENT_ON_RUN_TEST_CASE = 7
+    EVENT_ON_COMPLETE_TEST_CASE = 8
 
     log = class_logger.ClassLogger()
 
@@ -311,6 +310,7 @@ class TestCase(object):
         # and not a function!). self.run is as good a method as any.
         test_case_result = TestResult(self.run)
         test_case_result.start()
+        self.fire_event(self.EVENT_ON_RUN_TEST_CASE, test_case_result)
 
         fixtures = []
 
@@ -442,6 +442,10 @@ class TestCase(object):
         for test_method in self.runnable_test_methods():
 
             result = TestResult(test_method)
+            # Sometimes, test cases want to take further action based on
+            # results, e.g. further clean-up or reporting if a test method
+            # fails. (Yelp's Selenium test cases do this.)
+            test_method.im_self.test_result = result
 
             try:
                 self._method_level = True # Flag that we're currently running method-level stuff (rather than class-level)
@@ -478,10 +482,8 @@ class TestCase(object):
 
                     # finally, run the teardown phase
                     self._stage = self.STAGE_TEARDOWN
-                    def _teardown_block():
-                        for fixture_method in self.teardown_fixtures:
-                            fixture_method()
-                    self.__execute_block_recording_exceptions(_teardown_block, result)
+                    for fixture_method in self.teardown_fixtures:
+                        self.__execute_block_recording_exceptions(fixture_method, result)
 
                 # if nothing's gone wrong, it's not about to start
                 if not result.complete:
@@ -638,7 +640,7 @@ def suite(*args, **kwargs):
         if not hasattr(function, '_suites'):
             function._suites = set()
         if args and (conditions is None or bool(conditions) is True):
-            function._suites.update(set(args))
+            function._suites = set(function._suites) | set(args)
             if reason:
                 if not hasattr(function, '_suite_reasons'):
                     function._suite_reasons = []
@@ -722,9 +724,12 @@ class let(object):
         if test_case is None:
             return self
         if self._result is self._unsaved:
-            self._save_result(self._func(test_case))
-            self._register_reset_after_test_completion(test_case)
+            self.__set__(test_case, self._func(test_case))
         return self._result
+
+    def __set__(self, test_case, value):
+        self._save_result(value)
+        self._register_reset_after_test_completion(test_case)
 
     def _save_result(self, result):
         self._result = result

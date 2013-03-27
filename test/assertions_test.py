@@ -1,3 +1,4 @@
+#-*- coding: utf-8 -*-
 from __future__ import with_statement
 
 from testify import TestCase
@@ -62,6 +63,71 @@ class AssertEqualTestCase(TestCase):
         else:
             assert False, 'Expected `AssertionError`.'
 
+    def test_unicode_diff(self):
+        ascii_string = 'abc'
+        unicode_string = u'ü and some more'
+        def assert_with_unicode_msg():
+            assert_equal(unicode_string, ascii_string)
+        assertions.assert_raises_and_contains(AssertionError, 'abc', assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'and some more', assert_with_unicode_msg)
+
+    def test_unicode_diff2(self):
+        unicode_string = u'Thę quıćk brōwń fōx jumpęd ōvęr thę łąźy dōğ.'
+        utf8_string = u'Thę quıćk brōwń fōx jumpęd ōvęr thę łąży dōğ.'
+        def assert_with_unicode_msg():
+            assertions.assert_equal(unicode_string, utf8_string)
+        assertions.assert_raises_and_contains(AssertionError, 'łą<ź>y', assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'łą<ż>y', assert_with_unicode_msg)
+        
+    def test_unicode_diff3(self):
+        unicode_string = u'münchen'
+        utf8_string = unicode_string.encode('utf8')
+        def assert_with_unicode_msg():
+            assert_equal(unicode_string, utf8_string)
+        assertions.assert_raises_and_contains(AssertionError, r"l: u'm\xfcnchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, r"r: 'm\xc3\xbcnchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'l: münchen', assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'r: münchen', assert_with_unicode_msg)
+
+    def test_bytes_diff(self):
+        byte_string1 = 'm\xeenchen'
+        byte_string2 = 'm\xaanchen'
+        def assert_with_unicode_msg():
+            assert_equal(byte_string1, byte_string2)
+        assertions.assert_raises_and_contains(AssertionError, r"l: 'm\xeenchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, r"r: 'm\xaanchen'", assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'l: m<î>nchen', assert_with_unicode_msg)
+        assertions.assert_raises_and_contains(AssertionError, 'r: m<ª>nchen', assert_with_unicode_msg)
+
+    def test_utf8_diff(self):
+        utf8_string1 = u'münchen'.encode('utf8')
+        utf8_string2 = u'mënchen'.encode('utf8')
+        def assert_with_unicode_msg():
+            assert_equal(utf8_string1, utf8_string2)
+        for content in (
+                r"l: 'm\xc3\xbcnchen'",
+                r"r: 'm\xc3\xabnchen'",
+                "l: m<ü>nchen",
+                "r: m<ë>nchen",
+        ):
+            assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
+
+    def test_str_versus_unicode_diff(self):
+        """Real-world example from https://github.com/Yelp/Testify/issues/144#issuecomment-14188539
+        A good assert_equal implementation will clearly show that these have completely different character contents.
+        """
+        unicode_string = u'm\xc3\xbcnchen'
+        byte_string = 'm\xc3\xbcnchen'
+
+        def assert_with_unicode_msg():
+            assert_equal(unicode_string, byte_string)
+        for content in (
+                r"l: u'm\xc3\xbcnchen'",
+                r"r: 'm\xc3\xbcnchen'",
+                "l: m<Ã¼>nchen",
+                "r: m<ü>nchen",
+        ):
+            assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
 
 class MyException(Exception):
     pass
@@ -136,6 +202,53 @@ class AssertRaisesAsCallableTestCase(TestCase):
         assertions.assert_raises(GoodArguments, check_arguments, arg1, arg2, kwarg=kwarg)
 
 
+class AssertRaisesSuchThatTestCase(TestCase):
+
+    def test_fails_when_no_exception_is_raised(self):
+        """Tests that the assertion fails when no exception is raised."""
+        exists = lambda e: True
+        with assertions.assert_raises(AssertionError):
+            with assertions.assert_raises_such_that(Exception, exists):
+                pass
+
+    def test_fails_when_wrong_exception_is_raised(self):
+        """Tests that when an unexpected exception is raised, that it is
+        passed through and the assertion fails."""
+        exists = lambda e: True
+        # note: in assert_raises*, if the exception raised is not of the
+        # expected type, that exception just falls through
+        with assertions.assert_raises(Exception):
+            with assertions.assert_raises_such_that(AssertionError, exists):
+                raise Exception("the wrong exception")
+
+    def test_fails_when_exception_test_fails(self):
+        """Tests that when an exception of the right type that fails the
+        passed in exception test is raised, the assertion fails."""
+        has_two_args = lambda e: assertions.assert_length(e.args, 2)
+        with assertions.assert_raises(AssertionError):
+            with assertions.assert_raises_such_that(Exception, has_two_args):
+                raise Exception("only one argument")
+
+    def test_passes_when_correct_exception_is_raised(self):
+        """Tests that when an exception of the right type that passes the
+        exception test is raised, the assertion passes."""
+        has_two_args = lambda e: assertions.assert_length(e.args, 2)
+        with assertions.assert_raises_such_that(Exception, has_two_args):
+            raise Exception("first", "second")
+
+    def test_callable_is_called_with_all_arguments(self):
+        """Tests that the callable form works properly, with all arguments
+        passed through."""
+        message_is_foo = lambda e: assert_equal(str(e), 'foo')
+        class GoodArguments(Exception): pass
+        arg1, arg2, kwarg = object(), object(), object()
+        def check_arguments(*args, **kwargs):
+            assert_equal((arg1, arg2), args)
+            assert_equal({'kwarg': kwarg}, kwargs)
+            raise GoodArguments('foo')
+        assertions.assert_raises_such_that(GoodArguments, message_is_foo, check_arguments, arg1, arg2, kwarg=kwarg)
+
+
 class AssertRaisesAndContainsTestCase(TestCase):
 
     def test_fails_when_exception_is_not_raised(self):
@@ -201,7 +314,6 @@ class AssertRaisesAndContainsTestCase(TestCase):
         else:
             assert_not_reached('AssertionError should have been raised')
 
-
 class AssertDictSubsetTestCase(TestCase):
 
     def test_passes_with_subset(self):
@@ -234,6 +346,127 @@ class AssertDictSubsetTestCase(TestCase):
         else:
             assert_not_reached('AssertionError should have been raised')
 
+class AssertEmptyTestCase(TestCase):
+
+    def test_passes_on_empty_list(self):
+        """Test that assert_empty passes on an empty list."""
+        assertions.assert_empty([])
+
+    def test_passes_on_unyielding_generator(self):
+        """Test that assert_empty passes on an 'empty' generator."""
+        def yield_nothing():
+            if False:
+                yield 0
+
+        assertions.assert_empty(yield_nothing())
+
+    def test_fails_on_nonempty_list(self):
+        """Test that assert_empty fails on a nonempty list."""
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_empty([0])
+
+    def test_fails_on_infinite_generator(self):
+        """Tests that assert_empty fails on an infinite generator."""
+        def yes():
+            while True:
+                yield 'y'
+
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_empty(yes())
+
+    def test_max_elements_to_print_eq_0_means_no_sample_message(self):
+        """Tests that when max_elements_to_print is 0, there is no sample in the error message."""
+        iterable = [1, 2, 3]
+        expected_message = "iterable %s was unexpectedly non-empty." % iterable
+
+        def message_has_no_sample(exception):
+            assertions.assert_equal(str(exception), expected_message)
+
+        with assertions.assert_raises_such_that(
+                AssertionError, message_has_no_sample):
+            assertions.assert_empty(iterable, max_elements_to_print=0)
+
+    def test_max_elements_to_print_gt_len_means_whole_iterable_sample_message(self):
+        """
+        Tests that when max_elements_to_print is greater than the length of
+        the whole iterable, the whole iterable is printed.
+        """
+        elements = [1, 2, 3, 4, 5]
+        iterable = (i for i in elements)
+        expected_message = "iterable %s was unexpectedly non-empty. elements: %s" \
+                         % (iterable, elements)
+
+        def message_has_whole_iterable_sample(exception):
+            assertions.assert_equal(str(exception), expected_message)
+
+        with assertions.assert_raises_such_that(
+                AssertionError, message_has_whole_iterable_sample):
+            assertions.assert_empty(iterable, max_elements_to_print=len(elements)+1)
+
+    def test_max_elements_to_print_eq_len_means_whole_iterable_sample_message(self):
+        """
+        Tests that when max_elements_to_print is equal to the length of
+        the whole iterable, the whole iterable is printed.
+        """
+        elements = [1, 2, 3, 4, 5]
+        iterable = (i for i in elements)
+        expected_message = "iterable %s was unexpectedly non-empty. elements: %s" \
+                         % (iterable, elements)
+
+        def message_has_whole_iterable_sample(exception):
+            assertions.assert_equal(str(exception), expected_message)
+
+        with assertions.assert_raises_such_that(
+                AssertionError, message_has_whole_iterable_sample):
+            assertions.assert_empty(iterable, max_elements_to_print=len(elements))
+
+    def test_max_elements_to_print_lt_len_means_partial_iterable_sample_message(self):
+        """
+        Tests that when max_elements_to_print is less than the length of the
+        whole iterable, the first max_elements_to_print elements are printed.
+        """
+        elements = [1, 2, 3, 4, 5]
+        iterable = (i for i in elements)
+        max_elements_to_print = len(elements) - 1
+        expected_message = "iterable %s was unexpectedly non-empty. first %i elements: %s" \
+                         % (iterable, max_elements_to_print, elements[:max_elements_to_print])
+
+        def message_has_whole_iterable_sample(exception):
+            assertions.assert_equal(str(exception), expected_message)
+
+        with assertions.assert_raises_such_that(
+                AssertionError, message_has_whole_iterable_sample):
+            assertions.assert_empty(iterable, max_elements_to_print=max_elements_to_print)
+
+class AssertNotEmptyTestCase(TestCase):
+
+    def test_fails_on_empty_list(self):
+        """Test that assert_not_empty fails on an empty list."""
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_not_empty([])
+
+    def test_fails_on_unyielding_generator(self):
+        """Test that assert_not_empty fails on an 'empty' generator."""
+        def yield_nothing():
+            if False:
+                yield 0
+
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_not_empty(yield_nothing())
+
+    def test_passes_on_nonempty_list(self):
+        """Test that assert_not_empty passes on a nonempty list."""
+        assertions.assert_not_empty([0])
+
+    def test_passes_on_infinite_generator(self):
+        """Tests that assert_not_empty fails on an infinite generator."""
+        def yes():
+            while True:
+                yield 'y'
+
+        assertions.assert_not_empty(yes())
+
 
 if __name__ == '__main__':
     run()
+# vim:et:sts=4:sw=4:

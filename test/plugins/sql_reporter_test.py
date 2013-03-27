@@ -1,5 +1,4 @@
 from mock import patch
-import sqlalchemy as SA
 import time
 from optparse import OptionParser
 
@@ -10,11 +9,16 @@ try:
 except ImportError:
     import json
 
+SA = None
+try:
+    import sqlalchemy as SA
+except ImportError:
+    pass
 
 from test.discovery_failure_test import BrokenImportTestCase
 from test.test_logger_test import ExceptionInClassFixtureSampleTests
 from testify import TestCase, assert_equal, assert_gt, assert_in,  assert_in_range, setup_teardown
-from testify.plugins.sql_reporter import Builds, Failures, SQLReporter, TestResults, Tests, add_command_line_options
+from testify.plugins.sql_reporter import add_command_line_options, SQLReporter
 from testify.test_result import TestResult
 from testify.test_runner import TestRunner
 
@@ -32,14 +36,20 @@ class SQLReporterBaseTestCase(TestCase):
     @setup_teardown
     def make_reporter(self):
         """Make self.reporter, a SQLReporter that runs on an empty in-memory SQLite database."""
+        if not SA:
+            msg = 'SQL Reporter plugin requires sqlalchemy and you do not have it installed in your PYTHONPATH.\n'
+            raise ImportError, msg
+
         parser = OptionParser()
         add_command_line_options(parser)
+        self.fake_buildbot_run_id = 'A' * 36
         (options, args) = parser.parse_args([
             '--reporting-db-url', 'sqlite://',
             '--sql-reporting-frequency', '0.05',
             '--build-info', json.dumps({
                 'buildbot' : 1,
                 'buildnumber' : 1,
+                'buildbot_run_id': self.fake_buildbot_run_id,
                 'branch' : 'a_branch_name',
                 'revision' : 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
                 'buildname' : 'a_build_name'
@@ -59,8 +69,8 @@ class SQLReporterBaseTestCase(TestCase):
     def _get_test_results(self, conn):
         """Return a list of tests and their results from SA connection `conn`."""
         return list(conn.execute(SA.select(
-            columns=TestResults.columns + Tests.columns,
-            from_obj=TestResults.join(Tests, TestResults.c.test == Tests.c.id)
+            columns=self.reporter.TestResults.columns + self.reporter.Tests.columns,
+            from_obj=self.reporter.TestResults.join(self.reporter.Tests, self.reporter.TestResults.c.test == self.reporter.Tests.c.id)
         )))
 
 
@@ -71,11 +81,12 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         conn = self.reporter.conn
 
         # We're creating a new in-memory database in make_reporter, so we don't need to worry about rows from previous tests.
-        (build,) = list(conn.execute(Builds.select()))
+        (build,) = list(conn.execute(self.reporter.Builds.select()))
 
         assert_equal(build['buildname'], 'a_build_name')
         assert_equal(build['branch'], 'a_branch_name')
         assert_equal(build['revision'], 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+        assert_equal(build['buildbot_run_id'], self.fake_buildbot_run_id)
 
         # Method count should be None until we discover (which is part of running)
         assert_equal(build['method_count'], None)
@@ -85,7 +96,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         assert runner.run()
 
         # Now that we've run the tests, get the build row again and check to see that things are updated.
-        (updated_build,) = list(conn.execute(Builds.select()))
+        (updated_build,) = list(conn.execute(self.reporter.Builds.select()))
 
         for key in updated_build.keys():
             if key not in ('end_time', 'run_time', 'method_count'):
@@ -99,9 +110,11 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         assert 'discovery_failure' in build
         assert_equal(build['discovery_failure'], False)
 
-        # Check that we have one failure and one pass, and that they're the right tests.
+        # Check test results.
         test_results = self._get_test_results(conn)
         assert_equal(len(test_results), 2)
+
+        # Check that we have one failure and one pass, and that they're the right tests.
         (passed_test,) = [r for r in test_results if not r['failure']]
         (failed_test,) = [r for r in test_results if r['failure']]
 
@@ -113,12 +126,12 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         """Tell our SQLReporter to update its counts, and check that it does."""
         conn = self.reporter.conn
 
-        (build,) = list(conn.execute(Builds.select()))
+        (build,) = list(conn.execute(self.reporter.Builds.select()))
 
         assert_equal(build['method_count'], None)
 
         self.reporter.test_counts(3, 50)
-        (updated_build,) = list(conn.execute(Builds.select()))
+        (updated_build,) = list(conn.execute(self.reporter.Builds.select()))
 
         assert_equal(updated_build['method_count'], 50)
 
@@ -166,7 +179,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
 
             assert self.reporter.report()
 
-        failure = conn.execute(Failures.select()).fetchone()
+        failure = conn.execute(self.reporter.Failures.select()).fetchone()
         assert_equal(len(failure.traceback), 50)
         assert_equal(len(failure.error), 50)
         assert_in('Exception truncated.', failure.traceback)
@@ -179,7 +192,7 @@ class SQLReporterDiscoveryFailureTestCase(SQLReporterBaseTestCase, BrokenImportT
         runner.run()
 
         conn = self.reporter.conn
-        (build,) = list(conn.execute(Builds.select()))
+        (build,) = list(conn.execute(self.reporter.Builds.select()))
 
         assert_equal(build['discovery_failure'], True)
         assert_equal(build['method_count'], 0)
@@ -204,7 +217,7 @@ class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
                 'Unexpected success for %s.%s' % (result['class_name'], result['method_name'])
             )
 
-        failures = conn.execute(Failures.select()).fetchall()
+        failures = conn.execute(self.reporter.Failures.select()).fetchall()
         for failure in failures:
             assert_in('in class_setup_raises_exception', failure.traceback)
 
@@ -227,7 +240,7 @@ class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
             'Unexpected success for %s.%s' % (class_teardown_result['class_name'], class_teardown_result['method_name'])
         )
 
-        failure = conn.execute(Failures.select()).fetchone()
+        failure = conn.execute(self.reporter.Failures.select()).fetchone()
         assert_in('in class_teardown_raises_exception', failure.traceback)
 
 

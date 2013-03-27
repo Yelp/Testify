@@ -13,9 +13,9 @@
 # limitations under the License.
 from __future__ import with_statement
 
-import re
-
 import contextlib
+from itertools import islice
+import re
 
 from .utils import stringdiffer
 
@@ -143,14 +143,47 @@ def assert_raises(*args, **kwargs):
         return _assert_raises(*args, **kwargs)
 
 
+def assert_raises_such_that(exception_class, exception_test=lambda e: e, callable_obj=None, *args, **kwargs):
+    """
+    Assert that an exception is raised such that expection_test(exception)
+    passes, either in a with statement via a context manager or while calling
+    a given callable on given arguments.
+
+    Arguments:
+        exception_class - class corresponding to the expected exception
+        exception_test - a callable which takes an exception instance and
+            asserts things about it
+        callable_obj, *args, **kwargs - optional, a callable object and
+            arguments to pass into it which when used are expected to raise the
+            exception; if not provided, this function returns a context manager
+            which will check that the assertion is raised within the context
+            (the body of the with statement).
+
+    As a context manager:
+    >>> says_whatever = lambda e: assert_equal(str(e), "whatever")
+    >>> with assert_raises_such_that(Exception, says_whatever):
+    ...     raise Exception("whatever")
+
+    Pass in a callable:
+    >>> says_whatever = lambda e: assert_equal(str(e), "whatever")
+    >>> def raise_exception(arg, kwarg=None):
+    ...     raise Exception("whatever")
+    >>> assert_raises_such_that(Exception, says_whatever, raise_exception, 1, kwarg=234)
+    """
+    if callable_obj is None:
+        return _assert_raises_context_manager(exception_class, exception_test)
+    else:
+        with _assert_raises_context_manager(exception_class, exception_test):
+            callable_obj(*args, **kwargs)
+
 def assert_raises_and_contains(expected_exception_class, strings, callable_obj, *args, **kwargs):
     """Assert an exception is raised by passing in a callable and its
     arguments and that the string representation of the exception
-    contains the case-insensetive list of passed in strings.
+    contains the case-insensitive list of passed in strings.
 
-	Args
-		strings -- can be a string or an iterable of strings
-	"""
+    Args
+        strings -- can be a string or an iterable of strings
+    """
     try:
         callable_obj(*args, **kwargs)
     except expected_exception_class, e:
@@ -162,13 +195,19 @@ def assert_raises_and_contains(expected_exception_class, strings, callable_obj, 
     else:
         assert_not_reached("No exception was raised (expected %s)" % expected_exception_class)
 
-
 @contextlib.contextmanager
-def _assert_raises_context_manager(exception_class):
+def _assert_raises_context_manager(exception_class, exception_test=lambda e: e):
+    """Builds a context manager for testing that code raises an assertion.
+
+    Args:
+        exception_class - a subclass of Exception
+        exception_test - optional, a function to apply to the exception (to
+            test something about it)
+    """
     try:
         yield
-    except exception_class:
-        return
+    except exception_class as e:
+        exception_test(e)
     else:
         assert_not_reached("No exception was raised (expected %r)" %
                            exception_class)
@@ -186,11 +225,12 @@ def _diff_message(lhs, rhs):
 
     NOTE: Only works well for strings not containing newlines.
     """
-    lhs = repr(lhs) if not isinstance(lhs, basestring) else lhs
-    rhs = repr(rhs) if not isinstance(rhs, basestring) else rhs
+    lhs = _to_characters(lhs)
+    rhs = _to_characters(rhs)
 
-    return 'Diff:\nl: %s\nr: %s' % stringdiffer.highlight(lhs, rhs)
-
+    message = u'Diff:\nl: %s\nr: %s' % stringdiffer.highlight(lhs, rhs)
+    # Python2 exceptions require bytes.
+    return message.encode('UTF-8')
 
 def assert_equal(lval, rval, message=None):
     """Assert that lval and rval are equal."""
@@ -326,6 +366,64 @@ def assert_rows_equal(rows1, rows2):
     assert_equal(norm_rows(rows1), norm_rows(rows2))
 
 
+def assert_empty(iterable, max_elements_to_print=None, message=None):
+    """
+    Assert that an iterable contains no values.
+
+    Args:
+        iterable - any iterable object
+        max_elements_to_print - int or None, maximum number of elements from
+            iterable to include in the error message. by default, includes all
+            elements from iterables with a len(), and 10 elements otherwise.
+            if max_elements_to_print is 0, no sample is printed.
+        message - str or None, custom message to print if the iterable yields.
+            a sample is appended to the end unless max_elements_to_print is 0.
+    """
+    # Determine whether or not we can print all of iterable, which could be
+    # an infinite (or very slow) generator.
+    if max_elements_to_print is None:
+        try:
+            max_elements_to_print = len(iterable)
+        except TypeError:
+            max_elements_to_print = 10
+
+    message = message or "iterable %s was unexpectedly non-empty." % iterable
+
+    # Get the first max_elements_to_print + 1 items from iterable, or just
+    # the first item if max_elements_to_print is 0.  Trying to get an
+    # extra item by adding 1 to max_elements_to_print lets us tell whether
+    # we got everything in iterator, regardless of if it has len() defined.
+    if max_elements_to_print == 0:
+        sample = list(islice(iterable, 0, 1))
+    else:
+        sample_plus_extra = list(islice(iterable, 0, max_elements_to_print + 1))
+        sample_is_whole_iterable = len(sample_plus_extra) <= max_elements_to_print
+        sample = sample_plus_extra[:max_elements_to_print]
+
+        if sample_is_whole_iterable:
+            message += ' elements: %s' % sample
+        else:
+            message += ' first %s elements: %s' % (len(sample), sample)
+
+    assert len(sample) == 0, message
+
+
+def assert_not_empty(iterable, message=None):
+    """
+    Assert that an iterable is not empty (by trying to loop over it).
+
+    Args:
+        iterable - any iterable object
+        message - str or None, message to print if the iterable doesn't yield
+    """
+    for value in iterable:
+        break
+    else:
+        # the else clause of a for loop is reached iff you break out of the loop
+        raise AssertionError(message if message else
+            "iterable %s is unexpectedly empty" % iterable)
+
+
 def assert_length(sequence, expected, message=None):
     """Assert a sequence or iterable has an expected length."""
     message = message or "%(sequence)s has length %(length)s expected %(expected)s"
@@ -346,7 +444,7 @@ def assert_is(left, right, msg="expected %(left)r is %(right)r"):
 
 
 def assert_is_not(left, right, msg="expected %(left)r is not %(right)r"):
-    """Assert that left and right are the same object"""
+    """Assert that left and right are NOT the same object"""
     assert left is not right, msg % {'left':left, 'right':right}
 
 
@@ -510,3 +608,24 @@ def assert_exactly_one(*args, **kwargs):
         raise AssertionError("Expected exactly one True (got %d) args: %r" % (len(true_args), args))
 
     return true_args[0]
+
+
+def _to_characters(x):
+    """Return characters that represent the object `x`, come hell or high water."""
+    if isinstance(x, unicode):
+        return x
+    try:
+        return unicode(x, 'UTF-8')
+    except UnicodeDecodeError:
+        return unicode(x, 'latin1')
+    except TypeError:
+        # We're only allowed to specify an encoding for str values, for whatever reason.
+        try:
+            return unicode(x)
+        except UnicodeDecodeError:
+            # You get this (for example) when an error object contains utf8 bytes.
+            try:
+                return unicode(str(x), 'UTF-8')
+            except UnicodeDecodeError:
+                return unicode(str(x), 'latin1')
+# vim:et:sts=4:sw=4:
