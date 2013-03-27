@@ -314,18 +314,30 @@ class TestCase(object):
 
         fixtures = []
 
-		# TODO: The order below is not correct. Modify
-		# __init_fixture_methods to get the fixture methods in proper
-		# order.
-        for fixture in self.class_setup_fixtures:
-            fixture = self.__convert_class_setup_to_class_setup_teardown(fixture)
-            fixtures.append(fixture)
+        def sortable_fixture_key(fixture):
+            if fixture._fixture_type == 'class_setup':
+                fixture_order = {
+                    'class_setup' : 0,
+                    'class_setup_teardown': 1,
+                    'class_teardown': 2,
+                 }
+            else:
+                fixture_order = {
+                    'class_setup' : 0,
+                    'class_setup_teardown': 2,
+                    'class_teardown': 1,
+                 }
+                if fixture._fixture_type == "class_teardown":
+                    return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], -fixture._fixture_id)
 
-        for fixture in self.class_setup_teardown_fixtures:
-            fixtures.append(fixture)
+            return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], fixture._fixture_id)
 
-        for fixture in self.class_teardown_fixtures:
-            fixture = self.__convert_class_teardown_to_class_setup_teardown(fixture)
+        all_class_fixtures = self.class_setup_fixtures + self.class_setup_teardown_fixtures + self.class_teardown_fixtures
+        for fixture in sorted(all_class_fixtures, key=sortable_fixture_key):
+            if fixture._fixture_type == 'class_teardown':
+                fixture = self.__convert_class_teardown_to_class_setup_teardown(fixture)
+            elif fixture._fixture_type == 'class_setup':
+                fixture = self.__convert_class_setup_to_class_setup_teardown(fixture)
             fixtures.append(fixture)
 
         self.__enter_class_context_managers(fixtures, self.__run_test_methods)
