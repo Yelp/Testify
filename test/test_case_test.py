@@ -273,6 +273,12 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
                 super(FakeBaseClass, self).__init__(*args, **kwargs)
                 self.method_order = []
 
+            def classSetUp(self):
+                self.method_order.append("base_classSetUp")
+
+            def classTearDown(self):
+                self.method_order.append("base_classTearDown")
+
             @class_setup
             def base_class_setup(self):
                 self.method_order.append("base_class_setup")
@@ -307,6 +313,7 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
     def test_order(self):
         self.fake_test_case.run()
         expected_order = [
+            "base_classSetUp",
             "base_class_setup",
             "base_class_setup_teardown_setup_phase",
 
@@ -317,7 +324,8 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
             "derived_class_teardown",
 
             "base_class_setup_teardown_teardown_phase",
-            "base_class_teardown"
+            "base_class_teardown",
+            "base_classTearDown",
         ]
 
         assert_equal(self.fake_test_case.method_order, expected_order)

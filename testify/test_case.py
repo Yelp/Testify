@@ -315,6 +315,17 @@ class TestCase(object):
         fixtures = []
 
         def sortable_fixture_key(fixture):
+            """Using class depth, fixture type and fixture id to
+            define a sortable key for fixtures.
+
+            Class depth is the most significant value and defines the
+            MRO (reverse mro for teardown methods) order. Fixture type
+            and fixture id helps us to define the expected order.
+
+            See
+            test.test_case_test.FixtureMethodRegistrationOrderWithBaseClassTest
+            for the expected order.
+            """
             if fixture._fixture_type == 'class_setup':
                 fixture_order = {
                     'class_setup' : 0,
@@ -328,6 +339,11 @@ class TestCase(object):
                     'class_teardown': 1,
                  }
                 if fixture._fixture_type == "class_teardown":
+                    # class_teardown fixtures should be run in
+                    # reversed definition order order. Converting
+                    # fixture_id to its negative value will sort
+                    # class_teardown fixtures in the same class in
+                    # reversed order.
                     return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], -fixture._fixture_id)
 
             return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], fixture._fixture_id)
@@ -351,6 +367,9 @@ class TestCase(object):
             yield
         wrapper.__name__ = fixture.__name__
         wrapper.__doc__ = fixture.__doc__
+        wrapper._fixture_type = fixture._fixture_type
+        wrapper._fixture_id = fixture._fixture_id
+        wrapper._defining_class_depth = fixture._defining_class_depth
         return instancemethod(wrapper, self, self.__class__)
 
     def __convert_class_teardown_to_class_setup_teardown(self, fixture):
@@ -359,6 +378,9 @@ class TestCase(object):
             fixture()
         wrapper.__name__ = fixture.__name__
         wrapper.__doc__ = fixture.__doc__
+        wrapper._fixture_type = fixture._fixture_type
+        wrapper._fixture_id = fixture._fixture_id
+        wrapper._defining_class_depth = fixture._defining_class_depth
         return instancemethod(wrapper, self, self.__class__)
 
     @classmethod
@@ -382,14 +404,14 @@ class TestCase(object):
         method_suites = set(getattr(method, '_suites', set()))
         return (self.__suites_exclude & method_suites)
 
-    def __run_class_fixture(self, fixture_method, function_to_call, stage, callback_on_run_event, callback_on_complete_event):
+    def __run_class_fixture(self, fixture_method, function_to_call, stage, callback_on_run_event, callback_on_complete_event, fire_events=True):
         self._stage = stage
 
         result = TestResult(fixture_method)
-
         try:
             result.start()
-            self.fire_event(callback_on_run_event, result)
+            if fire_events:
+                self.fire_event(callback_on_run_event, result)
             if self.__execute_block_recording_exceptions(function_to_call, result, is_class_level=True):
                 result.end_in_success()
             else:
@@ -398,7 +420,8 @@ class TestCase(object):
             result.end_in_interruption(sys.exc_info())
             raise
         finally:
-            self.fire_event(callback_on_complete_event, result)
+            if fire_events:
+                self.fire_event(callback_on_complete_event, result)
 
     def __enter_class_context_managers(self, fixture_methods, callback):
         """Transform each fixture_method into a context manager with
@@ -409,22 +432,40 @@ class TestCase(object):
             fixture_method = fixture_methods[0]
             ctm = contextmanager(fixture_method)()
 
+            if fixture_method._fixture_type == 'class_teardown':
+                # class_teardown fixture is wrapped as
+                # class_setup_teardown. We should not fire events for the
+                # setup phase of this fake context manager.
+                fire_events = False
+            else:
+                fire_events = True
+
             self.__run_class_fixture(
                 fixture_method,
                 ctm.__enter__,
                 self.STAGE_CLASS_SETUP,
                 self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
-                self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD
+                self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
+                fire_events
             )
 
             self.__enter_class_context_managers(fixture_methods[1:], callback)
+
+            if fixture_method._fixture_type == 'class_setup':
+                # class_setup fixture is wrapped as
+                # class_setup_teardown. We should not fire events for the
+                # teardown phase of this fake context manager.
+                fire_events = False
+            else:
+                fire_events = True
 
             self.__run_class_fixture(
                 fixture_method,
                 lambda: ctm.__exit__(None, None, None),
                 self.STAGE_CLASS_TEARDOWN,
                 self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
-                self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD
+                self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
+                fire_events
             )
         else:
             callback()
