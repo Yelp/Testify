@@ -65,6 +65,41 @@ DEPRECATED_FIXTURE_TYPE_MAP = {
 }
 
 
+def sortable_fixture_key(fixture):
+    """Use class depth, fixture type and fixture id to define
+    a sortable key for fixtures.
+
+    Class depth is the most significant value and defines the
+    MRO (reverse mro for teardown methods) order. Fixture type
+    and fixture id help us to define the expected order.
+
+    See
+    test.test_case_test.FixtureMethodRegistrationOrderWithBaseClassTest
+    for the expected order.
+    """
+    if fixture._fixture_type == 'class_setup':
+        fixture_order = {
+            'class_setup' : 0,
+            'class_setup_teardown': 1,
+            'class_teardown': 2,
+         }
+    else:
+        fixture_order = {
+            'class_setup' : 0,
+            'class_setup_teardown': 2,
+            'class_teardown': 1,
+         }
+        if fixture._fixture_type == "class_teardown":
+            # class_teardown fixtures should be run in reverse
+            # definition order (last definition runs
+            # first). Converting fixture_id to its negative
+            # value will sort class_teardown fixtures in the
+            # same class in reversed order.
+            return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], -fixture._fixture_id)
+
+    return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], fixture._fixture_id)
+
+
 class TwistedFailureError(Exception):
     """Exception that indicates the value is an instance of twisted.python.failure.Failure
 
@@ -313,41 +348,6 @@ class TestCase(object):
         self.fire_event(self.EVENT_ON_RUN_TEST_CASE, test_case_result)
 
         fixtures = []
-
-        def sortable_fixture_key(fixture):
-            """Use class depth, fixture type and fixture id to define
-            a sortable key for fixtures.
-
-            Class depth is the most significant value and defines the
-            MRO (reverse mro for teardown methods) order. Fixture type
-            and fixture id help us to define the expected order.
-
-            See
-            test.test_case_test.FixtureMethodRegistrationOrderWithBaseClassTest
-            for the expected order.
-            """
-            if fixture._fixture_type == 'class_setup':
-                fixture_order = {
-                    'class_setup' : 0,
-                    'class_setup_teardown': 1,
-                    'class_teardown': 2,
-                 }
-            else:
-                fixture_order = {
-                    'class_setup' : 0,
-                    'class_setup_teardown': 2,
-                    'class_teardown': 1,
-                 }
-                if fixture._fixture_type == "class_teardown":
-                    # class_teardown fixtures should be run in reverse
-                    # definition order (last definition runs
-                    # first). Converting fixture_id to its negative
-                    # value will sort class_teardown fixtures in the
-                    # same class in reversed order.
-                    return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], -fixture._fixture_id)
-
-            return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], fixture._fixture_id)
-
         all_class_fixtures = self.class_setup_fixtures + self.class_setup_teardown_fixtures + self.class_teardown_fixtures
         for fixture in sorted(all_class_fixtures, key=sortable_fixture_key):
             if fixture._fixture_type == 'class_teardown':
