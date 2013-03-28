@@ -320,7 +320,7 @@ class TestCase(object):
 
             Class depth is the most significant value and defines the
             MRO (reverse mro for teardown methods) order. Fixture type
-            and fixture id helps us to define the expected order.
+            and fixture id help us to define the expected order.
 
             See
             test.test_case_test.FixtureMethodRegistrationOrderWithBaseClassTest
