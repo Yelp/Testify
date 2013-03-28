@@ -350,6 +350,11 @@ class TestCase(object):
         fixtures = []
         all_class_fixtures = self.class_setup_fixtures + self.class_setup_teardown_fixtures + self.class_teardown_fixtures
         for fixture in sorted(all_class_fixtures, key=make_sortable_fixture_key):
+            # We convert all class-level fixtures to
+            # class_setup_teardown fixtures a) to handle all
+            # class-level fixtures the same and b) to make the
+            # behavior more predictable when a TestCase has different
+            # fixtures interacting.
             if fixture._fixture_type == 'class_teardown':
                 fixture = self.__convert_class_teardown_to_class_setup_teardown(fixture)
             elif fixture._fixture_type == 'class_setup':
