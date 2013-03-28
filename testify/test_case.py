@@ -339,11 +339,11 @@ class TestCase(object):
                     'class_teardown': 1,
                  }
                 if fixture._fixture_type == "class_teardown":
-                    # class_teardown fixtures should be run in
-                    # reversed definition order order. Converting
-                    # fixture_id to its negative value will sort
-                    # class_teardown fixtures in the same class in
-                    # reversed order.
+                    # class_teardown fixtures should be run in reverse
+                    # definition order (last definition runs
+                    # first). Converting fixture_id to its negative
+                    # value will sort class_teardown fixtures in the
+                    # same class in reversed order.
                     return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], -fixture._fixture_id)
 
             return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], fixture._fixture_id)
