@@ -426,7 +426,7 @@ class TestCase(object):
     def __enter_class_context_managers(self, fixture_methods, callback):
         """Transform each fixture_method into a context manager with
         contextlib.contextmanager, enter them recursively, and call
-        callback
+        callback.
         """
         if fixture_methods:
             fixture_method = fixture_methods[0]
