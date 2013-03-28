@@ -315,8 +315,8 @@ class TestCase(object):
         fixtures = []
 
         def sortable_fixture_key(fixture):
-            """Using class depth, fixture type and fixture id to
-            define a sortable key for fixtures.
+            """Use class depth, fixture type and fixture id to define
+            a sortable key for fixtures.
 
             Class depth is the most significant value and defines the
             MRO (reverse mro for teardown methods) order. Fixture type
