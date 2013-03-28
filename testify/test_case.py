@@ -478,8 +478,8 @@ class TestCase(object):
     def __enter_context_managers(self, fixture_methods, callback):
         """Transform each fixture_method into a context manager with
         contextlib.contextmanager, enter them recursively, and call
-        callback
-		"""
+        callback.
+        """
         if fixture_methods:
             with contextmanager(fixture_methods[0])():
                 self.__enter_context_managers(fixture_methods[1:], callback)
