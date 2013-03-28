@@ -65,7 +65,7 @@ DEPRECATED_FIXTURE_TYPE_MAP = {
 }
 
 
-def sortable_fixture_key(fixture):
+def make_sortable_fixture_key(fixture):
     """Use class depth, fixture type and fixture id to define
     a sortable key for fixtures.
 
@@ -349,7 +349,7 @@ class TestCase(object):
 
         fixtures = []
         all_class_fixtures = self.class_setup_fixtures + self.class_setup_teardown_fixtures + self.class_teardown_fixtures
-        for fixture in sorted(all_class_fixtures, key=sortable_fixture_key):
+        for fixture in sorted(all_class_fixtures, key=make_sortable_fixture_key):
             if fixture._fixture_type == 'class_teardown':
                 fixture = self.__convert_class_teardown_to_class_setup_teardown(fixture)
             elif fixture._fixture_type == 'class_setup':
