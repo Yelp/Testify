@@ -265,53 +265,71 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
      - exit class_setup_teardown & class_teardown of the Base class
     """
 
-    @setup
-    def setup_fake_classes(self):
+    class FakeBaseClass(TestCase):
 
-        class FakeBaseClass(TestCase):
-            def __init__(self, *args, **kwargs):
-                super(FakeBaseClass, self).__init__(*args, **kwargs)
-                self.method_order = []
+        def __init__(self, *args, **kwargs):
+            super(FixtureMethodRegistrationOrderWithBaseClassTest.FakeBaseClass, self).__init__(*args, **kwargs)
+            self.method_order = []
 
-            def classSetUp(self):
-                self.method_order.append("base_classSetUp")
+        def classSetUp(self):
+            self.method_order.append("base_classSetUp")
 
-            def classTearDown(self):
-                self.method_order.append("base_classTearDown")
+        def classTearDown(self):
+            self.method_order.append("base_classTearDown")
 
-            @class_setup
-            def base_class_setup(self):
-                self.method_order.append("base_class_setup")
+        @class_setup
+        def base_class_setup(self):
+            self.method_order.append("base_class_setup")
 
-            @class_setup_teardown
-            def base_class_setup_teardown(self):
-                self.method_order.append("base_class_setup_teardown_setup_phase")
-                yield
-                self.method_order.append("base_class_setup_teardown_teardown_phase")
+        @class_setup_teardown
+        def base_class_setup_teardown(self):
+            self.method_order.append("base_class_setup_teardown_setup_phase")
+            yield
+            self.method_order.append("base_class_setup_teardown_teardown_phase")
 
-            @class_teardown
-            def base_class_teardown(self):
-                self.method_order.append("base_class_teardown")
+        @class_teardown
+        def base_class_teardown(self):
+            self.method_order.append("base_class_teardown")
 
-        class FakeDerivedClass(FakeBaseClass):
-            @class_setup
-            def derived_class_setup(self):
-                self.method_order.append("derived_class_setup")
+    class FakeDerivedClass(FakeBaseClass):
+        @class_setup
+        def derived_class_setup(self):
+            self.method_order.append("derived_class_setup")
 
-            @class_setup_teardown
-            def derived_class_setup_teardown(self):
-                self.method_order.append("derived_class_setup_teardown_setup_phase")
-                yield
-                self.method_order.append("derived_class_setup_teardown_teardown_phase")
+        @class_setup_teardown
+        def derived_class_setup_teardown(self):
+            self.method_order.append("derived_class_setup_teardown_setup_phase")
+            yield
+            self.method_order.append("derived_class_setup_teardown_teardown_phase")
 
-            @class_teardown
-            def derived_class_teardown(self):
-                self.method_order.append("derived_class_teardown")
+        @class_teardown
+        def derived_class_teardown(self):
+            self.method_order.append("derived_class_teardown")
 
-        self.fake_test_case = FakeDerivedClass()
+    class FakeDerivedClassWithDeprecatedClassLevelFixtures(FakeBaseClass):
+        def classSetUp(self):
+            self.method_order.append("derived_classSetUp")
+
+        def classTearDown(self):
+            self.method_order.append("derived_classTearDown")
+
+        @class_setup
+        def derived_class_setup(self):
+            self.method_order.append("derived_class_setup")
+
+        @class_setup_teardown
+        def derived_class_setup_teardown(self):
+            self.method_order.append("derived_class_setup_teardown_setup_phase")
+            yield
+            self.method_order.append("derived_class_setup_teardown_teardown_phase")
+
+        @class_teardown
+        def derived_class_teardown(self):
+            self.method_order.append("derived_class_teardown")
 
     def test_order(self):
-        self.fake_test_case.run()
+        fake_test_case = self.FakeDerivedClass()
+        fake_test_case.run()
         expected_order = [
             "base_classSetUp",
             "base_class_setup",
@@ -328,7 +346,28 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
             "base_classTearDown",
         ]
 
-        assert_equal(self.fake_test_case.method_order, expected_order)
+        assert_equal(fake_test_case.method_order, expected_order)
+
+    def test_order_with_deprecated_class_level_fixtures_in_derived_class(self):
+        fake_test_case = self.FakeDerivedClassWithDeprecatedClassLevelFixtures()
+        fake_test_case.run()
+        expected_order = [
+            "base_class_setup",
+            "base_class_setup_teardown_setup_phase",
+
+            "derived_classSetUp",
+            "derived_class_setup",
+            "derived_class_setup_teardown_setup_phase",
+
+            "derived_class_setup_teardown_teardown_phase",
+            "derived_class_teardown",
+            "derived_classTearDown",
+
+            "base_class_setup_teardown_teardown_phase",
+            "base_class_teardown",
+        ]
+
+        assert_equal(fake_test_case.method_order, expected_order)
 
 class OverrideTest(TestCase):
     def test_method_1(self):
