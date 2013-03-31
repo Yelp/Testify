@@ -65,6 +65,41 @@ DEPRECATED_FIXTURE_TYPE_MAP = {
 }
 
 
+def make_sortable_fixture_key(fixture):
+    """Use class depth, fixture type and fixture id to define
+    a sortable key for fixtures.
+
+    Class depth is the most significant value and defines the
+    MRO (reverse mro for teardown methods) order. Fixture type
+    and fixture id help us to define the expected order.
+
+    See
+    test.test_case_test.FixtureMethodRegistrationOrderWithBaseClassTest
+    for the expected order.
+    """
+    if fixture._fixture_type == 'class_setup':
+        fixture_order = {
+            'class_setup' : 0,
+            'class_setup_teardown': 1,
+            'class_teardown': 2,
+         }
+    else:
+        fixture_order = {
+            'class_setup' : 0,
+            'class_setup_teardown': 2,
+            'class_teardown': 1,
+         }
+        if fixture._fixture_type == "class_teardown":
+            # class_teardown fixtures should be run in reverse
+            # definition order (last definition runs
+            # first). Converting fixture_id to its negative
+            # value will sort class_teardown fixtures in the
+            # same class in reversed order.
+            return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], -fixture._fixture_id)
+
+    return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], fixture._fixture_id)
+
+
 class TwistedFailureError(Exception):
     """Exception that indicates the value is an instance of twisted.python.failure.Failure
 
@@ -312,50 +347,46 @@ class TestCase(object):
         test_case_result.start()
         self.fire_event(self.EVENT_ON_RUN_TEST_CASE, test_case_result)
 
-        self.__run_class_setup_fixtures()
-        self.__enter_class_context_managers(self.class_setup_teardown_fixtures, self.__run_test_methods)
-        self.__run_class_teardown_fixtures()
+        fixtures = []
+        all_class_fixtures = self.class_setup_fixtures + self.class_setup_teardown_fixtures + self.class_teardown_fixtures
+        for fixture in sorted(all_class_fixtures, key=make_sortable_fixture_key):
+            # We convert all class-level fixtures to
+            # class_setup_teardown fixtures a) to handle all
+            # class-level fixtures the same and b) to make the
+            # behavior more predictable when a TestCase has different
+            # fixtures interacting.
+            if fixture._fixture_type == 'class_teardown':
+                fixture = self.__convert_class_teardown_to_class_setup_teardown(fixture)
+            elif fixture._fixture_type == 'class_setup':
+                fixture = self.__convert_class_setup_to_class_setup_teardown(fixture)
+            fixtures.append(fixture)
+
+        self.__enter_class_context_managers(fixtures, self.__run_test_methods)
 
         test_case_result.end_in_success()
         self.fire_event(self.EVENT_ON_COMPLETE_TEST_CASE, test_case_result)
 
-    def __run_class_setup_fixtures(self):
-        """Running the class's class_setup method chain."""
-        self.__run_class_fixtures(
-            self.STAGE_CLASS_SETUP,
-            self.class_setup_fixtures,
-            self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
-            self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
-        )
+    def __convert_class_setup_to_class_setup_teardown(self, fixture):
+        def wrapper(self):
+            fixture()
+            yield
+        wrapper.__name__ = fixture.__name__
+        wrapper.__doc__ = fixture.__doc__
+        wrapper._fixture_type = fixture._fixture_type
+        wrapper._fixture_id = fixture._fixture_id
+        wrapper._defining_class_depth = fixture._defining_class_depth
+        return instancemethod(wrapper, self, self.__class__)
 
-    def __run_class_teardown_fixtures(self):
-        """End the process of running tests.  Run the class's class_teardown methods"""
-        self.__run_class_fixtures(
-            self.STAGE_CLASS_TEARDOWN,
-            self.class_teardown_fixtures,
-            self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
-            self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
-        )
-
-    def __run_class_fixtures(self, stage, fixtures, callback_on_run_event, callback_on_complete_event):
-        """Set the current _stage, run a set of fixtures, calling callbacks before and after each."""
-        self._stage = stage
-
-        for fixture_method in fixtures:
-            result = TestResult(fixture_method)
-
-            try:
-                result.start()
-                self.fire_event(callback_on_run_event, result)
-                if self.__execute_block_recording_exceptions(fixture_method, result, is_class_level=True):
-                    result.end_in_success()
-                else:
-                    self.failure_count += 1
-            except (KeyboardInterrupt, SystemExit):
-                result.end_in_interruption(sys.exc_info())
-                raise
-            finally:
-                self.fire_event(callback_on_complete_event, result)
+    def __convert_class_teardown_to_class_setup_teardown(self, fixture):
+        def wrapper(self):
+            yield
+            fixture()
+        wrapper.__name__ = fixture.__name__
+        wrapper.__doc__ = fixture.__doc__
+        wrapper._fixture_type = fixture._fixture_type
+        wrapper._fixture_id = fixture._fixture_id
+        wrapper._defining_class_depth = fixture._defining_class_depth
+        return instancemethod(wrapper, self, self.__class__)
 
     @classmethod
     def in_suite(cls, method, suite_name):
@@ -378,33 +409,77 @@ class TestCase(object):
         method_suites = set(getattr(method, '_suites', set()))
         return (self.__suites_exclude & method_suites)
 
+    def __run_class_fixture(self, fixture_method, function_to_call, stage, callback_on_run_event, callback_on_complete_event, fire_events=True):
+        self._stage = stage
+
+        result = TestResult(fixture_method)
+        try:
+            result.start()
+            if fire_events:
+                self.fire_event(callback_on_run_event, result)
+            if self.__execute_block_recording_exceptions(function_to_call, result, is_class_level=True):
+                result.end_in_success()
+            else:
+                self.failure_count += 1
+        except (KeyboardInterrupt, SystemExit):
+            result.end_in_interruption(sys.exc_info())
+            raise
+        finally:
+            if fire_events:
+                self.fire_event(callback_on_complete_event, result)
 
     def __enter_class_context_managers(self, fixture_methods, callback):
-        """Transform each fixture_method into a context manager with contextlib.contextmanager, enter them recursively, and call callback"""
+        """Transform each fixture_method into a context manager with
+        contextlib.contextmanager, enter them recursively, and call
+        callback.
+        """
         if fixture_methods:
             fixture_method = fixture_methods[0]
             ctm = contextmanager(fixture_method)()
 
-            enter_result = TestResult(fixture_method)
-            enter_result.start()
-            self.fire_event(self.EVENT_ON_RUN_CLASS_SETUP_METHOD, enter_result)
-            if self.__execute_block_recording_exceptions(ctm.__enter__, enter_result, is_class_level=True):
-                enter_result.end_in_success()
-            self.fire_event(self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, enter_result)
+            if fixture_method._fixture_type == 'class_teardown':
+                # class_teardown fixture is wrapped as
+                # class_setup_teardown. We should not fire events for the
+                # setup phase of this fake context manager.
+                fire_events = False
+            else:
+                fire_events = True
 
-            self.__enter_context_managers(fixture_methods[1:], callback)
+            self.__run_class_fixture(
+                fixture_method,
+                ctm.__enter__,
+                self.STAGE_CLASS_SETUP,
+                self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
+                self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
+                fire_events
+            )
 
-            exit_result = TestResult(fixture_method)
-            exit_result.start()
-            self.fire_event(self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, exit_result)
-            if self.__execute_block_recording_exceptions(lambda: ctm.__exit__(None, None, None), exit_result, is_class_level=True):
-                exit_result.end_in_success()
-            self.fire_event(self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, exit_result)
+            self.__enter_class_context_managers(fixture_methods[1:], callback)
+
+            if fixture_method._fixture_type == 'class_setup':
+                # class_setup fixture is wrapped as
+                # class_setup_teardown. We should not fire events for the
+                # teardown phase of this fake context manager.
+                fire_events = False
+            else:
+                fire_events = True
+
+            self.__run_class_fixture(
+                fixture_method,
+                lambda: ctm.__exit__(None, None, None),
+                self.STAGE_CLASS_TEARDOWN,
+                self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
+                self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
+                fire_events
+            )
         else:
             callback()
 
     def __enter_context_managers(self, fixture_methods, callback):
-        """Transform each fixture_method into a context manager with contextlib.contextmanager, enter them recursively, and call callback"""
+        """Transform each fixture_method into a context manager with
+        contextlib.contextmanager, enter them recursively, and call
+        callback.
+        """
         if fixture_methods:
             with contextmanager(fixture_methods[0])():
                 self.__enter_context_managers(fixture_methods[1:], callback)
