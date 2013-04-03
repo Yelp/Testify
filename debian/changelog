@@ -1,3 +1,9 @@
+python-testify (0.4.0) lucid; urgency=low
+
+  * Fix execution order of class level fixtures
+
+ -- Baris Metin <bmetin@yelp.com>  Wed, 03 Apr 2013 12:02:06 -0700
+
 python-testify (0.3.12) lucid; urgency=low
 
   * fix --violation-db-config option
