@@ -7,3 +7,6 @@ host: "dbhost"
 username: "testify"
 password: "secret"
 database: "testify"
+# By default the python-mysql driver (MySQLdb) uses latin1 encoding.
+query:
+	charset: "utf8"
