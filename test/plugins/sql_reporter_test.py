@@ -256,7 +256,28 @@ class SQLReporterTestCompleteIgnoresResultsForRun(SQLReporterBaseTestCase):
 
 
 class SQLReporterReportResultsByChunk(SQLReporterBaseTestCase):
-    def test(self):
-        pass
+    def test_happy_path(self):
+        conn = self.reporter.conn
+        test_case = DummyTestCase()
+        results = [
+            TestResult(test_case.test_pass),
+            TestResult(test_case.test_fail),
+        ]
+        chunk = []
+        for result in results:
+            result.start()
+            result.end_in_success()
+            chunk.append(result.to_dict())
+
+        # In production, Someone Else takes care of manipulating the reporter's
+        # result_queue. We'll just mock the method we care about to avoid
+        # violating the Law of Demeter.
+        with patch.object(self.reporter.result_queue, 'task_done') as mock_task_done:
+            self.reporter._report_results_by_chunk(conn, chunk)
+            assert_equal(len(results), mock_task_done.call_count)
+
+        test_results = self._get_test_results(conn)
+        assert_equal(len(results), len(test_results))
+
 
 # vim: set ts=4 sts=4 sw=4 et:
