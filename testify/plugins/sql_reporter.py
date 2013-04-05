@@ -278,7 +278,7 @@ class SQLReporter(test_reporter.TestReporter):
                 try:
                     result['previous_run_id'] = insert_single_run(result['previous_run'])
                 except Exception, e:
-                    logging.error("Exception while reporting results: " + repr(e))
+                    logging.exception("Exception while reporting results: " + repr(e))
                     self.ok = False
 
             chunks = (results[i:i+self.batch_size] for i in xrange(0, len(results), self.batch_size))
@@ -289,7 +289,7 @@ class SQLReporter(test_reporter.TestReporter):
                         [create_row_to_insert(result, result.get('previous_run_id', None)) for result in chunk]
                     )
                 except Exception, e:
-                    logging.error("Exception while reporting results: " + repr(e))
+                    logging.exception("Exception while reporting results: " + repr(e))
                     self.ok = False
                 finally:
                     # Do this in finally so we don't hang at report() time if we get errors.
