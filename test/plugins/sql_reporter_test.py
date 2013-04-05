@@ -255,4 +255,8 @@ class SQLReporterTestCompleteIgnoresResultsForRun(SQLReporterBaseTestCase):
         assert_equal(self.reporter.result_queue.qsize(), 0)
 
 
+class SQLReporterReportResultsByChunk(SQLReporterBaseTestCase):
+    def test(self):
+        pass
+
 # vim: set ts=4 sts=4 sw=4 et:
