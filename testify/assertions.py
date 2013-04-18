@@ -333,7 +333,7 @@ def assert_all_in(left, right):
             unmatching.append(item)
     if unmatching:
         raise AssertionError(
-            'The following items were not found in not found in %s: %s' % (right, unmatching)
+            'The following items were not found in %s: %s' % (right, unmatching)
         )
 
 
