@@ -16,6 +16,7 @@ from __future__ import with_statement
 import contextlib
 from itertools import islice
 import re
+import warnings
 
 from .utils import stringdiffer
 
@@ -312,13 +313,20 @@ def assert_between(a, b, c):
     assert_in_range(b, a, c, inclusive=True)
 
 
-def assert_in(item, sequence, message="assertion failed: expected %(item)r in %(sequence)r"):
+def assert_in(item, sequence, message="assertion failed: expected %(item)r in %(sequence)r", msg=None):
     """Assert that the item is in the sequence."""
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     assert item in sequence, message % {'item':item, 'sequence':sequence}
 
-
-def assert_not_in(item, sequence, message="assertion failed: expected %(item)r not in %(sequence)r"):
+def assert_not_in(item, sequence, message="assertion failed: expected %(item)r not in %(sequence)r", msg=None):
     """Assert that the item is not in the sequence."""
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     assert item not in sequence, message % {'item':item, 'sequence':sequence}
 
 
@@ -438,17 +446,25 @@ def assert_call(turtle, call_idx, *args, **kwargs):
     assert actual == (args, kwargs), message
 
 
-def assert_is(left, right, message="expected %(left)r is %(right)r"):
+def assert_is(left, right, message="expected %(left)r is %(right)r", msg=None):
     """Assert that left and right are the same object"""
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     assert left is right, message % {'left':left, 'right': right}
 
 
-def assert_is_not(left, right, message="expected %(left)r is not %(right)r"):
+def assert_is_not(left, right, message="expected %(left)r is not %(right)r", msg=None):
     """Assert that left and right are NOT the same object"""
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     assert left is not right, message % {'left':left, 'right':right}
 
 
-def assert_all_match_regex(pattern, values, message="expected %(value)r to match %(pattern)r"):
+def assert_all_match_regex(pattern, values, message="expected %(value)r to match %(pattern)r", msg=None):
     """Assert that all values in an iterable match a regex pattern.
 
     Args:
@@ -458,6 +474,10 @@ def assert_all_match_regex(pattern, values, message="expected %(value)r to match
     Raises AssertionError if any value does not match.
 
     """
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     for value in values:
         assert re.match(pattern, value), message % {'value':value, 'pattern':pattern}
 
@@ -467,7 +487,7 @@ def assert_match_regex(pattern, value, *args, **kwargs):
     assert_all_match_regex(pattern, [value], *args, **kwargs)
 
 
-def assert_any_match_regex(pattern, values, message="expected at least one %(values)r to match %(pattern)r"):
+def assert_any_match_regex(pattern, values, message="expected at least one %(values)r to match %(pattern)r", msg=None):
     """Assert that at least one value in an iterable matches a regex pattern.
 
     Args:
@@ -477,6 +497,10 @@ def assert_any_match_regex(pattern, values, message="expected at least one %(val
     Raises AssertionError if all values don't match.
 
     """
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     for value in values:
         if re.match(pattern, value) is not None:
             return
@@ -484,7 +508,7 @@ def assert_any_match_regex(pattern, values, message="expected at least one %(val
     raise AssertionError(message % {'values':values, 'pattern':pattern})
 
 
-def assert_all_not_match_regex(pattern, values, message="expected %(value)r to not match %(pattern)r"):
+def assert_all_not_match_regex(pattern, values, message="expected %(value)r to not match %(pattern)r", msg=None):
     """Assert that all values don't match a regex pattern.
 
     Args:
@@ -494,12 +518,20 @@ def assert_all_not_match_regex(pattern, values, message="expected %(value)r to n
     Raises AssertionError if any values matches.
 
     """
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     for value in values:
         assert not re.match(pattern, value), message % {'value':value, 'pattern':pattern}
 
 
-def assert_sets_equal(left, right, message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]"):
+def assert_sets_equal(left, right, message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]", msg=None):
     """Assert that two sets are equal."""
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     if left != right:
         extra_left = left - right
         extra_right = right - left
@@ -511,8 +543,12 @@ def assert_sets_equal(left, right, message="expected %(left)r == %(right)r [left
         })
 
 
-def assert_dicts_equal(left, right, ignore_keys=None, message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]"):
+def assert_dicts_equal(left, right, ignore_keys=None, message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]", msg=None):
     """Assert that two dictionarys are equal (optionally ignoring certain keys)."""
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     if ignore_keys is not None:
         left = dict((k, left[k]) for k in left if k not in ignore_keys)
         right = dict((k, right[k]) for k in right if k not in ignore_keys)
@@ -522,7 +558,7 @@ def assert_dicts_equal(left, right, ignore_keys=None, message="expected %(left)r
 
     extra_left = _dict_subtract(left, right)
     extra_right = _dict_subtract(right, left)
-    raise AssertionError(message % {
+    raise AssertionError(msg % {
         'left': left,
         'right': right,
         'extra_left': extra_left,
@@ -530,8 +566,12 @@ def assert_dicts_equal(left, right, ignore_keys=None, message="expected %(left)r
     })
 
 
-def assert_dict_subset(left, right, message="expected [subset has:%(extra_left)r, superset has:%(extra_right)s]"):
+def assert_dict_subset(left, right, message="expected [subset has:%(extra_left)r, superset has:%(extra_right)s]", msg=None):
     """Assert that a dictionary is a strict subset of another dictionary (both keys and values)."""
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     difference_dict = _dict_subtract(left, right)
 
     if not difference_dict:
@@ -548,8 +588,12 @@ def assert_dict_subset(left, right, message="expected [subset has:%(extra_left)r
     })
 
 
-def assert_subset(left, right, message="expected %(set_left)r <= %(set_right)r [left has:%(extra)r]"):
+def assert_subset(left, right, message="expected %(set_left)r <= %(set_right)r [left has:%(extra)r]", msg=None):
     """Assert that the left set is a subset of the right set."""
+    if msg:
+        warnings.warn("msg is deprecated", DeprecationWarning)
+        message = msg
+
     set_left = set(left)
     set_right = set(right)
     if not (set_left <= set_right):
