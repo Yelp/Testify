@@ -183,82 +183,95 @@ class SQLReporter(test_reporter.TestReporter):
 
         return (traceback, error)
 
+    def _create_row_to_insert(self, conn, result, previous_run_id=None):
+        return {
+            'test' : self._get_test_id(conn, result['method']['module'], result['method']['class'], result['method']['name']),
+            'failure' : self._get_failure_id(conn, result['exception_info']),
+            'build' : self.build_id,
+            'end_time' : result['end_time'],
+            'run_time' : result['run_time'],
+            'runner_id' : result['runner_id'],
+            'previous_run' : previous_run_id,
+        }
+
+    def _get_test_id(self, conn, module, class_name, method_name):
+        """Get the ID of the self.Tests row that corresponds to this test. If the row doesn't exist, insert one"""
+
+        cached_result = self.test_id_cache.get((module, class_name, method_name), None)
+        if cached_result is not None:
+            return cached_result
+
+        query = SA.select(
+            [self.Tests.c.id],
+            SA.and_(
+                self.Tests.c.module == module,
+                self.Tests.c.class_name == class_name,
+                self.Tests.c.method_name == method_name,
+            )
+        )
+
+        # Most of the time, the self.Tests row will already exist for this test (it's been run before.)
+        row = conn.execute(query).fetchone()
+        if row:
+            return row[self.Tests.c.id]
+        else:
+            # Not there (this test hasn't been run before); create it
+            results = conn.execute(self.Tests.insert({
+                'module' : module,
+                'class_name' : class_name,
+                'method_name' : method_name,
+            }))
+            # and then return it.
+            return results.lastrowid
+
+    def _get_failure_id(self, conn, exception_info):
+        """Get the ID of the failure row for the specified exception."""
+        if not exception_info:
+            return None
+
+        # Canonicalize the traceback and error for storage.
+        traceback, error = self._canonicalize_exception(exception_info)
+
+        exc_hash = md5(traceback)
+
+        query = SA.select(
+            [self.Failures.c.id],
+            self.Failures.c.hash == exc_hash,
+        )
+        row = conn.execute(query).fetchone()
+        if row:
+            return row[self.Failures.c.id]
+        else:
+            # We haven't inserted this row yet; insert it and re-query.
+            results = conn.execute(self.Failures.insert({
+                'hash' : exc_hash,
+                'error' : error,
+                'traceback': traceback,
+            }))
+            return results.lastrowid
+
+    def _insert_single_run(self, conn, result):
+        """Recursively insert a run and its previous runs."""
+        previous_run_id = self._insert_single_run(conn, result['previous_run']) if result['previous_run'] else None
+        results = conn.execute(self.TestResults.insert(self._create_row_to_insert(conn, result, previous_run_id=previous_run_id)))
+        return results.lastrowid
+
+    def _report_results_by_chunk(self, conn, chunk):
+        try:
+            conn.execute(self.TestResults.insert(),
+                [self._create_row_to_insert(conn, result, result.get('previous_run_id', None)) for result in chunk]
+            )
+        except Exception, e:
+            logging.exception("Exception while reporting results: " + repr(e))
+            self.ok = False
+        finally:
+            # Do this in finally so we don't hang at report() time if we get errors.
+            for _ in xrange(len(chunk)):
+                self.result_queue.task_done()
+
     def report_results(self):
         """A worker func that runs in another thread and reports results to the database.
         Create a self.TestResults row from a test result dict. Also inserts the previous_run row."""
-        def create_row_to_insert(result, previous_run_id=None):
-            return {
-                'test' : get_test_id(result['method']['module'], result['method']['class'], result['method']['name']),
-                'failure' : get_failure_id(result['exception_info']),
-                'build' : self.build_id,
-                'end_time' : result['end_time'],
-                'run_time' : result['run_time'],
-                'runner_id' : result['runner_id'],
-                'previous_run' : previous_run_id,
-            }
-
-        def get_test_id(module, class_name, method_name):
-            """Get the ID of the self.Tests row that corresponds to this test. If the row doesn't exist, insert one"""
-
-            cached_result = self.test_id_cache.get((module, class_name, method_name), None)
-            if cached_result is not None:
-                return cached_result
-
-            query = SA.select(
-                [self.Tests.c.id],
-                SA.and_(
-                    self.Tests.c.module == module,
-                    self.Tests.c.class_name == class_name,
-                    self.Tests.c.method_name == method_name,
-                )
-            )
-
-            # Most of the time, the self.Tests row will already exist for this test (it's been run before.)
-            row = conn.execute(query).fetchone()
-            if row:
-                return row[self.Tests.c.id]
-            else:
-                # Not there (this test hasn't been run before); create it
-                results = conn.execute(self.Tests.insert({
-                    'module' : module,
-                    'class_name' : class_name,
-                    'method_name' : method_name,
-                }))
-                # and then return it.
-                return results.lastrowid
-
-        def get_failure_id(exception_info):
-            """Get the ID of the failure row for the specified exception."""
-            if not exception_info:
-                return None
-
-            # Canonicalize the traceback and error for storage.
-            traceback, error = self._canonicalize_exception(exception_info)
-
-            exc_hash = md5(traceback)
-
-            query = SA.select(
-                [self.Failures.c.id],
-                self.Failures.c.hash == exc_hash,
-            )
-            row = conn.execute(query).fetchone()
-            if row:
-                return row[self.Failures.c.id]
-            else:
-                # We haven't inserted this row yet; insert it and re-query.
-                results = conn.execute(self.Failures.insert({
-                    'hash' : exc_hash,
-                    'error' : error,
-                    'traceback': traceback,
-                }))
-                return results.lastrowid
-
-        def insert_single_run(result):
-            """Recursively insert a run and its previous runs."""
-            previous_run_id = insert_single_run(result['previous_run']) if result['previous_run'] else None
-            results = conn.execute(self.TestResults.insert(create_row_to_insert(result, previous_run_id=previous_run_id)))
-            return results.lastrowid
-
         conn = self.engine.connect()
 
         while True:
@@ -276,7 +289,7 @@ class SQLReporter(test_reporter.TestReporter):
             # Insert any previous runs, if necessary.
             for result in filter(lambda x: x['previous_run'], results):
                 try:
-                    result['previous_run_id'] = insert_single_run(result['previous_run'])
+                    result['previous_run_id'] = self._insert_single_run(conn, result['previous_run'])
                 except Exception, e:
                     logging.exception("Exception while reporting results: " + repr(e))
                     self.ok = False
@@ -284,18 +297,7 @@ class SQLReporter(test_reporter.TestReporter):
             chunks = (results[i:i+self.batch_size] for i in xrange(0, len(results), self.batch_size))
 
             for chunk in chunks:
-                try:
-                    conn.execute(self.TestResults.insert(),
-                        [create_row_to_insert(result, result.get('previous_run_id', None)) for result in chunk]
-                    )
-                except Exception, e:
-                    logging.exception("Exception while reporting results: " + repr(e))
-                    self.ok = False
-                finally:
-                    # Do this in finally so we don't hang at report() time if we get errors.
-                    for _ in xrange(len(chunk)):
-                        self.result_queue.task_done()
-
+                self._report_results_by_chunk(conn, chunk)
 
     def report(self):
         self.end_time = time.time()
