@@ -181,6 +181,8 @@ class TestRunnerServer(TestRunner):
             else:
                 raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
+        self.activity()
+
         if result['success']:
             d['passed_methods'][result['method']['name']] = result
         else:
