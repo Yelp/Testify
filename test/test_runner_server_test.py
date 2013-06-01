@@ -15,7 +15,8 @@ from testify import (
     setup,
     teardown,
     test_case,
-    test_runner_server
+    test_runner_server,
+    test_result,
 )
 from testify.utils import turtle
 
@@ -328,6 +329,39 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         if failures:
             raise Exception(' '.join(failures))
 
+    def test_activity_on_method_results(self):
+        """Previously, the server was not resetting last_activity_time when a client posted results.
+        This could lead to an issue when the last client still running tests takes longer than the
+        server_timeout. See https://github.com/Yelp/Testify/issues/110
+        """
+
+        test = get_test(self.server, 'runner1')
+        def make_fake_result(method):
+            result = test_result.TestResult(getattr(self.dummy_test_case, method))
+            result.start()
+            result.end_in_success()
+            return result.to_dict()
+
+        @contextlib.contextmanager
+        def assert_called(obj, meth):
+            original_meth = getattr(obj, meth)
+            called = []
+
+            def fake_meth(*args, **kwargs):
+                called.append(True)
+                return original_meth(*args, **kwargs)
+
+            setattr(obj, meth, fake_meth)
+            yield
+            setattr(obj, meth, original_meth)
+
+            assert called, "Method '%s' of object %s was not called" % (meth, obj)
+
+        for method in test['methods']:
+            result = make_fake_result(method)
+
+            with assert_called(self.server, 'activity'):
+                self.server.report_result('runner1', result)
 
 class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTestCase):
     """Child classes should set:
