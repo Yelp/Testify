@@ -1,6 +1,8 @@
 import contextlib
 import logging
 import threading
+
+import mock
 import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
@@ -15,7 +17,8 @@ from testify import (
     setup,
     teardown,
     test_case,
-    test_runner_server
+    test_runner_server,
+    test_result,
 )
 from testify.utils import turtle
 
@@ -249,7 +252,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
             test_complete_calls = self.test_reporter.test_complete.calls
             test_complete_call_args = [call[0] for call in test_complete_calls]
             test_results = [args[0] for args in test_complete_call_args]
-            full_names = [test_result['method']['full_name'] for test_result in test_results]
+            full_names = [tr['method']['full_name'] for tr in test_results]
             assert_any_match_regex('test.test_runner_server_test DummyTestCase.test', full_names)
 
     def test_fail_then_timeout_twice(self):
@@ -327,6 +330,34 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
 
         if failures:
             raise Exception(' '.join(failures))
+
+    def test_activity_on_method_results(self):
+        """Previously, the server was not resetting last_activity_time when a client posted results.
+        This could lead to an issue when the last client still running tests takes longer than the
+        server_timeout. See https://github.com/Yelp/Testify/issues/110
+        """
+
+        test = get_test(self.server, 'runner1')
+        def make_fake_result(method):
+            result = test_result.TestResult(getattr(self.dummy_test_case, method))
+            result.start()
+            result.end_in_success()
+            return result.to_dict()
+
+        for method in test['methods']:
+            method_is_last = method == test['methods'][-1]
+            if method_is_last:
+                # 'activate' will be called twice at the end: once after the
+                # method runs, then once more when the TestCase is checked back
+                # in to the master.
+                expected_call_count = 2
+            else:
+                expected_call_count = 1
+            result = make_fake_result(method)
+
+            with mock.patch.object(self.server, 'activity') as m_activity:
+                self.server.report_result('runner1', result)
+                assert_equal(m_activity.call_count, expected_call_count)
 
 
 class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTestCase):
