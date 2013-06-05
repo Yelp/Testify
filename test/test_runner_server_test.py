@@ -347,6 +347,9 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         for method in test['methods']:
             method_is_last = method == test['methods'][-1]
             if method_is_last:
+                # 'activate' will be called twice at the end: once after the
+                # method runs, then once more when the TestCase is checked back
+                # in to the master.
                 expected_call_count = 2
             else:
                 expected_call_count = 1
