@@ -1,6 +1,8 @@
 import contextlib
 import logging
 import threading
+
+import mock
 import tornado.ioloop
 
 from discovery_failure_test import BrokenImportTestCase
@@ -342,26 +344,18 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
             result.end_in_success()
             return result.to_dict()
 
-        @contextlib.contextmanager
-        def assert_called(obj, meth):
-            original_meth = getattr(obj, meth)
-            called = []
-
-            def fake_meth(*args, **kwargs):
-                called.append(True)
-                return original_meth(*args, **kwargs)
-
-            setattr(obj, meth, fake_meth)
-            yield
-            setattr(obj, meth, original_meth)
-
-            assert called, "Method '%s' of object %s was not called" % (meth, obj)
-
         for method in test['methods']:
+            method_is_last = method == test['methods'][-1]
+            if method_is_last:
+                expected_call_count = 2
+            else:
+                expected_call_count = 1
             result = make_fake_result(method)
 
-            with assert_called(self.server, 'activity'):
+            with mock.patch.object(self.server, 'activity') as m_activity:
                 self.server.report_result('runner1', result)
+                assert_equal(m_activity.call_count, expected_call_count)
+
 
 class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTestCase):
     """Child classes should set:
