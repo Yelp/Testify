@@ -2,8 +2,9 @@ import itertools
 import unittest
 
 from testify import assert_equal
-from testify import assert_not_equal
 from testify import assert_in
+from testify import assert_not_equal
+from testify import assert_raises
 from testify import class_setup
 from testify import class_setup_teardown
 from testify import class_teardown
@@ -773,10 +774,33 @@ class FailingTeardownMethodsTest(TestCase):
 
         inner_test_case = ClassWithTwoFailingTeardownMethods()
         inner_test_case.run()
-        
+
         assert_in("test_method", inner_test_case.methods_ran)
         assert_in("first_teardown", inner_test_case.methods_ran)
         assert_in("second_teardown", inner_test_case.methods_ran)
+
+
+class TestCaseResultsTest(TestCase):
+
+    class WompTest(TestCase):
+        def test_success(self):
+            pass
+
+        def test_fail(self):
+            assert False
+
+    def test_results(self):
+        test_suite = self.WompTest()
+
+        with assert_raises(RuntimeError):
+            # results? what results?!
+            test_suite.results()
+
+        test_suite.run()
+
+        test_results = test_suite.results()
+
+        assert_equal([result.success for result in test_results], [False, True])
 
 
 if __name__ == '__main__':

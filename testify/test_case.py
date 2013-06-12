@@ -173,6 +173,7 @@ class TestCase(object):
     __metaclass__ = MetaTestCase
     __test__ = False
 
+    STAGE_UNSTARTED = 0
     STAGE_CLASS_SETUP = 1
     STAGE_SETUP = 2
     STAGE_TEST_METHOD = 3
@@ -193,6 +194,7 @@ class TestCase(object):
     def __init__(self, *args, **kwargs):
         super(TestCase, self).__init__()
 
+        self._stage = self.STAGE_UNSTARTED
         self._method_level = False
 
         # ascend the class hierarchy and discover fixture methods
@@ -400,6 +402,13 @@ class TestCase(object):
             suites |= getattr(method, '_suites', set())
         return suites
 
+    def results(self):
+        """Available after calling `self.run()`."""
+        if self._stage != self.STAGE_CLASS_TEARDOWN:
+            raise RuntimeError('results() called before tests have executed')
+        test_methods = self.runnable_test_methods()
+        return [test_method.im_func.test_result for test_method in test_methods]
+
     def method_excluded(self, method):
         """Given this TestCase's included/excluded suites, is this test method excluded?
 
@@ -500,9 +509,17 @@ class TestCase(object):
         for test_method in self.runnable_test_methods():
 
             result = TestResult(test_method)
+
             # Sometimes, test cases want to take further action based on
             # results, e.g. further clean-up or reporting if a test method
-            # fails. (Yelp's Selenium test cases do this.)
+            # fails. (Yelp's Selenium test cases do this.) If you need to
+            # programatically inspect test results, you should use
+            # self.results().
+            test_method.im_func.test_result = result
+
+            # NOTE: THIS IS INCORRECT -- im_self is shared among all test
+            # methods on the TestCase instance. This is preserved for backwards
+            # compatibility and should be removed eventually.
             test_method.im_self.test_result = result
 
             try:
