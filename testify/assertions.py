@@ -387,7 +387,8 @@ def assert_empty(iterable, max_elements_to_print=None, message=None):
         except TypeError:
             max_elements_to_print = 10
 
-    message = message or "iterable %s was unexpectedly non-empty." % iterable
+    # Build the message *before* touching iterable since that might modify it.
+    message = message or "iterable {0} was unexpectedly non-empty.".format(iterable)
 
     # Get the first max_elements_to_print + 1 items from iterable, or just
     # the first item if max_elements_to_print is 0.  Trying to get an
@@ -419,9 +420,10 @@ def assert_not_empty(iterable, message=None):
     for value in iterable:
         break
     else:
-        # the else clause of a for loop is reached iff you break out of the loop
+        # The else clause of a for loop is reached iff you break out of the loop.
         raise AssertionError(message if message else
-            "iterable %s is unexpectedly empty" % iterable)
+            "iterable {0} is unexpectedly empty".format(iterable)
+        )
 
 
 def assert_length(sequence, expected, message=None):
