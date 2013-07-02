@@ -178,6 +178,7 @@ def assert_raises_such_that(exception_class, exception_test=lambda e: e, callabl
         with _assert_raises_context_manager(exception_class, exception_test):
             callable_obj(*args, **kwargs)
 
+
 def assert_raises_and_contains(expected_exception_class, strings, callable_obj, *args, **kwargs):
     """Assert an exception is raised by passing in a callable and its
     arguments and that the string representation of the exception
@@ -196,6 +197,7 @@ def assert_raises_and_contains(expected_exception_class, strings, callable_obj, 
             assert_in(string.lower(), message)
     else:
         assert_not_reached("No exception was raised (expected %s)" % expected_exception_class)
+
 
 @contextlib.contextmanager
 def _assert_raises_context_manager(exception_class, exception_test=lambda e: e):
@@ -234,6 +236,7 @@ def _diff_message(lhs, rhs):
     # Python2 exceptions require bytes.
     return message.encode('UTF-8')
 
+
 def assert_equal(lval, rval, message=None):
     """Assert that lval and rval are equal."""
     if message:
@@ -243,7 +246,28 @@ def assert_equal(lval, rval, message=None):
             "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
                 (lval, rval, _diff_message(lval, rval))
 
+
 assert_equals = assert_equal
+
+
+def assert_true(lval, message=None):
+    """Assert that lval evaluates to True, not identity."""
+    if message:
+        assert bool(lval) == True, message
+    else:
+        assert bool(lval) == True, \
+            "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
+                (lval, True, _diff_message(lval, True))
+
+
+def assert_false(lval, message=None):
+    """Assert that lval evaluates to False, not identity."""
+    if message:
+        assert bool(lval) == False, message
+    else:
+        assert bool(lval) == False, \
+            "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
+                (lval, False, _diff_message(lval, False))
 
 
 def assert_almost_equal(lval, rval, digits, message=None):

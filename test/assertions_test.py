@@ -9,6 +9,8 @@ from testify import assert_between
 from testify import assert_dict_subset
 from testify import assert_equal
 from testify import assert_not_reached
+from testify import assert_true
+from testify import assert_false
 
 
 class DiffMessageTestCase(TestCase):
@@ -130,7 +132,27 @@ class AssertEqualTestCase(TestCase):
         ):
             assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
 
+    def test_assert_true(self):
+        assert_true(1)
+        assert_true('False')
+        assert_true([0])
+        assert_true([''])
+        assert_true({'a': 0})
+
+    def test_assert_false(self):
+        assert_false(None)
+        assert_false(0)
+        assert_false(0L)
+        assert_false(0.0)
+        assert_false('')
+        assert_false(())
+        assert_false([])
+        assert_false({})
+        assert_false((''))
+
+
 class AssertInTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_in(1, [1, 2], msg="This is a message")
@@ -145,7 +167,9 @@ class AssertInTestCase(TestCase):
 
             assertions.assert_equal(len(w), 0)
 
+
 class AssertNotInTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_not_in(3, [1, 2], msg="This is a message")
@@ -160,7 +184,9 @@ class AssertNotInTestCase(TestCase):
 
             assertions.assert_equal(len(w), 0)
 
+
 class AssertIsTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_is(None, None, msg="This is a message")
@@ -175,7 +201,9 @@ class AssertIsTestCase(TestCase):
 
             assertions.assert_equal(len(w), 0)
 
+
 class AssertIsNotTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_is_not(False, None, msg="This is a message")
@@ -190,7 +218,9 @@ class AssertIsNotTestCase(TestCase):
 
             assertions.assert_equal(len(w), 0)
 
+
 class AssertAllMatchRegexTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_all_match_regex("foo",
@@ -208,8 +238,10 @@ class AssertAllMatchRegexTestCase(TestCase):
                                               message="This is a message")
 
             assertions.assert_equal(len(w), 0)
+
 
 class AssertAnyMatchRegexTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_any_match_regex("foo",
@@ -228,7 +260,9 @@ class AssertAnyMatchRegexTestCase(TestCase):
 
             assertions.assert_equal(len(w), 0)
 
+
 class AssertAllNotMatchRegexTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_all_not_match_regex("qux",
@@ -247,7 +281,9 @@ class AssertAllNotMatchRegexTestCase(TestCase):
 
             assertions.assert_equal(len(w), 0)
 
+
 class AssertSetsEqualTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_sets_equal(set([1, 2]),
@@ -266,7 +302,9 @@ class AssertSetsEqualTestCase(TestCase):
 
             assertions.assert_equal(len(w), 0)
 
+
 class AssertDictsEqualTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_dicts_equal({"a": 1, "b": 2},
@@ -285,7 +323,9 @@ class AssertDictsEqualTestCase(TestCase):
 
             assertions.assert_equal(len(w), 0)
 
+
 class AssertDictSubsetTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_dict_subset({"a": 1, "b": 2},
@@ -306,6 +346,7 @@ class AssertDictSubsetTestCase(TestCase):
 
 
 class AssertSubsetTestCase(TestCase):
+
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
             assertions.assert_subset(set([1, 2]),
@@ -324,8 +365,10 @@ class AssertSubsetTestCase(TestCase):
 
             assertions.assert_equal(len(w), 0)
 
+
 class MyException(Exception):
     pass
+
 
 class AssertRaisesAsContextManagerTestCase(TestCase):
 
@@ -509,6 +552,7 @@ class AssertRaisesAndContainsTestCase(TestCase):
         else:
             assert_not_reached('AssertionError should have been raised')
 
+
 class AssertDictSubsetTestCase(TestCase):
 
     def test_passes_with_subset(self):
@@ -540,6 +584,7 @@ class AssertDictSubsetTestCase(TestCase):
             assert_equal(expected, e.args[0])
         else:
             assert_not_reached('AssertionError should have been raised')
+
 
 class AssertEmptyTestCase(TestCase):
 
@@ -641,6 +686,7 @@ class AssertEmptyTestCase(TestCase):
         with assertions.assert_raises_such_that(
                 AssertionError, message_has_whole_iterable_sample):
             assertions.assert_empty(iterable, max_elements_to_print=max_elements_to_print)
+
 
 class AssertNotEmptyTestCase(TestCase):
 
