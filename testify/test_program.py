@@ -151,7 +151,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
             plugin.add_command_line_options(parser)
 
     (options, args) = parser.parse_args(args)
-    if len(args) < 1 and not (options.connect_addr or options.rerun_test_file):
+    if len(args) < 1 and not (options.connect_addr or options.rerun_test_file or options.replay_json or options.replay_json_inline):
         parser.error("Test path required unless --connect or --rerun-test-file specified.")
 
     if options.connect_addr and options.serve_port:
