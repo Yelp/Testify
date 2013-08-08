@@ -27,6 +27,14 @@ class ParseTestRunnerCommandLineArgsTest(TestCase):
         """Make sure that when --connect is passed, parse_test_runner_command_line_args doesn't complain about a missing test path."""
         test_program.parse_test_runner_command_line_args([], ['--connect', 'localhost:65537'])
 
+    def test_parse_test_runner_command_line_args_replay_json_inline(self):
+        """Make sure that when --replay-json-inline is passed, parse_test_runner_command_line_args doesn't complain about a missing test path."""
+        test_program.parse_test_runner_command_line_args([], ['--replay-json-inline', '{something that obviously isnt json}'])
+
+    def test_parse_test_runner_command_line_args_replay_json(self):
+        """Make sure that when --replay-json-inline is passed, parse_test_runner_command_line_args doesn't complain about a missing test path."""
+        test_program.parse_test_runner_command_line_args([], ['--replay-json', 'somejsonfile.txt'])
+
     def test_parse_test_runner_command_line_args_no_test_path(self):
         """Make sure that if no options and no arguments are passed, parse_test_runner_command_line_args DOES complain about a missing test path."""
         with assert_raises(OptionParserErrorException):
