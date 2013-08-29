@@ -170,9 +170,8 @@ class SQLReporter(test_reporter.TestReporter):
             }
         ))
 
-    def _canonicalize_exception(self, exception_info):
-        traceback = ''.join(exception_info)
-        error = exception_info[-1].strip()
+    def _canonicalize_exception(self, traceback):
+        error = traceback.split('\n')[-2].strip()
         if self.options.sql_traceback_size is not None:
             truncation_message = " (Exception truncated.)"
             size_limit = self.options.sql_traceback_size - len(truncation_message)

@@ -173,7 +173,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
 
         with patch.object(self.reporter.options, 'sql_traceback_size', 50):
             with patch.object(result, 'format_exception_info') as mock_format_exception_info:
-                mock_format_exception_info.return_value = ["AssertionError: %s" % ('A' * 200), 'A' * 200]
+                mock_format_exception_info.return_value = "AssertionError: %s\n%s\n" % ('A' * 200, 'A' * 200)
 
                 self.reporter.test_complete(result.to_dict())
 
