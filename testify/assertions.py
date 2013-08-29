@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright 2009 Yelp
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -558,7 +559,7 @@ def assert_dicts_equal(left, right, ignore_keys=None, message="expected %(left)r
 
     extra_left = _dict_subtract(left, right)
     extra_right = _dict_subtract(right, left)
-    raise AssertionError(msg % {
+    raise AssertionError(message % {
         'left': left,
         'right': right,
         'extra_left': extra_left,
