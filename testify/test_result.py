@@ -62,6 +62,10 @@ class TestResult(object):
         self.run_time = self.end_time - self.start_time
 
     def end_in_failure(self, exception_info):
+        if self.failure:
+            # We're already a failing result.
+            # We'd prefer to see the first failure.
+            return
         if not self.complete:
             self._complete()
         self.success = False

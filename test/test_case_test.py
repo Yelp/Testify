@@ -778,6 +778,29 @@ class FailingTeardownMethodsTest(TestCase):
         assert_in("first_teardown", inner_test_case.methods_ran)
         assert_in("second_teardown", inner_test_case.methods_ran)
 
+        assert_equal(
+            inner_test_case.test_result.format_exception_info(),
+            [
+                'Traceback (most recent call last):\n',
+                RegexMatcher('  File "\./test/test_case_test\.py", line \d*, in test_method\n    assert False\n'),
+                'AssertionError\n'
+            ]
+
+        )
+
+class RegexMatcher(object):
+    def __init__(self, regex):
+        import re
+        self.__re = re.compile(regex)
+    def __eq__(self, other):
+        return bool(self.__re.match(other))
+    def __repr__(self):
+        return '%s(%r)' % (
+                type(self).__name__,
+                self.__re.pattern,
+        )
+
+
 
 if __name__ == '__main__':
     run()
