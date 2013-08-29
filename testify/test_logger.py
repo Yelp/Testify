@@ -180,7 +180,7 @@ class TextTestLogger(TestLoggerBase):
             }[status]
 
             if status in ('fail', 'error'):
-                self.writeln("%s: %s\n%s" % (status, self._format_test_method_name(result['method']), ''.join(result['exception_info'])))
+                self.writeln("%s: %s\n%s" % (status, self._format_test_method_name(result['method']), result['exception_info']))
 
             if self.options.verbosity == VERBOSITY_NORMAL:
                 self.write(self._colorize(status_letter, color))
@@ -202,9 +202,9 @@ class TextTestLogger(TestLoggerBase):
         self.writeln(self._format_test_method_name(result['method']))
 
         if self.use_color:
-            self.writeln(''.join(result['exception_info_pretty']))
+            self.writeln(result['exception_info_pretty'])
         else:
-            self.writeln(''.join(result['exception_info']))
+            self.writeln(result['exception_info'])
 
         self.writeln('=' * 72)
         self.writeln("")
