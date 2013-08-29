@@ -39,6 +39,9 @@ try:
 except ImportError:
     fancy_tb_formatter = None
 
+def plain_tb_formatter(etype, value, tb, length=None):
+    # We want our formatters to return a string.
+    return ''.join(traceback.format_exception(etype, value, tb, length))
 
 class TestResult(object):
     def __init__(self, test_method, runner_id=None):
@@ -47,10 +50,14 @@ class TestResult(object):
         self.test_method_name = test_method.__name__
         self.success = self.failure = self.error = self.interrupted = None
         self.run_time = self.start_time = self.end_time = None
-        self.exception_info = None
+        self.exception_infos = []
         self.complete = False
         self.previous_run = None
         self.runner_id = runner_id
+
+    @property
+    def exception_info(self):
+        raise AttributeError('The exception_info attribute has been replaced with the .exception_infos list. Please update your code.')
 
     def start(self, previous_run=None):
         self.previous_run = previous_run
@@ -62,22 +69,18 @@ class TestResult(object):
         self.run_time = self.end_time - self.start_time
 
     def end_in_failure(self, exception_info):
-        if self.failure:
-            # We're already a failing result.
-            # We'd prefer to see the first failure.
-            return
         if not self.complete:
             self._complete()
         self.success = False
         self.failure = True
-        self.exception_info = exception_info
+        self.exception_infos.append(exception_info)
 
     def end_in_error(self, exception_info):
         if not self.complete:
             self._complete()
         self.success = False
         self.error = True
-        self.exception_info = exception_info
+        self.exception_infos.append(exception_info)
 
     def end_in_success(self):
         if not self.complete:
@@ -88,14 +91,14 @@ class TestResult(object):
         if not self.complete:
             self._complete()
             self.interrupted = True
-            self.exception_info = exception_info
+            self.exception_infos.append(exception_info)
 
 
     def format_exception_info(self, pretty=False):
-        if self.exception_info is None:
+        if not self.exception_infos:
             return None
 
-        tb_formatter = fancy_tb_formatter if (pretty and fancy_tb_formatter) else traceback.format_exception
+        tb_formatter = fancy_tb_formatter if (pretty and fancy_tb_formatter) else plain_tb_formatter
 
         def is_relevant_tb_level(tb):
             return tb.tb_frame.f_globals.has_key('__testify')
@@ -107,20 +110,30 @@ class TestResult(object):
                 tb = tb.tb_next
             return length
 
-        exctype, value, tb = self.exception_info
+        result = []
+        for exception_info in self.exception_infos:
+            exctype, value, tb = exception_info
 
-        # Skip test runner traceback levels
-        while tb and is_relevant_tb_level(tb):
-            tb = tb.tb_next
-        if exctype is AssertionError:
-            # Skip testify.assertions traceback levels
-            length = count_relevant_tb_levels(tb)
-            return tb_formatter(exctype, value, tb, length)
+            # Skip test runner traceback levels
+            while tb and is_relevant_tb_level(tb):
+                tb = tb.tb_next
 
-        if not tb:
-            return "Exception: %r (%r)" % (exctype, value)
+            if exctype is AssertionError:
+                # Skip testify.assertions traceback levels
+                length = count_relevant_tb_levels(tb)
+                result.append(tb_formatter(exctype, value, tb, length))
+            elif not tb:
+                result.append("Exception: %r (%r)" % (exctype, value))
+            else:
+                result.append(tb_formatter(exctype, value, tb))
 
-        return tb_formatter(exctype, value, tb)
+        if len(result) == 1:
+            return result[0]
+        else:
+            return (
+                    'There were multiple errors in this test:\n' +
+                    ''.join(result)
+            )
 
     def to_dict(self):
         return {

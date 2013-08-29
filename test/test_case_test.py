@@ -779,13 +779,23 @@ class FailingTeardownMethodsTest(TestCase):
         assert_in("second_teardown", inner_test_case.methods_ran)
 
         assert_equal(
-            inner_test_case.test_result.format_exception_info(),
+            inner_test_case.test_result.format_exception_info().split('\n'),
             [
-                'Traceback (most recent call last):\n',
-                RegexMatcher('  File "\./test/test_case_test\.py", line \d*, in test_method\n    assert False\n'),
-                'AssertionError\n'
+                'There were multiple errors in this test:',
+                'Traceback (most recent call last):',
+                RegexMatcher('  File "\./test/test_case_test\.py", line \d*, in test_method'),
+                '    assert False',
+                'AssertionError',
+                'Traceback (most recent call last):',
+                RegexMatcher('  File "\./test/test_case_test\.py", line \d*, in first_teardown'),
+                '    assert False',
+                'AssertionError',
+                'Traceback (most recent call last):',
+                RegexMatcher('  File "\./test/test_case_test\.py", line \d*, in second_teardown'),
+                '    assert False',
+                'AssertionError',
+                '', # Ends with newline.
             ]
-
         )
 
 class RegexMatcher(object):
