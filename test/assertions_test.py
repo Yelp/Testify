@@ -543,6 +543,10 @@ class AssertDictSubsetTestCase(TestCase):
 
 class AssertEmptyTestCase(TestCase):
 
+    def test_passes_on_empty_tuple(self):
+        """Test that assert_empty passes on an empty tuple."""
+        assertions.assert_empty(())
+
     def test_passes_on_empty_list(self):
         """Test that assert_empty passes on an empty list."""
         assertions.assert_empty([])
@@ -554,6 +558,11 @@ class AssertEmptyTestCase(TestCase):
                 yield 0
 
         assertions.assert_empty(yield_nothing())
+
+    def test_fails_on_nonempty_tuple(self):
+        """Test that assert_empty fails on a nonempty tuple."""
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_empty((0,))
 
     def test_fails_on_nonempty_list(self):
         """Test that assert_empty fails on a nonempty list."""
@@ -635,6 +644,10 @@ class AssertEmptyTestCase(TestCase):
 
 class AssertNotEmptyTestCase(TestCase):
 
+    def test_fails_on_empty_tuple(self):
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_not_empty(())
+
     def test_fails_on_empty_list(self):
         """Test that assert_not_empty fails on an empty list."""
         with assertions.assert_raises(AssertionError):
@@ -648,6 +661,10 @@ class AssertNotEmptyTestCase(TestCase):
 
         with assertions.assert_raises(AssertionError):
             assertions.assert_not_empty(yield_nothing())
+
+    def test_passes_on_nonempty_tuple(self):
+        """Test that assert_not_empty passes on a nonempty tuple."""
+        assertions.assert_not_empty((0,))
 
     def test_passes_on_nonempty_list(self):
         """Test that assert_not_empty passes on a nonempty list."""
