@@ -751,47 +751,48 @@ class SuiteDecoratorTest(TestCase):
 
 class FailingTeardownMethodsTest(TestCase):
 
+    class ClassWithTwoFailingTeardownMethods(TestCase):
+
+        methods_ran = []
+
+        def test_method(self):
+            self.methods_ran.append("test_method")
+            assert False
+
+        @teardown
+        def first_teardown(self):
+            self.methods_ran.append("first_teardown")
+            assert False
+
+        @teardown
+        def second_teardown(self):
+            self.methods_ran.append("second_teardown")
+            assert False
+    @setup
+    def run_test_case(self):
+        self.testcase = self.ClassWithTwoFailingTeardownMethods()
+        self.testcase.run()
+
     def test_class_with_two_failing_teardown_methods(self):
+        assert_in("test_method", self.testcase.methods_ran)
+        assert_in("first_teardown", self.testcase.methods_ran)
+        assert_in("second_teardown", self.testcase.methods_ran)
 
-        class ClassWithTwoFailingTeardownMethods(TestCase):
-
-            methods_ran = []
-
-            def test_method(self):
-                self.methods_ran.append("test_method")
-                assert False
-
-            @teardown
-            def first_teardown(self):
-                self.methods_ran.append("first_teardown")
-                assert False
-
-            @teardown
-            def second_teardown(self):
-                self.methods_ran.append("second_teardown")
-                assert False
-
-        inner_test_case = ClassWithTwoFailingTeardownMethods()
-        inner_test_case.run()
-        
-        assert_in("test_method", inner_test_case.methods_ran)
-        assert_in("first_teardown", inner_test_case.methods_ran)
-        assert_in("second_teardown", inner_test_case.methods_ran)
-
+    def test_multiple_error_formatting(self):
         assert_equal(
-            inner_test_case.test_result.format_exception_info().split('\n'),
+            self.testcase.test_result.format_exception_info().split('\n'),
             [
                 'There were multiple errors in this test:',
                 'Traceback (most recent call last):',
-                RegexMatcher('  File "\./test/test_case_test\.py", line \d*, in test_method'),
+                RegexMatcher('  File "\./test/test_case_test\.py", line \d+, in test_method'),
                 '    assert False',
                 'AssertionError',
                 'Traceback (most recent call last):',
-                RegexMatcher('  File "\./test/test_case_test\.py", line \d*, in first_teardown'),
+                RegexMatcher('  File "\./test/test_case_test\.py", line \d+, in first_teardown'),
                 '    assert False',
                 'AssertionError',
                 'Traceback (most recent call last):',
-                RegexMatcher('  File "\./test/test_case_test\.py", line \d*, in second_teardown'),
+                RegexMatcher('  File "\./test/test_case_test\.py", line \d+, in second_teardown'),
                 '    assert False',
                 'AssertionError',
                 '', # Ends with newline.
