@@ -1,5 +1,6 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 from __future__ import with_statement
+import warnings
 
 from testify import TestCase
 from testify import assertions
@@ -78,7 +79,7 @@ class AssertEqualTestCase(TestCase):
             assertions.assert_equal(unicode_string, utf8_string)
         assertions.assert_raises_and_contains(AssertionError, 'łą<ź>y', assert_with_unicode_msg)
         assertions.assert_raises_and_contains(AssertionError, 'łą<ż>y', assert_with_unicode_msg)
-        
+
     def test_unicode_diff3(self):
         unicode_string = u'münchen'
         utf8_string = unicode_string.encode('utf8')
@@ -128,6 +129,200 @@ class AssertEqualTestCase(TestCase):
                 "r: m<ü>nchen",
         ):
             assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
+
+class AssertInTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_in(1, [1, 2], msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_in(1, [1, 2], message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
+
+class AssertNotInTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_not_in(3, [1, 2], msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_not_in(3, [1, 2], message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
+
+class AssertIsTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_is(None, None, msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_is(None, None, message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
+
+class AssertIsNotTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_is_not(False, None, msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_is_not(False, None, message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
+
+class AssertAllMatchRegexTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_all_match_regex("foo",
+                                              ["foobar", "foobaz"],
+                                              msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_all_match_regex("foo",
+                                              ["foobar", "foobaz"],
+                                              message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
+
+class AssertAnyMatchRegexTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_any_match_regex("foo",
+                                              ["foobar", "barbaz"],
+                                              msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_any_match_regex("foo",
+                                              ["foobar", "barbaz"],
+                                              message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
+
+class AssertAllNotMatchRegexTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_all_not_match_regex("qux",
+                                                  ["foobar", "barbaz"],
+                                                  msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_all_not_match_regex("qux",
+                                                  ["foobar", "barbaz"],
+                                                  message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
+
+class AssertSetsEqualTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_sets_equal(set([1, 2]),
+                                         set([1, 2]),
+                                         msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_sets_equal(set([1, 2]),
+                                         set([1, 2]),
+                                         message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
+
+class AssertDictsEqualTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_dicts_equal({"a": 1, "b": 2},
+                                          {"a": 1, "b": 2},
+                                          msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_dicts_equal({"a": 1, "b": 2},
+                                          {"a": 1, "b": 2},
+                                          message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
+
+class AssertDictSubsetTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_dict_subset({"a": 1, "b": 2},
+                                          {"a": 1, "b": 2, "c": 3},
+                                          msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_dict_subset({"a": 1, "b": 2},
+                                          {"a": 1, "b": 2, "c": 3},
+                                          message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
+
+
+class AssertSubsetTestCase(TestCase):
+    def test_deprecated_msg_param(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_subset(set([1, 2]),
+                                     set([1, 2, 3]),
+                                     msg="This is a message")
+
+            assertions.assert_equal(len(w), 1)
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assertions.assert_in("msg is deprecated", str(w[-1].message))
+
+    def test_message_param_not_deprecated(self):
+        with warnings.catch_warnings(record=True) as w:
+            assertions.assert_subset(set([1, 2]),
+                                     set([1, 2, 3]),
+                                     message="This is a message")
+
+            assertions.assert_equal(len(w), 0)
 
 class MyException(Exception):
     pass
