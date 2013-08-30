@@ -170,8 +170,8 @@ class SQLReporter(test_reporter.TestReporter):
             }
         ))
 
-    def _canonicalize_exception(self, traceback):
-        error = traceback.split('\n')[-2].strip()
+    def _canonicalize_exception(self, traceback, error):
+        error = error.strip()
         if self.options.sql_traceback_size is not None:
             truncation_message = " (Exception truncated.)"
             size_limit = self.options.sql_traceback_size - len(truncation_message)
@@ -185,7 +185,7 @@ class SQLReporter(test_reporter.TestReporter):
     def _create_row_to_insert(self, conn, result, previous_run_id=None):
         return {
             'test' : self._get_test_id(conn, result['method']['module'], result['method']['class'], result['method']['name']),
-            'failure' : self._get_failure_id(conn, result['exception_info']),
+            'failure' : self._get_failure_id(conn, result['exception_info'], result['exception_only']),
             'build' : self.build_id,
             'end_time' : result['end_time'],
             'run_time' : result['run_time'],
@@ -223,13 +223,13 @@ class SQLReporter(test_reporter.TestReporter):
             # and then return it.
             return results.lastrowid
 
-    def _get_failure_id(self, conn, exception_info):
+    def _get_failure_id(self, conn, exception_info, error):
         """Get the ID of the failure row for the specified exception."""
         if not exception_info:
             return None
 
         # Canonicalize the traceback and error for storage.
-        traceback, error = self._canonicalize_exception(exception_info)
+        traceback, error = self._canonicalize_exception(exception_info, error)
 
         exc_hash = md5(traceback)
 

@@ -17,6 +17,7 @@ except ImportError:
 
 from test.discovery_failure_test import BrokenImportTestCase
 from test.test_logger_test import ExceptionInClassFixtureSampleTests
+from test.test_case_test import RegexMatcher
 from testify import TestCase, assert_equal, assert_gt, assert_in,  assert_in_range, setup_teardown
 from testify.plugins.sql_reporter import add_command_line_options, SQLReporter
 from testify.test_result import TestResult
@@ -29,6 +30,12 @@ class DummyTestCase(TestCase):
 
     def test_fail(self):
         assert False
+
+    def test_multiline(self):
+        raise Exception("""I love lines:
+    1
+        2
+            3""")
 
 class SQLReporterBaseTestCase(TestCase):
     __test__ = False
@@ -63,14 +70,23 @@ class SQLReporterBaseTestCase(TestCase):
         self.reporter = SQLReporter(options, create_engine_opts=create_engine_opts)
 
         yield
-
         # no teardown.
 
     def _get_test_results(self, conn):
         """Return a list of tests and their results from SA connection `conn`."""
         return list(conn.execute(SA.select(
-            columns=self.reporter.TestResults.columns + self.reporter.Tests.columns,
-            from_obj=self.reporter.TestResults.join(self.reporter.Tests, self.reporter.TestResults.c.test == self.reporter.Tests.c.id)
+            columns=(
+                self.reporter.TestResults,
+                self.reporter.Tests,
+                self.reporter.Failures,
+            ),
+            from_obj=self.reporter.TestResults.join(
+                self.reporter.Tests,
+                self.reporter.TestResults.c.test == self.reporter.Tests.c.id
+            ).outerjoin(
+                self.reporter.Failures,
+                self.reporter.TestResults.c.failure == self.reporter.Failures.c.id
+            )
         )))
 
 
@@ -104,7 +120,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
 
         assert_gt(updated_build['run_time'], 0)
         assert_in_range(updated_build['end_time'], 0, time.time())
-        assert_equal(updated_build['method_count'], 2)
+        assert_equal(updated_build['method_count'], 3)
 
         # The discovery_failure column should exist and be False.
         assert 'discovery_failure' in build
@@ -112,14 +128,39 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
 
         # Check test results.
         test_results = self._get_test_results(conn)
-        assert_equal(len(test_results), 2)
+        assert_equal(len(test_results), 3)
 
         # Check that we have one failure and one pass, and that they're the right tests.
         (passed_test,) = [r for r in test_results if not r['failure']]
-        (failed_test,) = [r for r in test_results if r['failure']]
+        (failed_test, failed_test_2) = [r for r in test_results if r['failure']]
 
         assert_equal(passed_test['method_name'], 'test_pass')
+        assert_equal(passed_test.traceback, None)
+        assert_equal(passed_test.error, None)
+
         assert_equal(failed_test['method_name'], 'test_fail')
+        assert_equal(failed_test.traceback.split('\n'), [
+            'Traceback (most recent call last):',
+            RegexMatcher('  File "\./test/plugins/sql_reporter_test\.py", line \d+, in test_fail'),
+            '    assert False',
+            'AssertionError',
+            '' # ends with newline
+        ])
+        assert_equal(failed_test.error, 'AssertionError')
+
+        assert_equal(failed_test_2['method_name'], 'test_multiline')
+        assert_equal(failed_test_2.traceback.split('\n'), [
+            'Traceback (most recent call last):',
+            RegexMatcher('  File "\./test/plugins/sql_reporter_test\.py", line \d+, in test_multiline'),
+            '    3""")',
+            'Exception: I love lines:',
+            '    1',
+            '        2',
+            '            3',
+            '' # ends with newline
+        ])
+        assert_equal(failed_test_2.error, 'Exception: I love lines:\n    1\n        2\n            3')
+
 
 
     def test_update_counts(self):
