@@ -1,0 +1,4 @@
+PyYAML>=3.0
+SQLAlchemy>=0.8
+mock>=1.0
+tornado>=2.4,<3.0
