@@ -159,7 +159,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
             '            3',
             '' # ends with newline
         ])
-        assert_equal(failed_test_2.error, '3') # FIXME: this should really be the full multiline error.
+        assert_equal(failed_test_2.error, 'Exception: I love lines:\n    1\n        2\n            3')
 
 
 

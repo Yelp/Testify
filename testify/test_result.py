@@ -121,11 +121,30 @@ class TestResult(object):
             if exctype is AssertionError:
                 # Skip testify.assertions traceback levels
                 length = count_relevant_tb_levels(tb)
-                result.append(tb_formatter(exctype, value, tb, length))
+                part = tb_formatter(exctype, value, tb, length)
             elif not tb:
-                result.append("Exception: %r (%r)" % (exctype, value))
+                part = "Exception: %r (%r)" % (exctype, value)
             else:
-                result.append(tb_formatter(exctype, value, tb))
+                part = tb_formatter(exctype, value, tb)
+
+            result.append(part)
+
+        if len(result) == 1:
+            return result[0]
+        else:
+            return (
+                    'There were multiple errors in this test:\n' +
+                    ''.join(result)
+            )
+
+    def format_exception_only(self):
+        result = []
+        for exception_info in self.exception_infos:
+            exctype, value, tb = exception_info
+
+            part = ''.join(traceback.format_exception_only(exctype, value))
+
+            result.append(part)
 
         if len(result) == 1:
             return result[0]
@@ -149,6 +168,7 @@ class TestResult(object):
             'interrupted' : self.interrupted,
             'exception_info' : self.format_exception_info(),
             'exception_info_pretty' : self.format_exception_info(pretty=True),
+            'exception_only' : self.format_exception_only(),
             'runner_id' : self.runner_id,
             'method' : {
                 'module' : self.test_method.im_class.__module__,
