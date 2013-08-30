@@ -93,6 +93,20 @@ class TestResult(object):
             self.interrupted = True
             self.exception_infos.append(exception_info)
 
+    def __make_multi_error_message(self, formatter):
+        result = []
+        for exception_info in self.exception_infos:
+            exctype, value, tb = exception_info
+            part = formatter(exctype, value, tb)
+            result.append(part)
+
+        if len(result) == 1:
+            return result[0]
+        else:
+            return (
+                    'There were multiple errors in this test:\n' +
+                    ''.join(result)
+            )
 
     def format_exception_info(self, pretty=False):
         if not self.exception_infos:
@@ -110,10 +124,7 @@ class TestResult(object):
                 tb = tb.tb_next
             return length
 
-        result = []
-        for exception_info in self.exception_infos:
-            exctype, value, tb = exception_info
-
+        def formatter(exctype, value, tb):
             # Skip test runner traceback levels
             while tb and is_relevant_tb_level(tb):
                 tb = tb.tb_next
@@ -121,38 +132,19 @@ class TestResult(object):
             if exctype is AssertionError:
                 # Skip testify.assertions traceback levels
                 length = count_relevant_tb_levels(tb)
-                part = tb_formatter(exctype, value, tb, length)
+                return tb_formatter(exctype, value, tb, length)
             elif not tb:
-                part = "Exception: %r (%r)" % (exctype, value)
+                return "Exception: %r (%r)" % (exctype, value)
             else:
-                part = tb_formatter(exctype, value, tb)
+                return tb_formatter(exctype, value, tb)
 
-            result.append(part)
-
-        if len(result) == 1:
-            return result[0]
-        else:
-            return (
-                    'There were multiple errors in this test:\n' +
-                    ''.join(result)
-            )
+        return self.__make_multi_error_message(formatter)
 
     def format_exception_only(self):
-        result = []
-        for exception_info in self.exception_infos:
-            exctype, value, tb = exception_info
+        def formatter(exctype, value, tb):
+            return ''.join(traceback.format_exception_only(exctype, value))
 
-            part = ''.join(traceback.format_exception_only(exctype, value))
-
-            result.append(part)
-
-        if len(result) == 1:
-            return result[0]
-        else:
-            return (
-                    'There were multiple errors in this test:\n' +
-                    ''.join(result)
-            )
+        return self.__make_multi_error_message(formatter)
 
     def to_dict(self):
         return {
