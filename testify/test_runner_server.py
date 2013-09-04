@@ -402,31 +402,8 @@ class TestRunnerServer(TestRunner):
 
             for method in d['methods']:
                 # Fake the results dict.
-                error_message = "The runner running this method (%s) didn't respond within %ss.\n" % (runner, self.runner_timeout)
                 module, _, classname = class_path.partition(' ')
-
-                result_dict = {
-                    'previous_run' : self.previous_run_results.get((class_path, method), None),
-                    'start_time' : time.time()-self.runner_timeout,
-                    'end_time' : time.time(),
-                    'run_time' : self.runner_timeout,
-                    'normalized_run_time' : "%.2fs" % (self.runner_timeout),
-                    'complete': True, # We've tried running the test.
-                    'success' : False,
-                    'failure' : False,
-                    'error' : True,
-                    'interrupted' : False,
-                    'exception_info' : [error_message],
-                    'exception_info_pretty' : [error_message],
-                    'runner_id' : runner,
-                    'method' : {
-                        'module' : module,
-                        'class' : classname,
-                        'name' : method,
-                        'full_name' : "%s.%s" % (class_path, method),
-                        'fixture_type' : None,
-                    }
-                }
+                result_dict = self._fake_result(class_path, method, runner)
 
                 if (class_path, method) not in self.timeout_rerun_methods and self.disable_requeueing != True:
                     requeue_dict['methods'].append(method)
@@ -442,6 +419,33 @@ class TestRunnerServer(TestRunner):
 
         if self.test_queue.empty() and len(self.checked_out) == 0:
             self.shutdown()
+
+    def _fake_result(self, class_path, method, runner):
+        error_message = "The runner running this method (%s) didn't respond within %ss.\n" % (runner, self.runner_timeout)
+        module, _, classname = class_path.partition(' ')
+
+        return {
+            'previous_run' : self.previous_run_results.get((class_path, method), None),
+            'start_time' : time.time()-self.runner_timeout,
+            'end_time' : time.time(),
+            'run_time' : self.runner_timeout,
+            'normalized_run_time' : "%.2fs" % (self.runner_timeout),
+            'complete': True, # We've tried running the test.
+            'success' : False,
+            'failure' : False,
+            'error' : True,
+            'interrupted' : False,
+            'exception_info' : [error_message],
+            'exception_info_pretty' : [error_message],
+            'runner_id' : runner,
+            'method' : {
+                'module' : module,
+                'class' : classname,
+                'name' : method,
+                'full_name' : "%s.%s" % (class_path, method),
+                'fixture_type' : None,
+            }
+        }
 
     def timeout_class(self, runner, class_path):
         """Check that it's actually time to rerun this class; if not, reset the timeout. Check the class in and rerun it."""
