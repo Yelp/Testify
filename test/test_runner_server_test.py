@@ -359,6 +359,24 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
                 self.server.report_result('runner1', result)
                 assert_equal(m_activity.call_count, expected_call_count)
 
+    def test_fake_result_format(self):
+        get_test(self.server, 'runner1')
+
+        fake_result = self.server._fake_result('foo', 'bar', 'baz')
+        fake_result = _replace_values_with_types(fake_result)
+
+        real_result = test_result.TestResult(self.dummy_test_case.test, runner_id='foo!')
+        real_result.start()
+        try:
+            print 1/0
+        except:
+            import sys
+            real_result.end_in_error(sys.exc_info())
+        real_result = real_result.to_dict()
+        real_result = _replace_values_with_types(real_result)
+
+        assert_equal(fake_result, real_result)
+
 
 class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTestCase):
     """Child classes should set:
@@ -680,6 +698,13 @@ class TestRunnerServerFailureLimitClassTeardownErrorTestCase(TestRunnerServerFai
 
     def build_test_case(self):
         self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitClassTeardownErrorTestCase
+
+def _replace_values_with_types(obj):
+    # This makes it simple to compare the format of two dictionaries.
+    if isinstance(obj, dict):
+        return dict((key, _replace_values_with_types(val)) for key, val in obj.items())
+    else:
+        return type(obj).__name__
 
 
 # vim: set ts=4 sts=4 sw=4 et:
