@@ -1,3 +1,23 @@
+python-testify (0.4.2) lucid; urgency=low
+
+  * Fix for preserving original traceback when fixture method also raises an exception
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 05 Sep 2013 22:13:33 -0700
+
+python-testify (0.4.1) lucid; urgency=low
+
+  * Preserve original traceback when fixture method also raises an exception
+  * Restart server timeout clock each time a client POSTs a result
+  * Don't require a test path when running with --rerun-test-file, --replay-json, or --replay-json-inline
+  * When logging exceptions, use logging.exception
+  * Fix assert_(not_)?empty for tuples
+  * Standardize kwargs for messages in assertions
+  * Fix duplicated text in error messages for assert_all_in
+  * Clarify mysqldb encoding situation in config.yaml.example
+  * Refactor test insertion in SqlReporter
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 03 Sep 2013 11:09:42 -0700
+
 python-testify (0.4.0) lucid; urgency=low
 
   * Fix execution order of class level fixtures
