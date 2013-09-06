@@ -1,3 +1,9 @@
+python-testify (0.4.2) lucid; urgency=low
+
+  * Fix for preserving original traceback when fixture method also raises an exception
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 05 Sep 2013 22:13:33 -0700
+
 python-testify (0.4.1) lucid; urgency=low
 
   * Preserve original traceback when fixture method also raises an exception
