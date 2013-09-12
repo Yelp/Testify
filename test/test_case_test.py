@@ -4,7 +4,6 @@ import unittest
 from testify import assert_equal
 from testify import assert_in
 from testify import assert_not_equal
-from testify import assert_raises
 from testify import class_setup
 from testify import class_setup_teardown
 from testify import class_teardown
@@ -780,8 +779,9 @@ class FailingTeardownMethodsTest(TestCase):
         assert_in("second_teardown", self.testcase.methods_ran)
 
     def test_multiple_error_formatting(self):
+        test_result = self.testcase.results()[0]
         assert_equal(
-            self.testcase.test_result.format_exception_info().split('\n'),
+            test_result.format_exception_info().split('\n'),
             [
                 'There were multiple errors in this test:',
                 'Traceback (most recent call last):',
@@ -811,29 +811,6 @@ class RegexMatcher(object):
                 type(self).__name__,
                 self.__re.pattern,
         )
-
-
-class TestCaseResultsTest(TestCase):
-
-    class WompTest(TestCase):
-        def test_success(self):
-            pass
-
-        def test_fail(self):
-            assert False
-
-    def test_results(self):
-        test_suite = self.WompTest()
-
-        with assert_raises(RuntimeError):
-            # results? what results?!
-            test_suite.results()
-
-        test_suite.run()
-
-        test_results = test_suite.results()
-
-        assert_equal([result.success for result in test_results], [False, True])
 
 
 if __name__ == '__main__':
