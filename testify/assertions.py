@@ -657,6 +657,49 @@ def assert_exactly_one(*args, **kwargs):
     return true_args[0]
 
 
+@contextlib.contextmanager
+def _assert_warns_context_manager(warning_class=None):
+    """Builds a context manager for testing code that should throw a warning.
+
+    Args:
+        warning_class - a subclass of Warning
+    """
+    with warnings.catch_warnings(record=True) as caught:
+        # All warnings should be triggered.
+        warnings.simplefilter('always')
+        # Do something that ought to trigger a warning.
+        yield
+        # Check that we actually got one.
+        assert_gt(len(caught), 0, 'expected at least one warning to be thrown')
+        if warning_class:
+            assert warning_class in [w.category for w in caught], '%s not thrown' % warning_class
+
+
+def _assert_warns(callable, warning_class=None, *args, **kwargs):
+    with _assert_warns_context_manager(warning_class):
+        callable(*args, **kwargs)
+
+
+def assert_warns(*args, **kwargs):
+    """Assert that the given warning class is thrown as a context manager
+    or by passing in a callable and its arguments.
+
+    As a context manager:
+    >>> with assert_warns(UserWarning):
+    ...     warnings.warn('Hey!')
+
+    Pass in a callable:
+    >>> def throw_warning(*args):
+    ...     warnings.warn('Hey!')
+    >>> assert_warns(throw_warning, UserWarning)
+    """
+    if len(args) <= 1 and not kwargs:
+        warning_class = args[0] if args else None
+        return _assert_warns_context_manager(warning_class)
+    else:
+        return _assert_warns(*args, **kwargs)
+
+
 def _to_characters(x):
     """Return characters that represent the object `x`, come hell or high water."""
     if isinstance(x, unicode):

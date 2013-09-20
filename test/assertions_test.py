@@ -679,6 +679,34 @@ class AssertNotEmptyTestCase(TestCase):
         assertions.assert_not_empty(yes())
 
 
+class AssertWarnsTestCase(TestCase):
+
+    def test_fails_when_no_warning(self):
+        """Test that assert_warns fails when there is no warning thrown."""
+        with assertions.assert_raises(AssertionError):
+            with assertions.assert_warns():
+                pass
+
+    def test_fails_when_incorrect_warning(self):
+        """
+        Test that assert_warns fails when we pass a specific warning and
+        a different warning class is thrown.
+        """
+        with assertions.assert_raises(AssertionError):
+            with assertions.assert_warns(DeprecationWarning):
+                warnings.warn('hey!')  # This will throw UserWarning
+
+    def test_passes_with_any_warning(self):
+        """Test that assert_warns passes if no specific warning class is given."""
+        with assertions.assert_warns():
+            warnings.warn('hey!')
+
+    def test_passes_with_specific_warning(self):
+        """Test that assert_warns passes if a specific warning class is given and thrown."""
+        with assertions.assert_warns(DeprecationWarning):
+            warnings.warn('hey!', DeprecationWarning)
+
+
 if __name__ == '__main__':
     run()
 # vim:et:sts=4:sw=4:
