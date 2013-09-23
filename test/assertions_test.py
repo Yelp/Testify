@@ -681,11 +681,23 @@ class AssertNotEmptyTestCase(TestCase):
 
 class AssertWarnsTestCase(TestCase):
 
+    def _create_user_warning(self):
+        warnings.warn('Hey!')
+
+    def _create_deprecation_warning(self):
+        warnings.warn('Deprecated!', DeprecationWarning)
+
     def test_fails_when_no_warning(self):
         """Test that assert_warns fails when there is no warning thrown."""
         with assertions.assert_raises(AssertionError):
             with assertions.assert_warns():
                 pass
+
+    def test_fails_when_no_warning_with_callable(self):
+        """Test that assert_warns fails when there is no warning thrown."""
+        with assertions.assert_raises(AssertionError):
+            do_nothing = lambda: None
+            assertions.assert_warns(UserWarning, do_nothing)
 
     def test_fails_when_incorrect_warning(self):
         """
@@ -694,17 +706,38 @@ class AssertWarnsTestCase(TestCase):
         """
         with assertions.assert_raises(AssertionError):
             with assertions.assert_warns(DeprecationWarning):
-                warnings.warn('hey!')  # This will throw UserWarning
+                self._create_user_warning()
+
+    def test_fails_when_incorrect_warning_with_callable(self):
+        """
+        Test that assert_warns fails when we pass a specific warning and
+        a different warning class is thrown.
+        """
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_warns(DeprecationWarning, self._create_user_warning)
 
     def test_passes_with_any_warning(self):
         """Test that assert_warns passes if no specific warning class is given."""
         with assertions.assert_warns():
-            warnings.warn('hey!')
+            self._create_user_warning()
 
     def test_passes_with_specific_warning(self):
         """Test that assert_warns passes if a specific warning class is given and thrown."""
         with assertions.assert_warns(DeprecationWarning):
-            warnings.warn('hey!', DeprecationWarning)
+            self._create_deprecation_warning()
+
+    def test_passes_with_specific_warning_with_callable(self):
+        """Test that assert_warns passes if a specific warning class is given and thrown."""
+        assertions.assert_warns(DeprecationWarning, self._create_deprecation_warning)
+
+    def test_passes_with_specific_warning_with_callable_arguments(self):
+        """Test that assert_warns passes args and kwargs to the callable correctly."""
+        def _requires_args_and_kwargs(*args, **kwargs):
+            if args != ['foo'] and kwargs != {'bar': 'bar'}:
+                raise ValueError('invalid values for args and kwargs')
+            warnings.warn('Some other user-defined warning')
+        # If we hit the ArgumentError, our test fails.
+        assertions.assert_warns(UserWarning, _requires_args_and_kwargs, 'foo', bar='bar')
 
 
 if __name__ == '__main__':

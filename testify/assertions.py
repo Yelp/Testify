@@ -670,34 +670,33 @@ def _assert_warns_context_manager(warning_class=None):
         # Do something that ought to trigger a warning.
         yield
         # Check that we actually got one.
-        assert_gt(len(caught), 0, 'expected at least one warning to be thrown')
+        assert_gt(len(caught), 0, 'expected at least one warning to be captured')
         if warning_class:
-            assert warning_class in [w.category for w in caught], '%s not thrown' % warning_class
+            assert warning_class in [w.category for w in caught], '%s not captured' % warning_class
 
 
-def _assert_warns(callable, warning_class=None, *args, **kwargs):
+def _assert_warns(warning_class, callable, *args, **kwargs):
     with _assert_warns_context_manager(warning_class):
         callable(*args, **kwargs)
 
 
-def assert_warns(*args, **kwargs):
+def assert_warns(warning_class=None, callable=None, *args, **kwargs):
     """Assert that the given warning class is thrown as a context manager
     or by passing in a callable and its arguments.
 
     As a context manager:
-    >>> with assert_warns(UserWarning):
+    >>> with assert_warns():
     ...     warnings.warn('Hey!')
 
-    Pass in a callable:
-    >>> def throw_warning(*args):
+    Passing in a callable:
+    >>> def throw_warning():
     ...     warnings.warn('Hey!')
-    >>> assert_warns(throw_warning, UserWarning)
+    >>> assert_warns(UserWarning, throw_warning)
     """
-    if len(args) <= 1 and not kwargs:
-        warning_class = args[0] if args else None
+    if callable is None:
         return _assert_warns_context_manager(warning_class)
     else:
-        return _assert_warns(*args, **kwargs)
+        return _assert_warns(warning_class, callable, *args, **kwargs)
 
 
 def _to_characters(x):
