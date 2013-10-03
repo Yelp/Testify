@@ -612,7 +612,7 @@ class TestCase(object):
             if self.__debugger:
                 exc, val, tb = exc_info
                 print "\nDEBUGGER"
-                print "\n".join(result.format_exception_info())
+                print result.format_exception_info()
                 import ipdb
                 ipdb.post_mortem(tb)
             return False
