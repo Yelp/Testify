@@ -682,10 +682,10 @@ class AssertNotEmptyTestCase(TestCase):
 class AssertWarnsTestCase(TestCase):
 
     def _create_user_warning(self):
-        warnings.warn('Hey!')
+        warnings.warn('Hey!', stacklevel=2)
 
     def _create_deprecation_warning(self):
-        warnings.warn('Deprecated!', DeprecationWarning)
+        warnings.warn('Deprecated!', DeprecationWarning, stacklevel=2)
 
     def test_fails_when_no_warning(self):
         """Test that assert_warns fails when there is no warning thrown."""
@@ -735,7 +735,7 @@ class AssertWarnsTestCase(TestCase):
         def _requires_args_and_kwargs(*args, **kwargs):
             if args != ['foo'] and kwargs != {'bar': 'bar'}:
                 raise ValueError('invalid values for args and kwargs')
-            warnings.warn('Some other user-defined warning')
+            self._create_user_warning()
         # If we hit the ArgumentError, our test fails.
         assertions.assert_warns(UserWarning, _requires_args_and_kwargs, 'foo', bar='bar')
 
