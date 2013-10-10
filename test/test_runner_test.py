@@ -1,5 +1,8 @@
+import __builtin__
+import contextlib
 import imp
-from testify import test_case, test_runner, setup
+import mock
+from testify import test_case, test_runner, setup, setup_teardown
 
 prepared = False
 running = False
@@ -53,3 +56,37 @@ class PluginTestCase(test_case.TestCase):
         assert prepared
 
 
+class TestTestRunnerPrintsTestNames(test_case.TestCase):
+
+    @setup_teardown
+    def mock_out_things(self):
+        with contextlib.nested(
+            mock.patch.object(
+                test_runner.TestRunner,
+                'get_test_list',
+                autospec=True,
+                return_value=[mock.sentinel.test1, mock.sentinel.test2],
+            ),
+            mock.patch.object(
+                test_runner.TestRunner,
+                'get_test_method_name',
+            ),
+            mock.patch.object(
+                __builtin__,
+                'print',
+                autospec=True,
+            ),
+        ) as (
+            self.get_test_list_mock,
+            self.get_test_method_name_mock,
+            self.print_mock,
+        ):
+            yield
+
+    def test_prints_one_per_line(self):
+        instance = test_runner.TestRunner(mock.sentinel.test_class)
+        instance.list_tests(mock.sentinel.selected_suite_name)
+        self.print_mock.assert_has_calls([
+            mock.call(self.get_test_method_name_mock.return_value)
+            for _ in self.get_test_list_mock.return_value
+        ])

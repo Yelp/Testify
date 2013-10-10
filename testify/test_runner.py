@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
 
 """This module contains the TestRunner class and other helper code"""
 __author__ = "Oliver Nicholas <bigo@yelp.com>"
@@ -187,16 +188,23 @@ class TestRunner(object):
 
         return suite_counts
 
-    def list_tests(self, selected_suite_name=None):
-        """Lists all tests, optionally scoped to a single suite."""
+    def get_test_list(self, selected_suite_name):
+        """Gets the test list"""
         test_list = []
         for test_instance in self.discover():
             for test_method in test_instance.runnable_test_methods():
                 if not selected_suite_name or TestCase.in_suite(test_method, selected_suite_name):
                     test_list.append(test_method)
+        return test_list
 
-        pp = pprint.PrettyPrinter(indent=2)
-        print(pp.pformat([self.get_test_method_name(test) for test in test_list]))
+    def list_tests(self, selected_suite_name=None):
+        """Lists all tests, optionally scoped to a single suite."""
+        test_list = self.get_test_list(selected_suite_name)
+        for test_method_name in (
+            self.get_test_method_name(test)
+            for test in test_list
+        ):
+            print(test_method_name)
 
         return test_list
 
