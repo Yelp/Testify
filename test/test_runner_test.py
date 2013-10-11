@@ -2,7 +2,7 @@ import __builtin__
 import contextlib
 import imp
 import mock
-from testify import test_case, test_runner, setup, setup_teardown
+from testify import assert_equal, test_case, test_runner, setup, setup_teardown
 
 prepared = False
 running = False
@@ -54,6 +54,47 @@ class PluginTestCase(test_case.TestCase):
         assert self.ran_test
         assert not running
         assert prepared
+
+
+class TestTestRunnerGetTestList(test_case.TestCase):
+
+    @setup_teardown
+    def mock_out_things(self):
+        mock_returned_test = mock.Mock()
+        self.mock_test_method = mock.Mock()
+        mock_returned_test.runnable_test_methods.return_value = [
+            self.mock_test_method,
+        ]
+        with contextlib.nested(
+            mock.patch.object(
+                test_runner.TestRunner,
+                'discover',
+                autospec=True,
+                return_value=[mock_returned_test],
+            ),
+            mock.patch.object(
+                test_case.TestCase,
+                'in_suite',
+            ),
+        ) as (
+            self.discover_mock,
+            self.in_suite_mock,
+        ):
+            yield
+
+    def test_get_test_list_in_suite(self):
+        self.in_suite_mock.return_value = True
+
+        instance = test_runner.TestRunner(mock.sentinel.test_class)
+        ret = instance.get_test_list(mock.sentinel.selected_suite_name)
+        assert_equal(ret, [self.mock_test_method])
+
+    def test_get_test_list_not_in_suite(self):
+        self.in_suite_mock.return_value = False
+
+        instance = test_runner.TestRunner(mock.sentinel.test_class)
+        ret = instance.get_test_list(mock.sentinel.selected_suite_name)
+        assert_equal(ret, [])
 
 
 class TestTestRunnerPrintsTestNames(test_case.TestCase):
