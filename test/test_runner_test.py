@@ -1,5 +1,7 @@
 import imp
-from testify import test_case, test_runner, setup
+from testify import assert_equal, test_case, test_runner, setup
+
+from .test_runner_subdir.inheriting_class import InheritingClass
 
 prepared = False
 running = False
@@ -16,6 +18,22 @@ def run_test_case(options, test_case, runnable):
     finally:
         running = False
 
+
+class TestTestRunnerGetTestMethodName(test_case.TestCase):
+
+    def test_method_from_other_module_reports_class_module(self):
+        ret = test_runner.TestRunner.get_test_method_name(
+            InheritingClass.test_foo,
+        )
+
+        assert_equal(
+            ret,
+            '{0} {1}.{2}'.format(
+                InheritingClass.__module__,
+                InheritingClass.__name__,
+                InheritingClass.test_foo.__name__,
+            ),
+        )
 
 class PluginTestCase(test_case.TestCase):
     """Verify plugin support
