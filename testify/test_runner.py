@@ -75,7 +75,11 @@ class TestRunner(object):
 
     @classmethod
     def get_test_method_name(cls, test_method):
-        return '%s %s.%s' % (test_method.__module__, test_method.im_class.__name__, test_method.__name__)
+        return '%s %s.%s' % (
+            test_method.im_class.__module__,
+            test_method.im_class.__name__,
+            test_method.__name__,
+        )
 
     def discover(self):
         def discover_inner():
