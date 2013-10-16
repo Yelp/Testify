@@ -188,8 +188,8 @@ class TestRunner(object):
 
         return suite_counts
 
-    def get_test_list(self, selected_suite_name):
-        """Gets the test list"""
+    def get_tests_for_suite(self, selected_suite_name):
+        """Gets the test list for the suite"""
         test_list = []
         for test_instance in self.discover():
             for test_method in test_instance.runnable_test_methods():
@@ -199,7 +199,7 @@ class TestRunner(object):
 
     def list_tests(self, selected_suite_name=None):
         """Lists all tests, optionally scoped to a single suite."""
-        test_list = self.get_test_list(selected_suite_name)
+        test_list = self.get_tests_for_suite(selected_suite_name)
         for test_method_name in (
             self.get_test_method_name(test)
             for test in test_list

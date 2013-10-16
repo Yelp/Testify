@@ -56,7 +56,7 @@ class PluginTestCase(test_case.TestCase):
         assert prepared
 
 
-class TestTestRunnerGetTestList(test_case.TestCase):
+class TestTestRunnerGetTestsForSuite(test_case.TestCase):
 
     @setup_teardown
     def mock_out_things(self):
@@ -82,18 +82,18 @@ class TestTestRunnerGetTestList(test_case.TestCase):
         ):
             yield
 
-    def test_get_test_list_in_suite(self):
+    def test_get_tests_for_suite_in_suite(self):
         self.in_suite_mock.return_value = True
 
         instance = test_runner.TestRunner(mock.sentinel.test_class)
-        ret = instance.get_test_list(mock.sentinel.selected_suite_name)
+        ret = instance.get_tests_for_suite(mock.sentinel.selected_suite_name)
         assert_equal(ret, [self.mock_test_method])
 
-    def test_get_test_list_not_in_suite(self):
+    def test_get_tests_for_suite_not_in_suite(self):
         self.in_suite_mock.return_value = False
 
         instance = test_runner.TestRunner(mock.sentinel.test_class)
-        ret = instance.get_test_list(mock.sentinel.selected_suite_name)
+        ret = instance.get_tests_for_suite(mock.sentinel.selected_suite_name)
         assert_equal(ret, [])
 
 
@@ -104,7 +104,7 @@ class TestTestRunnerPrintsTestNames(test_case.TestCase):
         with contextlib.nested(
             mock.patch.object(
                 test_runner.TestRunner,
-                'get_test_list',
+                'get_tests_for_suite',
                 autospec=True,
                 return_value=[mock.sentinel.test1, mock.sentinel.test2],
             ),
@@ -118,7 +118,7 @@ class TestTestRunnerPrintsTestNames(test_case.TestCase):
                 autospec=True,
             ),
         ) as (
-            self.get_test_list_mock,
+            self.get_tests_for_suite_mock,
             self.get_test_method_name_mock,
             self.print_mock,
         ):
@@ -129,5 +129,5 @@ class TestTestRunnerPrintsTestNames(test_case.TestCase):
         instance.list_tests(mock.sentinel.selected_suite_name)
         self.print_mock.assert_has_calls([
             mock.call(self.get_test_method_name_mock.return_value)
-            for _ in self.get_test_list_mock.return_value
+            for _ in self.get_tests_for_suite_mock.return_value
         ])
