@@ -679,6 +679,114 @@ class AssertNotEmptyTestCase(TestCase):
         assertions.assert_not_empty(yes())
 
 
+class AssertWarnsTestCase(TestCase):
+
+    def _create_user_warning(self):
+        warnings.warn('Hey!', stacklevel=2)
+
+    def _create_deprecation_warning(self):
+        warnings.warn('Deprecated!', DeprecationWarning, stacklevel=2)
+
+    def _raise_exception(self, *args):
+        raise RuntimeError('A test got too far! args=%r' % args)
+
+    def test_fails_when_no_warning(self):
+        """Test that assert_warns fails when there is no warning thrown."""
+        with assertions.assert_raises(AssertionError):
+            with assertions.assert_warns():
+                pass
+
+    def test_fails_when_no_warning_with_callable(self):
+        """Test that assert_warns fails when there is no warning thrown."""
+        with assertions.assert_raises(AssertionError):
+            do_nothing = lambda: None
+            assertions.assert_warns(UserWarning, do_nothing)
+
+    def test_fails_when_incorrect_warning(self):
+        """
+        Test that assert_warns fails when we pass a specific warning and
+        a different warning class is thrown.
+        """
+        with assertions.assert_raises(AssertionError):
+            with assertions.assert_warns(DeprecationWarning):
+                self._create_user_warning()
+
+    def test_fails_when_incorrect_warning_with_callable(self):
+        """
+        Test that assert_warns fails when we pass a specific warning and
+        a different warning class is thrown.
+        """
+        with assertions.assert_raises(AssertionError):
+            assertions.assert_warns(DeprecationWarning, self._create_user_warning)
+
+    def test_passes_with_any_warning(self):
+        """Test that assert_warns passes if no specific warning class is given."""
+        with assertions.assert_warns():
+            self._create_user_warning()
+
+    def test_passes_with_specific_warning(self):
+        """Test that assert_warns passes if a specific warning class is given and thrown."""
+        with assertions.assert_warns(DeprecationWarning):
+            self._create_deprecation_warning()
+
+    def test_passes_with_specific_warning_with_callable(self):
+        """Test that assert_warns passes if a specific warning class is given and thrown."""
+        assertions.assert_warns(DeprecationWarning, self._create_deprecation_warning)
+
+    def test_passes_with_specific_warning_with_callable_arguments(self):
+        """Test that assert_warns passes args and kwargs to the callable correctly."""
+        def _requires_args_and_kwargs(*args, **kwargs):
+            if args != ['foo'] and kwargs != {'bar': 'bar'}:
+                raise ValueError('invalid values for args and kwargs')
+            self._create_user_warning()
+        # If we hit the ArgumentError, our test fails.
+        assertions.assert_warns(UserWarning, _requires_args_and_kwargs, 'foo', bar='bar')
+
+    def test_fails_when_warnings_test_raises_exception(self):
+        """
+        Test that assert_warns_such_that (used as a context manager)
+        fails when the warnings_test method raises an exception.
+        """
+        with assertions.assert_raises(RuntimeError):
+            with assertions.assert_warns_such_that(self._raise_exception):
+                self._create_user_warning()
+
+    def test_passes_when_warnings_test_returns_true(self):
+        """
+        Test that assert_warns_such_that (used as a context manager)
+        passes when the warnings_test method returns True.
+        This should happen if warnings is populated correctly.
+        """
+        def one_user_warning_caught(warnings):
+            assert_equal([UserWarning], [w.category for w in warnings])
+
+        with assertions.assert_warns_such_that(one_user_warning_caught):
+            self._create_user_warning()
+
+    def test_fails_when_warnings_test_raises_exception_with_callable(self):
+        """
+        Test that assert_warns_such_that (when given a callable object)
+        fails when the warnings_test method raises an exception.
+        """
+        with assertions.assert_raises(RuntimeError):
+            assertions.assert_warns_such_that(self._raise_exception,
+                                              self._create_user_warning)
+
+    def test_passes_when_warnings_test_returns_true_with_callable(self):
+        """
+        Test that assert_warns_such_that (when given a callable object)
+        passes when the warnings_test method returns True.
+        This should happen if warnings is populated correctly.
+        """
+        def create_multiple_warnings(warnings_count):
+            for _ in range(warnings_count):
+                self._create_user_warning()
+
+        three_warnings_caught = lambda warnings: assert_equal(len(warnings), 3)
+        assertions.assert_warns_such_that(three_warnings_caught,
+                                          create_multiple_warnings, 3)
+
+
 if __name__ == '__main__':
     run()
 # vim:et:sts=4:sw=4:
