@@ -22,6 +22,11 @@ import warnings
 from .utils import stringdiffer
 
 
+# DeprecationWarnings are off in Python >= 2.7, but we are a development
+# tool (and have tests that rely on warnings actually being thrown :))
+# so we want them on.
+warnings.simplefilter('default')
+
 __testify = 1
 
 
