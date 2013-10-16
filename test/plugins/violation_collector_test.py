@@ -299,6 +299,7 @@ class ViolationReporterTestCase(T.TestCase):
             T.assert_equal(mctx.output_stream.write.called, False)
 
 
+@T.suite("catbox")
 class ViolationStoreTestCase(T.TestCase):
 
     def test_violation_store_does_not_connect_db_when_initialized(self):
@@ -333,6 +334,7 @@ class ViolationStoreTestCase(T.TestCase):
             assert mock_store.Violations.insert.called
 
 
+@T.suite("catbox")
 class ViolationCollectorPipelineTestCase(T.TestCase):
 
     class ViolatingTestCase(T.TestCase):
