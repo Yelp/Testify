@@ -1,5 +1,8 @@
+import __builtin__
+import contextlib
 import imp
-from testify import test_case, test_runner, setup
+import mock
+from testify import assert_equal, test_case, test_runner, setup, setup_teardown
 
 prepared = False
 running = False
@@ -53,3 +56,78 @@ class PluginTestCase(test_case.TestCase):
         assert prepared
 
 
+class TestTestRunnerGetTestsForSuite(test_case.TestCase):
+
+    @setup_teardown
+    def mock_out_things(self):
+        mock_returned_test = mock.Mock()
+        self.mock_test_method = mock.Mock()
+        mock_returned_test.runnable_test_methods.return_value = [
+            self.mock_test_method,
+        ]
+        with contextlib.nested(
+            mock.patch.object(
+                test_runner.TestRunner,
+                'discover',
+                autospec=True,
+                return_value=[mock_returned_test],
+            ),
+            mock.patch.object(
+                test_case.TestCase,
+                'in_suite',
+            ),
+        ) as (
+            self.discover_mock,
+            self.in_suite_mock,
+        ):
+            yield
+
+    def test_get_tests_for_suite_in_suite(self):
+        self.in_suite_mock.return_value = True
+
+        instance = test_runner.TestRunner(mock.sentinel.test_class)
+        ret = instance.get_tests_for_suite(mock.sentinel.selected_suite_name)
+        assert_equal(ret, [self.mock_test_method])
+
+    def test_get_tests_for_suite_not_in_suite(self):
+        self.in_suite_mock.return_value = False
+
+        instance = test_runner.TestRunner(mock.sentinel.test_class)
+        ret = instance.get_tests_for_suite(mock.sentinel.selected_suite_name)
+        assert_equal(ret, [])
+
+
+class TestTestRunnerPrintsTestNames(test_case.TestCase):
+
+    @setup_teardown
+    def mock_out_things(self):
+        with contextlib.nested(
+            mock.patch.object(
+                test_runner.TestRunner,
+                'get_tests_for_suite',
+                autospec=True,
+                return_value=[mock.sentinel.test1, mock.sentinel.test2],
+            ),
+            mock.patch.object(
+                test_runner.TestRunner,
+                'get_test_method_name',
+            ),
+            mock.patch.object(
+                __builtin__,
+                'print',
+                autospec=True,
+            ),
+        ) as (
+            self.get_tests_for_suite_mock,
+            self.get_test_method_name_mock,
+            self.print_mock,
+        ):
+            yield
+
+    def test_prints_one_per_line(self):
+        instance = test_runner.TestRunner(mock.sentinel.test_class)
+        instance.list_tests(mock.sentinel.selected_suite_name)
+        self.print_mock.assert_has_calls([
+            mock.call(self.get_test_method_name_mock.return_value)
+            for _ in self.get_tests_for_suite_mock.return_value
+        ])
