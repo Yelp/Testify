@@ -184,6 +184,19 @@ def assert_raises_such_that(exception_class, exception_test=lambda e: e, callabl
             callable_obj(*args, **kwargs)
 
 
+def assert_raises_exactly(exception_class, *args):
+    """
+    Assert that a particular exception_class is raised with particular arguments.
+    Use this assertion when the exception message is important.
+    """
+    def test_exception(exception):
+        # We want to know the exact exception type, not that it has some superclass.
+        assert_is(type(exception), exception_class)
+        assert_equal(exception.args, args)
+
+    return assert_raises_such_that(exception_class, test_exception)
+
+
 def assert_raises_and_contains(expected_exception_class, strings, callable_obj, *args, **kwargs):
     """Assert an exception is raised by passing in a callable and its
     arguments and that the string representation of the exception

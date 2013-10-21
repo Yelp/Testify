@@ -487,6 +487,38 @@ class AssertRaisesSuchThatTestCase(TestCase):
         assertions.assert_raises_such_that(GoodArguments, message_is_foo, check_arguments, arg1, arg2, kwarg=kwarg)
 
 
+class AssertRaisesExactlyTestCase(TestCase):
+    class MyException(ValueError): pass
+
+    def test_passes_when_correct_exception_is_raised(self):
+        with assertions.assert_raises_exactly(self.MyException, "first", "second"):
+            raise self.MyException("first", "second")
+
+    def test_fails_with_wrong_value(self):
+        with assertions.assert_raises(AssertionError):
+            with assertions.assert_raises_exactly(self.MyException, "first", "second"):
+                raise self.MyException("red", "blue")
+
+    def test_fails_with_different_class(self):
+        class SpecialException(self.MyException): pass
+
+        with assertions.assert_raises(AssertionError):
+            with assertions.assert_raises_exactly(self.MyException, "first", "second"):
+                raise SpecialException("first", "second")
+
+    def test_fails_with_vague_class(self):
+        with assertions.assert_raises(AssertionError):
+            with assertions.assert_raises_exactly(Exception, "first", "second"):
+                raise self.MyException("first", "second")
+
+    def test_unexpected_exception_passes_through(self):
+        class DifferentException(Exception): pass
+
+        with assertions.assert_raises(DifferentException):
+            with assertions.assert_raises_exactly(self.MyException, "first", "second"):
+                raise DifferentException("first", "second")
+
+
 class AssertRaisesAndContainsTestCase(TestCase):
 
     def test_fails_when_exception_is_not_raised(self):
