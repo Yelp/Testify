@@ -19,10 +19,10 @@ unknown (not predefined) attributed asked for. It is also callable, returning (o
 
 After a turtle is used, it can be inspected to find out what happened:
 
-  >>> leonardo = turtle.Turtle()
+  >>> leonardo = Turtle()
   >>> leonardo.color = "blue"
-  >>> leonardo.attack(weapon="katanas")
-  <testify.utils.turtle.Turtle object at 0x7fbd01e67dd0>
+  >>> leonardo.attack(weapon="katanas") #doctest:+ELLIPSIS
+  <testify.utils.turtle.Turtle object at 0x...>
 
   >>> len(leonardo.defend)
   0
@@ -31,7 +31,7 @@ After a turtle is used, it can be inspected to find out what happened:
   1
 
   >>> leonardo.attack.calls
-  [((), {'weapon': katanas})]
+  [((), {'weapon': 'katanas'})]
 
   >>> for args, kwargs in leonardo.attack:
   ...     print kwargs.get('weapon')
