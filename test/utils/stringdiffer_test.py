@@ -1,6 +1,7 @@
 from testify import TestCase
 from testify import assert_equal
 from testify import run
+from testify.contrib.doctestcase import DocTestCase
 
 from testify.utils import stringdiffer
 
@@ -59,6 +60,10 @@ class HighlightStringTestCase(TestCase):
         diff = stringdiffer.highlight(lhs, rhs)
         assert_equal(expected_old, diff.old)
         assert_equal(expected_new, diff.new)
+
+
+class DocTest(DocTestCase):
+    module = stringdiffer
 
 
 if __name__ == '__main__':
