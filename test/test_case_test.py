@@ -291,6 +291,24 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
         def base_class_teardown(self):
             self.method_order.append("base_class_teardown")
 
+        @setup_teardown
+        def base_instance_setup_teardown(self):
+            self.method_order.append("base_instance_setup_teardown_setup_phase")
+            yield
+            self.method_order.append("base_instance_setup_teardown_teardown_phase")
+
+        @setup
+        def base_instance_setup(self):
+            self.method_order.append("base_instance_setup")
+
+        @teardown
+        def base_instance_teardown(self):
+            self.method_order.append("base_instance_teardown")
+
+        def test_something(self):
+            """Need a test method to get instance-level fixtures to run."""
+            return True
+
     class FakeDerivedClass(FakeBaseClass):
         @class_setup
         def derived_class_setup(self):
@@ -305,6 +323,20 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
         @class_teardown
         def derived_class_teardown(self):
             self.method_order.append("derived_class_teardown")
+
+        @setup_teardown
+        def base_derived_setup_teardown(self):
+            self.method_order.append("derived_instance_setup_teardown_setup_phase")
+            yield
+            self.method_order.append("derived_instance_setup_teardown_teardown_phase")
+
+        @setup
+        def derived_instance_setup(self):
+            self.method_order.append("derived_instance_setup")
+
+        @teardown
+        def derived_instance_teardown(self):
+            self.method_order.append("derived_instance_teardown")
 
     class FakeDerivedClassWithDeprecatedClassLevelFixtures(FakeBaseClass):
         def classSetUp(self):
@@ -338,8 +370,20 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
             "derived_class_setup",
             "derived_class_setup_teardown_setup_phase",
 
-            "derived_class_setup_teardown_teardown_phase",
+            "base_instance_setup",
+            "base_instance_setup_teardown_setup_phase",
+
+            "derived_instance_setup",
+            "derived_instance_setup_teardown_setup_phase",
+
+            "derived_instance_teardown",
+            "derived_instance_setup_teardown_teardown_phase",
+
+            "base_instance_teardown",
+            "base_instance_setup_teardown_teardown_phase",
+
             "derived_class_teardown",
+            "derived_class_setup_teardown_teardown_phase",
 
             "base_class_setup_teardown_teardown_phase",
             "base_class_teardown",
