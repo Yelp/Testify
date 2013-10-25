@@ -462,14 +462,18 @@ class TestCase(object):
                     functools.partial(self.fire_event, self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD),
                 ],
         ) as fixture_failures:
-            if not fixture_failures:
-                self.__run_test_methods()
+            # if we have class fixture failures, we're not going to bother
+            # running tests, but we need to generate bogus results for them all
+            # and mark them as failed.
+            self.__run_test_methods(fixture_failures)
             self._stage = self.STAGE_CLASS_TEARDOWN
 
-        for failure in fixture_failures:
-            test_case_result.end_in_error(failure)
+        for exc_info in fixture_failures:
+            test_case_result.end_in_failure(exc_info)
 
-        test_case_result.end_in_success()
+        if not test_case_result.complete:
+            test_case_result.end_in_success()
+
         self.fire_event(self.EVENT_ON_COMPLETE_TEST_CASE, test_case_result)
 
     @classmethod
@@ -493,7 +497,7 @@ class TestCase(object):
         method_suites = set(getattr(method, '_suites', set()))
         return (self.__suites_exclude & method_suites)
 
-    def __run_test_methods(self):
+    def __run_test_methods(self, class_fixture_failures):
         """Run this class's setup fixtures / test methods / teardown fixtures.
 
         These are run in the obvious order - setup and teardown go before and after,
@@ -521,20 +525,22 @@ class TestCase(object):
                 # first, run setup fixtures
                 self._stage = self.STAGE_SETUP
                 with self.fixtures.instance_context() as fixture_failures:
-                    if not fixture_failures:
-                        if not result.complete:
-                            self._stage = self.STAGE_TEST_METHOD
-                            result.record(test_method)
+                    if not (fixture_failures + class_fixture_failures):
+                        self._stage = self.STAGE_TEST_METHOD
+                        result.record(test_method)
                     self._stage = self.STAGE_TEARDOWN
 
-                for failure in fixture_failures:
-                    result.end_in_error(failure)
+                for exc_info in fixture_failures + class_fixture_failures:
+                    result.end_in_failure(exc_info)
 
                 # if nothing's gone wrong, it's not about to start
-                result.end_in_success()
+                if not result.complete:
+                    result.end_in_success()
+
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_interruption(sys.exc_info())
                 raise
+
             finally:
                 self.fire_event(self.EVENT_ON_COMPLETE_TEST_METHOD, result)
 

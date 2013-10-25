@@ -86,10 +86,9 @@ class TestResult(object):
                 exc_info = (type(exception), exception, exception._testify_exc_tb)
             else:
                 exc_info = sys.exc_info()
-            if isinstance(exception, AssertionError):
-                self.end_in_failure(exc_info)
-            else:
-                self.end_in_error(exc_info)
+
+            self.end_in_failure(exc_info)
+
             if self.debug:
                 exc, val, tb = exc_info
                 print "\nDEBUGGER"
@@ -108,15 +107,15 @@ class TestResult(object):
     def end_in_failure(self, exception_info):
         if not self.complete:
             self._complete()
-        self.success = False
-        self.failure = True
-        self.exception_infos.append(exception_info)
 
-    def end_in_error(self, exception_info):
-        if not self.complete:
-            self._complete()
         self.success = False
-        self.error = True
+
+        if isinstance(exception_info[1], AssertionError):
+            # test failure, kinda expect these vs. unknown errors
+            self.failure = True
+        else:
+            self.error = True
+
         self.exception_infos.append(exception_info)
 
     def end_in_success(self):
