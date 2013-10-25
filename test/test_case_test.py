@@ -376,14 +376,14 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
             "derived_instance_setup",
             "derived_instance_setup_teardown_setup_phase",
 
-            "derived_instance_teardown",
             "derived_instance_setup_teardown_teardown_phase",
+            "derived_instance_teardown",
 
-            "base_instance_teardown",
             "base_instance_setup_teardown_teardown_phase",
+            "base_instance_teardown",
 
-            "derived_class_teardown",
             "derived_class_setup_teardown_teardown_phase",
+            "derived_class_teardown",
 
             "base_class_setup_teardown_teardown_phase",
             "base_class_teardown",
@@ -402,6 +402,12 @@ class FixtureMethodRegistrationOrderWithBaseClassTest(TestCase):
             "derived_classSetUp",
             "derived_class_setup",
             "derived_class_setup_teardown_setup_phase",
+
+            "base_instance_setup",
+            "base_instance_setup_teardown_setup_phase",
+
+            "base_instance_setup_teardown_teardown_phase",
+            "base_instance_teardown",
 
             "derived_class_setup_teardown_teardown_phase",
             "derived_class_teardown",

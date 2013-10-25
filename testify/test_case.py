@@ -23,17 +23,18 @@ __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 
 from collections import defaultdict
-import contextlib
-import inspect
 from new import instancemethod
+import contextlib
+import functools
+import inspect
 import sys
 import types
 import unittest
 
-from test_result import TestResult
-import deprecated_assertions
 from testify.utils import class_logger
 from testify.utils import inspection
+from test_result import TestResult
+import deprecated_assertions
 
 FIXTURE_TYPES = (
     'class_setup',
@@ -102,17 +103,17 @@ class FixtureContext(object):
         return instancemethod(wrapper, self, self.__class__)
 
     @contextlib.contextmanager
-    def class_context(self, begin_callback=None, end_callback=None):
-        with self.enter(self.class_fixtures, begin_callback, end_callback) as fixture_failures:
+    def class_context(self, setup_callbacks=None, teardown_callbacks=None):
+        with self.enter(self.class_fixtures, setup_callbacks, teardown_callbacks) as fixture_failures:
             yield fixture_failures
 
     @contextlib.contextmanager
-    def instance_context(self, begin_callback=None, end_callback=None):
-        with self.enter(self.instance_fixtures, begin_callback, end_callback) as fixture_failures:
+    def instance_context(self):
+        with self.enter(self.instance_fixtures) as fixture_failures:
             yield fixture_failures
 
     @contextlib.contextmanager
-    def enter(self, fixtures, enter_callback=None, exit_callback=None):
+    def enter(self, fixtures, setup_callbacks=None, teardown_callbacks=None):
         """Transform each fixture_method into a context manager, enter them
         recursively, and yield any failures."""
 
@@ -121,6 +122,9 @@ class FixtureContext(object):
             yield []
             return
 
+        setup_callbacks = setup_callbacks or [None, None]
+        teardown_callbacks = teardown_callbacks or [None, None]
+
         fixture = fixtures[0]
 
         ctm = contextlib.contextmanager(fixture)()
@@ -128,36 +132,31 @@ class FixtureContext(object):
         # class_teardown fixture is wrapped as
         # class_setup_teardown. We should not fire events for the
         # setup phase of this fake context manager.
-        suppress_callback = bool(fixture._fixture_type in ('teardown', 'class_teardown'))
+        suppress_callbacks = bool(fixture._fixture_type in ('teardown', 'class_teardown'))
 
         enter_failure = self.run_fixture(
             fixture,
             ctm.__enter__,
-            #self.STAGE_CLASS_SETUP,
-            #self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
-            #self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
-            enter_callback=None if suppress_callback else enter_callback,
+            enter_callback=None if suppress_callbacks else setup_callbacks[0],
+            exit_callback=None if suppress_callbacks else setup_callbacks[1],
         )
 
-        # fire event on class setup
-        # with class context as failures:
-            # fire event on complete class setup
-            # do stuff
-
-        with self.enter(fixtures[1:], enter_callback, exit_callback) as all_failures:
+        with self.enter(fixtures[1:], setup_callbacks, teardown_callbacks) as all_failures:
             if enter_failure:
                 all_failures += enter_failure
-            yield enter_failure or all_failures
+            # need to only yield one failure
+            yield all_failures
 
         # class_setup fixture is wrapped as
         # class_setup_teardown. We should not fire events for the
         # teardown phase of this fake context manager.
-        suppress_callback = bool(fixture._fixture_type in ('setup', 'class_setup'))
+        suppress_callbacks = bool(fixture._fixture_type in ('setup', 'class_setup'))
 
         exit_failure = self.run_fixture(
             fixture,
             lambda: ctm.__exit__(None, None, None),
-            exit_callback=None if suppress_callback else exit_callback,
+            enter_callback=None if suppress_callbacks else teardown_callbacks[0],
+            exit_callback=None if suppress_callbacks else teardown_callbacks[1],
         )
 
         if exit_failure:
@@ -170,9 +169,9 @@ class FixtureContext(object):
             result.start()
             if enter_callback:
                 enter_callback(result)
-            result.record(function_to_call)
+            if result.record(function_to_call):
             #if not result.record(function_to_call):
-                #result.end_in_success()
+                result.end_in_success()
             #else:
              #   self.failure_count += 1
         except (KeyboardInterrupt, SystemExit):
@@ -198,11 +197,12 @@ class FixtureContext(object):
             """
             fixture_order = {
                 'class_setup' : 0,
-                'class_setup_teardown': 1,
-                'setup': 2,
-                'setup_teardown': 3,
+                'class_teardown': 1,
+                'class_setup_teardown': 2,
+
+                'setup': 3,
                 'teardown': 4,
-                'class_teardown': 5,
+                'setup_teardown': 5,
             }
 
             if fixture._fixture_type in REVERSED_FIXTURE_TYPES:
@@ -449,7 +449,16 @@ class TestCase(object):
         self.fire_event(self.EVENT_ON_RUN_TEST_CASE, test_case_result)
 
         self._stage = self.STAGE_CLASS_SETUP
-        with self.fixtures.class_context() as fixture_failures:
+        with self.fixtures.class_context(
+                setup_callbacks=[
+                    functools.partial(self.fire_event, self.EVENT_ON_RUN_CLASS_SETUP_METHOD),
+                    functools.partial(self.fire_event, self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD),
+                ],
+                teardown_callbacks=[
+                    functools.partial(self.fire_event, self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD),
+                    functools.partial(self.fire_event, self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD),
+                ],
+        ) as fixture_failures:
             if not fixture_failures:
                 self.__run_test_methods()
                 self._stage = self.STAGE_CLASS_TEARDOWN
