@@ -259,7 +259,6 @@ class MetaTestCase(type):
             return hash(MetaTestCase._cmp_str(self)) % bucket_count
 
 
-
 class TestCase(object):
     """The TestCase class defines test methods and fixture methods; it is the meat and potatoes of testing.
 
@@ -461,17 +460,21 @@ class TestCase(object):
                     functools.partial(self.fire_event, self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD),
                     functools.partial(self.fire_event, self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD),
                 ],
-        ) as fixture_failures:
+        ) as class_fixture_failures:
             # if we have class fixture failures, we're not going to bother
             # running tests, but we need to generate bogus results for them all
             # and mark them as failed.
-            self.__run_test_methods(fixture_failures)
+            self.__run_test_methods(class_fixture_failures)
             self._stage = self.STAGE_CLASS_TEARDOWN
 
-        for exc_info in fixture_failures:
-            # count class fixture failures
-            self.failure_count += 1
-            test_case_result.end_in_failure(exc_info)
+        # class fixture failures count towards our total
+        self.failure_count += len(class_fixture_failures)
+
+        # you might think that we would want to do this... but this is a
+        # bogus test result used for reporting to the server. we always
+        # have it report success, i guess.
+        # for exc_info in fixture_failures:
+        #     test_case_result.end_in_failure(exc_info)
 
         if not test_case_result.complete:
             test_case_result.end_in_success()
