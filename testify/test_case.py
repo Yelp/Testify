@@ -134,7 +134,7 @@ class FixtureContext(object):
         # setup phase of this fake context manager.
         suppress_callbacks = bool(fixture._fixture_type in ('teardown', 'class_teardown'))
 
-        enter_failure = self.run_fixture(
+        enter_failures = self.run_fixture(
             fixture,
             ctm.__enter__,
             enter_callback=None if suppress_callbacks else setup_callbacks[0],
@@ -142,8 +142,7 @@ class FixtureContext(object):
         )
 
         with self.enter(fixtures[1:], setup_callbacks, teardown_callbacks) as all_failures:
-            if enter_failure:
-                all_failures += enter_failure
+            all_failures += enter_failures or []
             # need to only yield one failure
             yield all_failures
 
@@ -152,15 +151,23 @@ class FixtureContext(object):
         # teardown phase of this fake context manager.
         suppress_callbacks = bool(fixture._fixture_type in ('setup', 'class_setup'))
 
-        exit_failure = self.run_fixture(
+        # this is hack to finish the remainder of the context manager without
+        # calling contextlib's __exit__; doing that messes up the stack trace
+        # we end up with.
+        def exit():
+            try:
+                ctm.gen.next()
+            except StopIteration:
+                pass
+
+        exit_failures = self.run_fixture(
             fixture,
-            lambda: ctm.__exit__(None, None, None),
+            exit,
             enter_callback=None if suppress_callbacks else teardown_callbacks[0],
             exit_callback=None if suppress_callbacks else teardown_callbacks[1],
         )
 
-        if exit_failure:
-            all_failures += exit_failure
+        all_failures += exit_failures or []
 
     def run_fixture(self, fixture, function_to_call, enter_callback=None, exit_callback=None):
 
@@ -170,8 +177,9 @@ class FixtureContext(object):
             if enter_callback:
                 enter_callback(result)
             if result.record(function_to_call):
-            #if not result.record(function_to_call):
                 result.end_in_success()
+            else:
+                return result.exception_infos
             #else:
              #   self.failure_count += 1
         except (KeyboardInterrupt, SystemExit):
@@ -320,11 +328,6 @@ class TestCase(object):
         # callbacks for various stages of execution, used for stuff like logging
         self.__callbacks = defaultdict(list)
 
-        # one of these will later be populated with exception info if there's an
-        # exception in the class_setup/class_teardown stage
-        self.__class_level_failure = None
-        self.__class_level_error = None
-
         # for now, we still support the use of unittest-style assertions defined on the TestCase instance
         for name in dir(deprecated_assertions):
             if name.startswith(('assert', 'fail')):
@@ -461,7 +464,7 @@ class TestCase(object):
         ) as fixture_failures:
             if not fixture_failures:
                 self.__run_test_methods()
-                self._stage = self.STAGE_CLASS_TEARDOWN
+            self._stage = self.STAGE_CLASS_TEARDOWN
 
         for failure in fixture_failures:
             test_case_result.end_in_error(failure)
@@ -519,10 +522,10 @@ class TestCase(object):
                 self._stage = self.STAGE_SETUP
                 with self.fixtures.instance_context() as fixture_failures:
                     if not fixture_failures:
-                        self._stage = self.STAGE_TEST_METHOD
                         if not result.complete:
+                            self._stage = self.STAGE_TEST_METHOD
                             result.record(test_method)
-                        self._stage = self.STAGE_TEARDOWN
+                    self._stage = self.STAGE_TEARDOWN
 
                 for failure in fixture_failures:
                     result.end_in_error(failure)

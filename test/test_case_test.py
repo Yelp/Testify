@@ -818,6 +818,7 @@ class FailingTeardownMethodsTest(TestCase):
         def second_teardown(self):
             self.methods_ran.append("second_teardown")
             assert False
+
     @setup
     def run_test_case(self):
         self.testcase = self.ClassWithTwoFailingTeardownMethods()
