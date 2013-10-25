@@ -10,7 +10,7 @@ from __future__ import with_statement
 
 import logging
 
-from test_case import FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS
+from test_fixtures import FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS
 from test_runner import TestRunner
 import tornado.httpserver
 import tornado.ioloop
