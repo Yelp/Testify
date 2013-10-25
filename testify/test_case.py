@@ -100,7 +100,7 @@ class FixtureContext(object):
         wrapper._fixture_id = fixture._fixture_id
         wrapper._defining_class_depth = fixture._defining_class_depth
 
-        return instancemethod(wrapper, self, self.__class__)
+        return instancemethod(wrapper, fixture.im_self, fixture.im_class)
 
     @contextlib.contextmanager
     def class_context(self, setup_callbacks=None, teardown_callbacks=None):
