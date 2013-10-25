@@ -469,6 +469,8 @@ class TestCase(object):
             self._stage = self.STAGE_CLASS_TEARDOWN
 
         for exc_info in fixture_failures:
+            # count class fixture failures
+            self.failure_count += 1
             test_case_result.end_in_failure(exc_info)
 
         if not test_case_result.complete:
