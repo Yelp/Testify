@@ -14,6 +14,7 @@
 
 
 from testify import *
+from testify.contrib.doctestcase import DocTestCase
 
 class TurtleTestCase(TestCase):
     @setup
@@ -50,3 +51,7 @@ class TurtleTestCase(TestCase):
         weapon = self.leonardo.weapon
         assert_equal(weapon, self.leonardo.weapon)
         assert weapon is self.leonardo.weapon
+
+
+class DocTest(DocTestCase):
+    module = turtle

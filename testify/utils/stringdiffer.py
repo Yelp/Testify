@@ -97,7 +97,7 @@ class HighlightedDiff(tuple):
         return self[1]
 
     def __repr__(self):
-        return '%s(%r, %r)' % (self.__class__.__name__, self.old, self.new)
+        return '%s(old=%r, new=%r)' % (self.__class__.__name__, self.old, self.new)
 
 
 def highlight(old, new):

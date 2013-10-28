@@ -680,11 +680,15 @@ def assert_exactly_one(*args, **kwargs):
         True if desired conditions are satisfied. For example:
 
         >>> assert_exactly_one(True, False, truthy_fxn=bool) # Success
+        True
 
         >>> assert_exactly_one(0, None) # Success
+        0
 
         >>> assert_exactly_one(True, False)
-        AssertionError
+        Traceback (most recent call last):
+            ...
+        AssertionError: Expected exactly one True (got 2) args: (True, False)
 
     Returns:
         The argument that passes the truthy function

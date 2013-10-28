@@ -11,6 +11,7 @@ from testify import assert_equal
 from testify import assert_not_reached
 from testify import assert_true
 from testify import assert_false
+from testify.contrib.doctestcase import DocTestCase
 
 
 class DiffMessageTestCase(TestCase):
@@ -864,6 +865,9 @@ class AssertWarnsTestCase(TestCase):
         assertions.assert_warns_such_that(three_warnings_caught,
                                           create_multiple_warnings, 3)
 
+
+class DocTest(DocTestCase):
+    module = assertions
 
 if __name__ == '__main__':
     run()
