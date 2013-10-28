@@ -25,7 +25,7 @@ class TestSuitesTestCase(TestCase):
         sub_instance = SubTestCase(suites_require=set(['super']))
 
         assert_equal(list(super_instance.runnable_test_methods()), [super_instance.test_thing])
-        assert_equal(list(sub_instance.runnable_test_methods()), [])
+        assert_equal(list(sub_instance.runnable_test_methods()), [sub_instance.test_thing])
 
         # Conversely, if we set suites_require=['sub'], then only the subclass should have a method to run.
         super_instance = SuperTestCase(suites_require=set(['sub']))
@@ -58,7 +58,7 @@ class TestSuitesTestCase(TestCase):
 class ListSuitesMixin(object):
     """Test that we pick up the correct suites when using --list-suites."""
 
-	# applied to test_foo, test_disabled, test_also.., test_not.., and test_list..
+    # applied to test_foo, test_disabled, test_also.., test_not.., and test_list..
     _suites = ['class-level-suite']
 
     def __init__(self, **kwargs):
@@ -92,11 +92,10 @@ class ListSuitesMixin(object):
 
 
 class ListSuitesTestCase(TestCase, ListSuitesMixin):
-	"""Test that suites are correctly applied to Testify TestCases."""
-	pass
+    """Test that suites are correctly applied to Testify TestCases."""
+    pass
 
 
 class ListSuitesUnittestCase(unittest.TestCase, ListSuitesMixin):
-	"""Test that suites are correctly applied to UnitTests."""
-	pass
-
+    """Test that suites are correctly applied to UnitTests."""
+    pass

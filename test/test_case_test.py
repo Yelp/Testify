@@ -2,7 +2,6 @@ import itertools
 import unittest
 
 from testify import assert_equal
-from testify import assert_not_equal
 from testify import assert_in
 from testify import class_setup
 from testify import class_setup_teardown
@@ -742,10 +741,51 @@ class SuiteDecoratorTest(TestCase):
 
         suites_after_decoration =  function_to_decorate._suites
 
-        assert_not_equal(
-            id(suites_before_decoration),
-            id(suites_after_decoration),
-            "suites decorator modifies the object's _suite attribute"
+        assert_equal(
+            suites_before_decoration,
+            set(['fake_suite_1'])
+        )
+
+        assert_equal(
+            suites_after_decoration,
+            set(['fake_suite_1', 'fake_suite_2'])
+        )
+
+    def test_subclass_with_suites_attr(self):
+        @suite('foo-suite')
+        class FooTestCase(TestCase):
+            pass
+        class BarTestCase(FooTestCase):
+            _suites = ['bar-suite']
+
+        foo = FooTestCase()
+        assert_equal(
+            foo.suites(),
+            set(['foo-suite'])
+        )
+
+        bar = BarTestCase()
+        assert_equal(
+            bar.suites(),
+            set(['foo-suite', 'bar-suite'])
+        )
+
+    def test_superclass_with_suites_attr(self):
+        class FooTestCase(TestCase):
+            _suites = ['foo-suite']
+        class BarTestCase(FooTestCase):
+            _suites = ['bar-suite']
+
+        foo = FooTestCase()
+        assert_equal(
+            foo.suites(),
+            set(['foo-suite'])
+        )
+
+        bar = BarTestCase()
+        assert_equal(
+            bar.suites(),
+            set(['foo-suite', 'bar-suite'])
         )
 
 
