@@ -277,11 +277,13 @@ class TestCase(object):
                 # first, run setup fixtures
                 self._stage = self.STAGE_SETUP
                 with self.test_fixtures.instance_context() as fixture_failures:
+                    # we haven't had any problems in class/instance setup, onward!
                     if not (fixture_failures + class_fixture_failures):
                         self._stage = self.STAGE_TEST_METHOD
                         result.record(test_method)
                     self._stage = self.STAGE_TEARDOWN
 
+                # maybe something broke during teardown -- record it
                 for exc_info in fixture_failures + class_fixture_failures:
                     result.end_in_failure(exc_info)
 

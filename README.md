@@ -82,20 +82,20 @@ To take advantage of more advanced Testify features, just replace
 Testify provides the following fixtures for your enjoyment:
 
   - ``@setup``: Run before each individual test method on the ``TestCase``(that
-	is, all methods that begin with 'test').
+    is, all methods that begin with 'test').
 
   - ``@teardown``: Like ``setup``, but run after each test completes
-	(regardless of success or failure).
+    (regardless of success or failure).
 
   - ``@class_setup``: Run before a ``TestCase`` begins executing its tests.
-	Note that this not a class method; you still have access to the same
-	``TestCase`` instance as your tests.
+    Note that this not a class method; you still have access to the same
+    ``TestCase`` instance as your tests.
 
   - ``@class_teardown``: Like ``class_setup``, but run after all tests complete
-	(regardless of success or failure).
+    (regardless of success or failure).
 
   - ``@setup_teardown``: A context manager for individual tests, where test
-	execution occurs during the yield. For example:
+    execution occurs during the yield. For example:
 
     ```python
     @setup_teardown
@@ -106,11 +106,11 @@ Testify provides the following fixtures for your enjoyment:
     ```
 
   - ``@class_setup_teardown``: Like ``setup_teardown``, but all of the
-	``TestCase``'s methods are run when this yields.
+    ``TestCase``'s methods are run when this yields.
 
   - ``@let``: This declares a lazily-evaluated attribute of the ``TestCase``.
-	When accessed, this attribute will be computed and cached for the life of
-	the test (including setup and teardown). For example:
+    When accessed, this attribute will be computed and cached for the life of
+    the test (including setup and teardown). For example:
 
     ```python
     @let

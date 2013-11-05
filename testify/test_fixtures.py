@@ -39,6 +39,10 @@ DEPRECATED_FIXTURE_TYPE_MAP = {
 
 
 class TestFixtures(object):
+    """
+    Handles all the juggling of actual fixture methods and the context they are
+    supposed to provide our tests.
+    """
 
     def __init__(self, class_fixtures, instance_fixtures):
         # We convert all class-level fixtures to
