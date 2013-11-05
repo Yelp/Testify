@@ -2,17 +2,23 @@ import sys
 
 from doctest import DocTestFinder, DocTestRunner, REPORT_NDIFF
 from StringIO import StringIO
-from testify import MetaTestCase
+from testify import MetaTestCase, TestCase
 from types import MethodType
 
 class DocMetaTestCase(MetaTestCase):
-	"""
-	A testify TestCase that turns doctests into unit tests.
-	"""
+	"""See DocTestCase for documentation."""
 	def __init__(cls, name, bases, dct):
 		super(DocMetaTestCase, cls).__init__(name, bases, dct)
 
-		module = dct['module']
+		try:
+			module = dct['module']
+		except KeyError:
+			if dct.get('__test__', True) == False:
+				# This is some kind of abstract class. Do nothing.
+				return
+			else:
+				raise ValueError('No module was given for doctest search!')
+
 		globs = dct.get('globs', None)
 		extraglobs = dct.get('extraglobs', None)
 
@@ -46,3 +52,16 @@ def run_test(doctest):
 	runner.run(doctest, out=summary.write)
 
 	assert runner.failures == 0, '\n' + summary.getvalue()
+
+class DocTestCase(TestCase):
+	"""
+	A testify TestCase that turns doctests into unit tests.
+
+	Subclass attributes:
+		module -- the module object to be introspected for doctests
+		globs -- (optional) a dictionary containing the initial global variables for the tests.
+			A new copy of this dictionary is created for each test.
+		extraglobs -- (optional) an extra set of global variables, which is merged into globs.
+	"""
+	__metaclass__ = DocMetaTestCase
+	__test__ = False
