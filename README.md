@@ -28,7 +28,7 @@ However, Testify has features above and beyond unittest:
     mocking), code coverage integration, profiling, and numerous common
     assertion helpers for easier debugging.
 
-  - More pythonic naming conventions.
+  - More Pythonic naming conventions.
 
 ### Example Test Case
 
@@ -64,4 +64,96 @@ class AdditionTestCase(TestCase):
 if __name__ == "__main__":
     run()
 ```
+
+### Unittest Compatibility
+
+Testify will discover and run ``unittests`` without any code changes, just
+point it to a directory containing your tests:
+
+```bash
+$ testify my_unittests/foo_test.py
+```
+
+To take advantage of more advanced Testify features, just replace
+``unittest.TestCase`` with ``testify.TestCase``!
+
+### Fixtures
+
+Testify provides the following fixtures for your enjoyment:
+
+  - ``@setup``: Run before each individual test method on the ``TestCase``(that
+	is, all methods that begin with 'test').
+
+  - ``@teardown``: Like ``setup``, but run after each test completes
+	(regardless of success or failure).
+
+  - ``@class_setup``: Run before a ``TestCase`` begins executing its tests.
+	Note that this not a class method; you still have access to the same
+	``TestCase`` instance as your tests.
+
+  - ``@class_teardown``: Like ``class_setup``, but run after all tests complete
+	(regardless of success or failure).
+
+  - ``@setup_teardown``: A context manager for individual tests, where test
+	execution occurs during the yield. For example:
+
+    ```python
+    @setup_teardown
+    def mock_something(self):
+        with mock.patch('foo') as foo_mock:
+            self.foo_mock = foo_mock
+            yield
+    ```
+
+  - ``@class_setup_teardown``: Like ``setup_teardown``, but all of the
+	``TestCase``'s methods are run when this yields.
+
+  - ``@let``: This declares a lazily-evaluated attribute of the ``TestCase``.
+	When accessed, this attribute will be computed and cached for the life of
+	the test (including setup and teardown). For example:
+
+    ```python
+    @let
+    def expensive_attribute(self):
+      return expensive_function_call()
+
+    def test_something(self):
+      assert self.expensive_attribute
+
+    def test_something_else(self):
+      # no expensive call
+      assert True
+    ```
+
+#### Order of Execution
+
+In pseudo code, Testify follows this schedule when running your tests:
+
+```
+   Run all 'class_setup' methods
+   Enter all 'class_setup_teardown' context managers
+   For each method beginning with 'test':
+       Run all 'setup' methods
+       Enter all 'setup_teardown' context managers
+           Run the method and record failure or success
+       Exit all 'setup_teardown' context managers
+       Run all 'teardown' methods
+   Exit all 'class_setup_teardown' context managers
+   Run all 'class_teardown' methods
+```
+
+##### ...When Subclassing
+
+Your fixtures are just decorated methods, so they can be inherited and
+overloaded as expected. When you introduce subclasses and mixins into the...
+mix, things can get a little crazy. For this reason, Testify makes a couple
+guarantees about how your fixtures are run:
+
+ * A subclass's fixture context is always contained within its parent's fixture
+   context (as determined by the usual
+   [MRO](http://www.python.org/download/releases/2.3/mro/)). That is, fixture
+   context is pushed and popped in FILO order.
+
+ * Fixtures of the same type (and defined at the same level in the class
+   heirarchy) will be run in the order they are defined on the class.
 
