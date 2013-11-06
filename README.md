@@ -103,6 +103,7 @@ Testify provides the following fixtures for your enjoyment:
         with mock.patch('foo') as foo_mock:
             self.foo_mock = foo_mock
             yield
+        # this is where you would do teardown things
     ```
 
   - ``@class_setup_teardown``: Like ``setup_teardown``, but all of the
