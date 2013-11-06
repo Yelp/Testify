@@ -16,10 +16,10 @@ class TestResultTestCase(TestCase):
 
     @setup_teardown
     def mock_test_result(self):
-		test_method = mock.Mock(__name__='test_name')
-		with mock.patch('testify.TestCase.test_result', new_callable=mock.PropertyMock) as test_result:
-			test_result.return_value = TestResult(test_method)
-			yield
+        test_method = mock.Mock(__name__='test_name')
+        with mock.patch('testify.TestCase.test_result', new_callable=mock.PropertyMock) as test_result:
+            test_result.return_value = TestResult(test_method)
+            yield
 
     def _append_exc_info(self, exc_type):
         value, tb = mock.Mock(), mock.Mock(tb_next=None)
@@ -103,8 +103,8 @@ class TestResultStateTest(TestCase):
 
         test_suite.run()
 
-		# do this before checking ``results()`` to make sure we don't insert a
-		# None result
+        # do this before checking ``results()`` to make sure we don't insert a
+        # None result
         assert test_suite.test_result is None
 
         test_results = test_suite.results()

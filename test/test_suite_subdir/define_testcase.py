@@ -1,5 +1,5 @@
 from testify import TestCase
 
 class DummyTestCase(TestCase):
-	def test_blah(self):
-		pass
+    def test_blah(self):
+        pass
