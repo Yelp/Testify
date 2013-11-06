@@ -1,20 +1,25 @@
 import mock
 
 from testify import assert_equal
-from testify import setup
+from testify import assert_raises
+from testify import setup_teardown
 from testify import run
 from testify import TestCase
 from testify.test_result import TestResult
 
+
 def fake_format_exception(exctype, value, tb, limit=None):
     return 'Traceback: %s\n' % (exctype.__name__)
 
+
 class TestResultTestCase(TestCase):
 
-    @setup
-    def setup_test_result(self):
-        self.test_method = mock.MagicMock(__name__='test_name')
-        self.test_result = TestResult(self.test_method)
+    @setup_teardown
+    def mock_test_result(self):
+		test_method = mock.Mock(__name__='test_name')
+		with mock.patch('testify.TestCase.test_result', new_callable=mock.PropertyMock) as test_result:
+			test_result.return_value = TestResult(test_method)
+			yield
 
     def _append_exc_info(self, exc_type):
         value, tb = mock.Mock(), mock.Mock(tb_next=None)
@@ -71,6 +76,40 @@ class TestResultTestCase(TestCase):
                 ))
         )
 
+
+class TestResultStateTest(TestCase):
+    """Make sure we don't have a test_result outside of a running test."""
+
+    class WompTest(TestCase):
+
+        @setup_teardown
+        def assert_result_state(self):
+            assert self.test_result is None
+            yield
+            assert self.test_result
+
+        def test_success(self):
+            pass
+
+        def test_fail(self):
+            assert False
+
+    def test_results(self):
+        test_suite = self.WompTest()
+
+        with assert_raises(RuntimeError):
+            # results? what results?!
+            test_suite.results()
+
+        test_suite.run()
+
+		# do this before checking ``results()`` to make sure we don't insert a
+		# None result
+        assert test_suite.test_result is None
+
+        test_results = test_suite.results()
+
+        assert_equal([result.success for result in test_results], [False, True])
 
 
 if __name__ == "__main__":

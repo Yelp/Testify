@@ -141,7 +141,6 @@ class MetaTestCase(type):
             return hash(MetaTestCase._cmp_str(self)) % bucket_count
 
 
-
 class TestCase(object):
     """The TestCase class defines test methods and fixture methods; it is the meat and potatoes of testing.
 
@@ -173,6 +172,7 @@ class TestCase(object):
     __metaclass__ = MetaTestCase
     __test__ = False
 
+    STAGE_UNSTARTED = 0
     STAGE_CLASS_SETUP = 1
     STAGE_SETUP = 2
     STAGE_TEST_METHOD = 3
@@ -193,6 +193,7 @@ class TestCase(object):
     def __init__(self, *args, **kwargs):
         super(TestCase, self).__init__()
 
+        self._stage = self.STAGE_UNSTARTED
         self._method_level = False
 
         # ascend the class hierarchy and discover fixture methods
@@ -213,6 +214,9 @@ class TestCase(object):
         self.__class_level_failure = None
         self.__class_level_error = None
 
+        self.__all_test_results = {}
+        self.__current_test_method = None
+
         # for now, we still support the use of unittest-style assertions defined on the TestCase instance
         for name in dir(deprecated_assertions):
             if name.startswith(('assert', 'fail')):
@@ -220,6 +224,10 @@ class TestCase(object):
 
         self.failure_limit = kwargs.pop('failure_limit', None)
         self.failure_count = 0
+
+    @property
+    def test_result(self):
+        return self.__all_test_results.get(self.__current_test_method)
 
     def __init_fixture_methods(self):
         """Initialize and populate the lists of fixture methods for this TestCase.
@@ -400,6 +408,12 @@ class TestCase(object):
             suites |= getattr(method, '_suites', set())
         return suites
 
+    def results(self):
+        """Available after calling `self.run()`."""
+        if self._stage != self.STAGE_CLASS_TEARDOWN:
+            raise RuntimeError('results() called before tests have executed')
+        return self.__all_test_results.values()
+
     def method_excluded(self, method):
         """Given this TestCase's included/excluded suites, is this test method excluded?
 
@@ -498,12 +512,19 @@ class TestCase(object):
         will continue with the teardown phase.
         """
         for test_method in self.runnable_test_methods():
+            self.__current_test_method = test_method
 
             result = TestResult(test_method)
+
             # Sometimes, test cases want to take further action based on
             # results, e.g. further clean-up or reporting if a test method
-            # fails. (Yelp's Selenium test cases do this.)
-            test_method.im_self.test_result = result
+            # fails. (Yelp's Selenium test cases do this.) If you need to
+            # programatically inspect test results, you should use
+            # self.results().
+
+            # NOTE: THIS IS INCORRECT -- im_self is shared among all test
+            # methods on the TestCase instance. This is preserved for backwards
+            # compatibility and should be removed eventually.
 
             try:
                 self._method_level = True # Flag that we're currently running method-level stuff (rather than class-level)
@@ -528,6 +549,7 @@ class TestCase(object):
                     def _run_test_block():
                         # then run the test method itself, assuming setup was successful
                         self._stage = self.STAGE_TEST_METHOD
+                        self.__all_test_results[self.__current_test_method] = result
                         if not result.complete:
                             self.__execute_block_recording_exceptions(test_method, result)
 
@@ -556,7 +578,9 @@ class TestCase(object):
                 if not result.success:
                     self.failure_count += 1
                     if self.failure_limit and self.failure_count >= self.failure_limit:
-                        return
+                        break
+
+        self.__current_test_method = None
 
     def register_callback(self, event, callback):
         """Register a callback for an internal event, usually used for logging.
