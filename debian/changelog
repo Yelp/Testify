@@ -1,3 +1,17 @@
+python-testify (0.5.0) lucid; urgency=low
+
+  * Run all parent-class fixtures before any subclass fixtures
+  * Add Python 2.7.5 compatibility and clean up setup.py
+  * Fix interaction between subclassing and '_suites = [foo]'
+  * Add assertions.assert_raises_exactly
+  * Add tests for doctests
+  * Fix get_test_method_name to report class's actual module
+  * Test runner now prints test names one per line
+  * Test for warnings raised within a function or 'with' block
+  * Fix traceback postmortem to not print one character per line
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 05 Nov 2013 17:45:06 -0800
+
 python-testify (0.4.2) lucid; urgency=low
 
   * Fix for preserving original traceback when fixture method also raises an exception
