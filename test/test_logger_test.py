@@ -108,7 +108,6 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         runner_result = runner.run()
         assert_equal(runner_result, False)
 
-
     def test_class_setup(self):
         self._run_test_case(ExceptionInClassFixtureSampleTests.FakeClassSetupTestCase)
 

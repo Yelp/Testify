@@ -16,6 +16,7 @@
 """This module contains the TestResult class, each instance of which holds status information for a single test method."""
 __testify = 1
 import datetime
+import sys
 import time
 import traceback
 
@@ -44,6 +45,8 @@ def plain_tb_formatter(etype, value, tb, length=None):
     return ''.join(traceback.format_exception(etype, value, tb, length))
 
 class TestResult(object):
+    debug = False
+
     def __init__(self, test_method, runner_id=None):
         super(TestResult, self).__init__()
         self.test_method = test_method
@@ -63,6 +66,39 @@ class TestResult(object):
         self.previous_run = previous_run
         self.start_time = datetime.datetime.now()
 
+    def record(self, function):
+        """Excerpted code for executing a block of code that might raise an
+        exception, requiring us to update a result object.
+
+        Return value is a boolean describing whether the block was successfully
+        executed without exceptions.
+        """
+        try:
+            function()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception, exception:
+            # some code may want to use an alternative exc_info for an exception
+            # (for instance, in an event loop). You can signal an alternative
+            # stack to use by adding a _testify_exc_tb attribute to the
+            # exception object
+            if hasattr(exception, '_testify_exc_tb'):
+                exc_info = (type(exception), exception, exception._testify_exc_tb)
+            else:
+                exc_info = sys.exc_info()
+
+            self.end_in_failure(exc_info)
+
+            if self.debug:
+                exc, val, tb = exc_info
+                print "\nDEBUGGER"
+                print self.format_exception_info()
+                import ipdb
+                ipdb.post_mortem(tb)
+            return False
+        else:
+            return True
+
     def _complete(self):
         self.complete = True
         self.end_time = datetime.datetime.now()
@@ -71,15 +107,15 @@ class TestResult(object):
     def end_in_failure(self, exception_info):
         if not self.complete:
             self._complete()
-        self.success = False
-        self.failure = True
-        self.exception_infos.append(exception_info)
 
-    def end_in_error(self, exception_info):
-        if not self.complete:
-            self._complete()
         self.success = False
-        self.error = True
+
+        if isinstance(exception_info[1], AssertionError):
+            # test failure, kinda expect these vs. unknown errors
+            self.failure = True
+        else:
+            self.error = True
+
         self.exception_infos.append(exception_info)
 
     def end_in_success(self):

@@ -36,6 +36,9 @@ from errors import TestifyError
 from test_case import (
                         MetaTestCase,
                         TestCase,
+)
+
+from test_fixtures import (
                         class_setup,
                         setup,
                         teardown,
@@ -43,7 +46,8 @@ from test_case import (
                         setup_teardown,
                         class_setup_teardown,
                         suite,
-                        let)
+						let,
+)
 
 from utils import turtle
 
