@@ -371,7 +371,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
             print 1/0
         except:
             import sys
-            real_result.end_in_error(sys.exc_info())
+            real_result.end_in_failure(sys.exc_info())
         real_result = real_result.to_dict()
         real_result = _replace_values_with_types(real_result)
 

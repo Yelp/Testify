@@ -23,89 +23,19 @@ __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 
 from collections import defaultdict
-from contextlib import contextmanager
-import inspect
 from new import instancemethod
+import functools
+import inspect
 import sys
 import types
 import unittest
 
+from testify.utils import class_logger
+from testify.test_fixtures import DEPRECATED_FIXTURE_TYPE_MAP
+from testify.test_fixtures import TestFixtures
+from testify.test_fixtures import suite
 from test_result import TestResult
 import deprecated_assertions
-from testify.utils import class_logger
-from testify.utils import inspection
-
-FIXTURE_TYPES = (
-    'class_setup',
-    'setup',
-    'teardown',
-    'class_teardown',
-    'setup_teardown',
-    'class_setup_teardown',
-)
-FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS = (
-    'class_teardown',
-    'class_setup_teardown',
-)
-
-# In general, inherited fixtures are applied first unless they are of these
-# types. These fixtures are applied (in order of their definitions) starting
-# with those defined on the current class, and then those defined on inherited
-# classes (following MRO).
-REVERSED_FIXTURE_TYPES = (
-    'teardown',
-    'class_teardown',
-)
-
-DEPRECATED_FIXTURE_TYPE_MAP = {
-    'classSetUp': 'class_setup',
-    'setUp': 'setup',
-    'tearDown': 'teardown',
-    'classTearDown': 'class_teardown',
-}
-
-
-def make_sortable_fixture_key(fixture):
-    """Use class depth, fixture type and fixture id to define
-    a sortable key for fixtures.
-
-    Class depth is the most significant value and defines the
-    MRO (reverse mro for teardown methods) order. Fixture type
-    and fixture id help us to define the expected order.
-
-    See
-    test.test_case_test.FixtureMethodRegistrationOrderWithBaseClassTest
-    for the expected order.
-    """
-    if fixture._fixture_type == 'class_setup':
-        fixture_order = {
-            'class_setup' : 0,
-            'class_setup_teardown': 1,
-            'class_teardown': 2,
-         }
-    else:
-        fixture_order = {
-            'class_setup' : 0,
-            'class_setup_teardown': 2,
-            'class_teardown': 1,
-         }
-        if fixture._fixture_type == "class_teardown":
-            # class_teardown fixtures should be run in reverse
-            # definition order (last definition runs
-            # first). Converting fixture_id to its negative
-            # value will sort class_teardown fixtures in the
-            # same class in reversed order.
-            return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], -fixture._fixture_id)
-
-    return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], fixture._fixture_id)
-
-
-class TwistedFailureError(Exception):
-    """Exception that indicates the value is an instance of twisted.python.failure.Failure
-
-    This is part of the magic that's required to get a proper stack trace out of twisted applications
-    """
-    pass
 
 
 class MetaTestCase(type):
@@ -182,6 +112,7 @@ class TestCase(object):
     __metaclass__ = MetaTestCase
     __test__ = False
 
+    STAGE_UNSTARTED = 0
     STAGE_CLASS_SETUP = 1
     STAGE_SETUP = 2
     STAGE_TEST_METHOD = 3
@@ -202,25 +133,22 @@ class TestCase(object):
     def __init__(self, *args, **kwargs):
         super(TestCase, self).__init__()
 
-        self._method_level = False
-
-        # ascend the class hierarchy and discover fixture methods
-        self.__init_fixture_methods()
+        self.test_fixtures = TestFixtures.discover_from(self)
 
         self.__suites_include = kwargs.get('suites_include', set())
         self.__suites_exclude = kwargs.get('suites_exclude', set())
         self.__suites_require = kwargs.get('suites_require', set())
         self.__name_overrides = kwargs.get('name_overrides', None)
 
-        self.__debugger = kwargs.get('debugger')
+        TestResult.debug = kwargs.get('debugger') # sorry :(
 
         # callbacks for various stages of execution, used for stuff like logging
         self.__callbacks = defaultdict(list)
 
-        # one of these will later be populated with exception info if there's an
-        # exception in the class_setup/class_teardown stage
-        self.__class_level_failure = None
-        self.__class_level_error = None
+        self.__all_test_results = {}
+        self.__current_test_method = None
+
+        self._stage = self.STAGE_UNSTARTED
 
         # for now, we still support the use of unittest-style assertions defined on the TestCase instance
         for name in dir(deprecated_assertions):
@@ -230,76 +158,9 @@ class TestCase(object):
         self.failure_limit = kwargs.pop('failure_limit', None)
         self.failure_count = 0
 
-    def __init_fixture_methods(self):
-        """Initialize and populate the lists of fixture methods for this TestCase.
-
-        Fixture methods are identified by the fixture_decorator_factory when the
-        methods are created. This means in order to figure out all the fixtures
-        this particular TestCase will need, we have to test all of its attributes
-        for 'fixture-ness'.
-
-        See __fixture_decorator_factory for more info.
-        """
-        # init our self.(class_setup|setup|teardown|class_teardown)_fixtures lists
-        for fixture_type in FIXTURE_TYPES:
-            setattr(self, "%s_fixtures" % fixture_type, [])
-
-        # the list of classes in our heirarchy, starting with the highest class
-        # (object), and ending with our class
-        reverse_mro_list = [x for x in reversed(type(self).mro())]
-
-        # discover which fixures are on this class, including mixed-in ones
-        self._fixture_methods = defaultdict(list)
-
-        # we want to know everything on this class (including stuff inherited
-        # from bases), but we don't want to trigger any lazily loaded
-        # attributes, so dir() isn't an option; this traverses __bases__/__dict__
-        # correctly for us.
-        for classified_attr in inspect.classify_class_attrs(type(self)):
-            # have to index here for Python 2.5 compatibility
-            attr_name = classified_attr[0]
-            unbound_method = classified_attr[3]
-            defining_class = classified_attr[2]
-
-            # skip everything that's not a function/method
-            if not inspect.isroutine(unbound_method):
-                continue
-
-            # if this is an old setUp/tearDown/etc, tag it as a fixture
-            if attr_name in DEPRECATED_FIXTURE_TYPE_MAP:
-                fixture_type = DEPRECATED_FIXTURE_TYPE_MAP[attr_name]
-                fixture_decorator = globals()[fixture_type]
-                unbound_method = fixture_decorator(unbound_method)
-
-            # collect all of our fixtures in appropriate buckets
-            if inspection.is_fixture_method(unbound_method):
-                # where in our MRO this fixture was defined
-                defining_class_depth = reverse_mro_list.index(defining_class)
-                inspection.callable_setattr(
-                        unbound_method,
-                        '_defining_class_depth',
-                        defining_class_depth,
-                )
-
-                # we grabbed this from the class and need to bind it to us
-                instance_method = instancemethod(unbound_method, self, self.__class__)
-                self._fixture_methods[instance_method._fixture_type].append(instance_method)
-
-        # arrange our fixture buckets appropriately
-        for fixture_type, fixture_methods in self._fixture_methods.iteritems():
-            # sort our fixtures in order of oldest (smaller id) to newest, but
-            # also grouped by class to correctly place deprecated fixtures
-            fixture_methods.sort(key=lambda x: (x._defining_class_depth, x._fixture_id))
-
-            # for setup methods, we want methods defined further back in the
-            # class hierarchy to execute first.  for teardown methods though,
-            # we want the opposite while still maintaining the class-level
-            # definition order, so we reverse only on class depth.
-            if fixture_type in REVERSED_FIXTURE_TYPES:
-                fixture_methods.sort(key=lambda x: x._defining_class_depth, reverse=True)
-
-            fixture_list_name = "%s_fixtures" % fixture_type
-            setattr(self, fixture_list_name, fixture_methods)
+    @property
+    def test_result(self):
+        return self.__all_test_results.get(self.__current_test_method)
 
     def _generate_test_method(self, method_name, function):
         """Allow tests to define new test methods in their __init__'s and have appropriate suites applied."""
@@ -356,46 +217,36 @@ class TestCase(object):
         test_case_result.start()
         self.fire_event(self.EVENT_ON_RUN_TEST_CASE, test_case_result)
 
-        fixtures = []
-        all_class_fixtures = self.class_setup_fixtures + self.class_setup_teardown_fixtures + self.class_teardown_fixtures
-        for fixture in sorted(all_class_fixtures, key=make_sortable_fixture_key):
-            # We convert all class-level fixtures to
-            # class_setup_teardown fixtures a) to handle all
-            # class-level fixtures the same and b) to make the
-            # behavior more predictable when a TestCase has different
-            # fixtures interacting.
-            if fixture._fixture_type == 'class_teardown':
-                fixture = self.__convert_class_teardown_to_class_setup_teardown(fixture)
-            elif fixture._fixture_type == 'class_setup':
-                fixture = self.__convert_class_setup_to_class_setup_teardown(fixture)
-            fixtures.append(fixture)
+        self._stage = self.STAGE_CLASS_SETUP
+        with self.test_fixtures.class_context(
+                setup_callbacks=[
+                    functools.partial(self.fire_event, self.EVENT_ON_RUN_CLASS_SETUP_METHOD),
+                    functools.partial(self.fire_event, self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD),
+                ],
+                teardown_callbacks=[
+                    functools.partial(self.fire_event, self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD),
+                    functools.partial(self.fire_event, self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD),
+                ],
+        ) as class_fixture_failures:
+            # if we have class fixture failures, we're not going to bother
+            # running tests, but we need to generate bogus results for them all
+            # and mark them as failed.
+            self.__run_test_methods(class_fixture_failures)
+            self._stage = self.STAGE_CLASS_TEARDOWN
 
-        self.__enter_class_context_managers(fixtures, self.__run_test_methods)
+        # class fixture failures count towards our total
+        self.failure_count += len(class_fixture_failures)
 
-        test_case_result.end_in_success()
+        # you might think that we would want to do this... but this is a
+        # bogus test result used for reporting to the server. we always
+        # have it report success, i guess.
+        # for exc_info in fixture_failures:
+        #     test_case_result.end_in_failure(exc_info)
+
+        if not test_case_result.complete:
+            test_case_result.end_in_success()
+
         self.fire_event(self.EVENT_ON_COMPLETE_TEST_CASE, test_case_result)
-
-    def __convert_class_setup_to_class_setup_teardown(self, fixture):
-        def wrapper(self):
-            fixture()
-            yield
-        wrapper.__name__ = fixture.__name__
-        wrapper.__doc__ = fixture.__doc__
-        wrapper._fixture_type = fixture._fixture_type
-        wrapper._fixture_id = fixture._fixture_id
-        wrapper._defining_class_depth = fixture._defining_class_depth
-        return instancemethod(wrapper, self, self.__class__)
-
-    def __convert_class_teardown_to_class_setup_teardown(self, fixture):
-        def wrapper(self):
-            yield
-            fixture()
-        wrapper.__name__ = fixture.__name__
-        wrapper.__doc__ = fixture.__doc__
-        wrapper._fixture_type = fixture._fixture_type
-        wrapper._fixture_id = fixture._fixture_id
-        wrapper._defining_class_depth = fixture._defining_class_depth
-        return instancemethod(wrapper, self, self.__class__)
 
     @classmethod
     def in_suite(cls, method, suite_name):
@@ -409,6 +260,12 @@ class TestCase(object):
             suites |= getattr(method, '_suites', set())
         return suites
 
+    def results(self):
+        """Available after calling `self.run()`."""
+        if self._stage != self.STAGE_CLASS_TEARDOWN:
+            raise RuntimeError('results() called before tests have executed')
+        return self.__all_test_results.values()
+
     def method_excluded(self, method):
         """Given this TestCase's included/excluded suites, is this test method excluded?
 
@@ -418,84 +275,7 @@ class TestCase(object):
         method_suites = set(getattr(method, '_suites', set()))
         return (self.__suites_exclude & method_suites)
 
-    def __run_class_fixture(self, fixture_method, function_to_call, stage, callback_on_run_event, callback_on_complete_event, fire_events=True):
-        self._stage = stage
-
-        result = TestResult(fixture_method)
-        try:
-            result.start()
-            if fire_events:
-                self.fire_event(callback_on_run_event, result)
-            if self.__execute_block_recording_exceptions(function_to_call, result, is_class_level=True):
-                result.end_in_success()
-            else:
-                self.failure_count += 1
-        except (KeyboardInterrupt, SystemExit):
-            result.end_in_interruption(sys.exc_info())
-            raise
-        finally:
-            if fire_events:
-                self.fire_event(callback_on_complete_event, result)
-
-    def __enter_class_context_managers(self, fixture_methods, callback):
-        """Transform each fixture_method into a context manager with
-        contextlib.contextmanager, enter them recursively, and call
-        callback.
-        """
-        if fixture_methods:
-            fixture_method = fixture_methods[0]
-            ctm = contextmanager(fixture_method)()
-
-            if fixture_method._fixture_type == 'class_teardown':
-                # class_teardown fixture is wrapped as
-                # class_setup_teardown. We should not fire events for the
-                # setup phase of this fake context manager.
-                fire_events = False
-            else:
-                fire_events = True
-
-            self.__run_class_fixture(
-                fixture_method,
-                ctm.__enter__,
-                self.STAGE_CLASS_SETUP,
-                self.EVENT_ON_RUN_CLASS_SETUP_METHOD,
-                self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD,
-                fire_events
-            )
-
-            self.__enter_class_context_managers(fixture_methods[1:], callback)
-
-            if fixture_method._fixture_type == 'class_setup':
-                # class_setup fixture is wrapped as
-                # class_setup_teardown. We should not fire events for the
-                # teardown phase of this fake context manager.
-                fire_events = False
-            else:
-                fire_events = True
-
-            self.__run_class_fixture(
-                fixture_method,
-                lambda: ctm.__exit__(None, None, None),
-                self.STAGE_CLASS_TEARDOWN,
-                self.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD,
-                self.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD,
-                fire_events
-            )
-        else:
-            callback()
-
-    def __enter_context_managers(self, fixture_methods, callback):
-        """Transform each fixture_method into a context manager with
-        contextlib.contextmanager, enter them recursively, and call
-        callback.
-        """
-        if fixture_methods:
-            with contextmanager(fixture_methods[0])():
-                self.__enter_context_managers(fixture_methods[1:], callback)
-        else:
-            callback()
-
-    def __run_test_methods(self):
+    def __run_test_methods(self, class_fixture_failures):
         """Run this class's setup fixtures / test methods / teardown fixtures.
 
         These are run in the obvious order - setup and teardown go before and after,
@@ -507,65 +287,57 @@ class TestCase(object):
         will continue with the teardown phase.
         """
         for test_method in self.runnable_test_methods():
+            self.__current_test_method = test_method
 
             result = TestResult(test_method)
+
             # Sometimes, test cases want to take further action based on
             # results, e.g. further clean-up or reporting if a test method
-            # fails. (Yelp's Selenium test cases do this.)
-            test_method.im_self.test_result = result
+            # fails. (Yelp's Selenium test cases do this.) If you need to
+            # programatically inspect test results, you should use
+            # self.results().
+
+            # NOTE: THIS IS INCORRECT -- im_self is shared among all test
+            # methods on the TestCase instance. This is preserved for backwards
+            # compatibility and should be removed eventually.
 
             try:
-                self._method_level = True # Flag that we're currently running method-level stuff (rather than class-level)
-
                 # run "on-run" callbacks. e.g. print out the test method name
                 self.fire_event(self.EVENT_ON_RUN_TEST_METHOD, result)
 
                 result.start()
 
-                if self.__class_level_failure:
-                    result.end_in_failure(self.__class_level_failure)
-                elif self.__class_level_error:
-                    result.end_in_error(self.__class_level_error)
-                else:
-                    # first, run setup fixtures
-                    self._stage = self.STAGE_SETUP
-                    def _setup_block():
-                        for fixture_method in self.setup_fixtures:
-                            fixture_method()
-                    self.__execute_block_recording_exceptions(_setup_block, result)
-
-                    def _run_test_block():
-                        # then run the test method itself, assuming setup was successful
+                # first, run setup fixtures
+                self._stage = self.STAGE_SETUP
+                with self.test_fixtures.instance_context() as fixture_failures:
+                    # we haven't had any problems in class/instance setup, onward!
+                    if not (fixture_failures + class_fixture_failures):
                         self._stage = self.STAGE_TEST_METHOD
-                        if not result.complete:
-                            self.__execute_block_recording_exceptions(test_method, result)
-
-                    def _setup_teardown_block():
-                        self.__enter_context_managers(self.setup_teardown_fixtures, _run_test_block)
-
-                    # then run any setup_teardown fixtures, assuming setup was successful.
-                    if not result.complete:
-                        self.__execute_block_recording_exceptions(_setup_teardown_block, result)
-
-                    # finally, run the teardown phase
+                        self.__all_test_results[self.__current_test_method] = result
+                        result.record(test_method)
                     self._stage = self.STAGE_TEARDOWN
-                    for fixture_method in self.teardown_fixtures:
-                        self.__execute_block_recording_exceptions(fixture_method, result)
+
+                # maybe something broke during teardown -- record it
+                for exc_info in fixture_failures + class_fixture_failures:
+                    result.end_in_failure(exc_info)
 
                 # if nothing's gone wrong, it's not about to start
                 if not result.complete:
                     result.end_in_success()
+
             except (KeyboardInterrupt, SystemExit):
                 result.end_in_interruption(sys.exc_info())
                 raise
+
             finally:
                 self.fire_event(self.EVENT_ON_COMPLETE_TEST_METHOD, result)
-                self._method_level = False
 
                 if not result.success:
                     self.failure_count += 1
                     if self.failure_limit and self.failure_count >= self.failure_limit:
-                        return
+                        break
+
+        self.__current_test_method = None
 
     def register_callback(self, event, callback):
         """Register a callback for an internal event, usually used for logging.
@@ -580,53 +352,6 @@ class TestCase(object):
     def fire_event(self, event, result):
         for callback in self.__callbacks[event]:
             callback(result.to_dict())
-
-    def __execute_block_recording_exceptions(self, block_fxn, result, is_class_level=False):
-        """Excerpted code for executing a block of code that might raise an
-        exception, requiring us to update a result object.
-
-        Return value is a boolean describing whether the block was successfully
-        executed without exceptions.
-        """
-        try:
-            block_fxn()
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except TwistedFailureError, exception:
-            # We provide special support for handling the failures that are generated from twisted.
-            # Due to complexities in error handling and cleanup, it's difficult to get the raw exception
-            # data from an asynchcronous failure, so we really get a pseudo traceback object.
-            failure = exception.args[0]
-            exc_info = (failure.type, failure.value, failure.getTracebackObject())
-            result.end_in_error(exc_info)
-            if is_class_level:
-                self.__class_level_failure = exc_info
-        except Exception, exception:
-            # some code may want to use an alternative exc_info for an exception
-            # (for instance, in an event loop). You can signal an alternative
-            # stack to use by adding a _testify_exc_tb attribute to the
-            # exception object
-            if hasattr(exception, '_testify_exc_tb'):
-                exc_info = (type(exception), exception, exception._testify_exc_tb)
-            else:
-                exc_info = sys.exc_info()
-            if isinstance(exception, AssertionError):
-                result.end_in_failure(exc_info)
-                if is_class_level:
-                    self.__class_level_failure = exc_info
-            else:
-                result.end_in_error(exc_info)
-                if is_class_level:
-                    self.__class_level_error = exc_info
-            if self.__debugger:
-                exc, val, tb = exc_info
-                print "\nDEBUGGER"
-                print result.format_exception_info()
-                import ipdb
-                ipdb.post_mortem(tb)
-            return False
-        else:
-            return True
 
     def classSetUp(self): pass
     def setUp(self): pass
@@ -691,123 +416,5 @@ class TestifiedUnitTest(TestCase, unittest.TestCase):
 
         return MetaTestCase(new_name, tuple(bases), unittest_dict)
 
-
-def suite(*args, **kwargs):
-    """Decorator to conditionally assign suites to individual test methods.
-
-    This decorator takes a variable number of positional suite arguments and two optional kwargs:
-        - conditional: if provided and does not evaluate to True, the suite will not be applied.
-        - reason: if provided, will be attached to the method for logging later.
-
-    Can be called multiple times on one method to assign individual conditions or reasons.
-    """
-    def mark_test_with_suites(function):
-        conditions = kwargs.get('conditions')
-        reason = kwargs.get('reason')
-        if not hasattr(function, '_suites'):
-            function._suites = set()
-        if conditions is None or bool(conditions) is True:
-            function._suites = set(function._suites) | set(args)
-            if reason:
-                if not hasattr(function, '_suite_reasons'):
-                    function._suite_reasons = []
-                function._suite_reasons.append(reason)
-        return function
-
-    return mark_test_with_suites
-
-
-# unique id for fixtures
-_fixture_id = [0]
-
-def __fixture_decorator_factory(fixture_type):
-    """Decorator generator for the fixture decorators.
-
-    Tagging a class/instancemethod as 'setup', etc, will mark the method with a
-    _fixture_id. Smaller fixture ids correspond to functions higher on the
-    class hierarchy, since base classes (and their methods!) are created before
-    their children.
-
-    When our test cases are instantiated, they use this _fixture_id to sort
-    methods into the appropriate _fixture_methods bucket. Note that this
-    sorting cannot be done here, because this decorator does not recieve
-    instancemethods -- which would be aware of their class -- because the class
-    they belong to has not yet been created.
-
-    **NOTE**: This means fixtures of the same type on a class will be executed
-    in the order that they are defined, before/after fixtures execute on the
-    parent class execute setups/teardowns, respectively.
-    """
-
-    def fixture_decorator(callable_):
-        # Decorators act on *functions*, so we need to take care when dynamically
-        # decorating class attributes (which are (un)bound methods).
-        function = inspection.get_function(callable_)
-
-        # record the fixture type and id for this function
-        function._fixture_type = fixture_type
-
-        if function.__name__ in DEPRECATED_FIXTURE_TYPE_MAP:
-            # we push deprecated setUps/tearDowns to the beginning or end of
-            # our fixture lists, respectively. this is the best we can do,
-            # because these methods are generated in the order their classes
-            # are created, so we can't assign a fair fixture_id to them.
-            function._fixture_id = 0 if fixture_type.endswith('setup') else float('inf')
-        else:
-            # however, if we've tagged a fixture with our decorators then we
-            # effectively register their place on the class hierarchy by this
-            # fixture_id.
-            function._fixture_id = _fixture_id[0]
-
-        _fixture_id[0] += 1
-
-        return function
-
-    fixture_decorator.__name__ = fixture_type
-
-    return fixture_decorator
-
-class_setup = __fixture_decorator_factory('class_setup')
-setup = __fixture_decorator_factory('setup')
-teardown = __fixture_decorator_factory('teardown')
-class_teardown = __fixture_decorator_factory('class_teardown')
-setup_teardown = __fixture_decorator_factory('setup_teardown')
-class_setup_teardown = __fixture_decorator_factory('class_setup_teardown')
-
-
-class let(object):
-    """Decorator that creates a lazy-evaluated helper property. The value is
-    cached across multiple calls in the same test, but not across multiple
-    tests.
-    """
-
-    _unsaved = []
-
-    def __init__(self, func):
-        self._func = func
-        self._result = self._unsaved
-
-    def __get__(self, test_case, cls):
-        if test_case is None:
-            return self
-        if self._result is self._unsaved:
-            self.__set__(test_case, self._func(test_case))
-        return self._result
-
-    def __set__(self, test_case, value):
-        self._save_result(value)
-        self._register_reset_after_test_completion(test_case)
-
-    def _save_result(self, result):
-        self._result = result
-
-    def _register_reset_after_test_completion(self, test_case):
-        test_case.register_callback(
-                TestCase.EVENT_ON_COMPLETE_TEST_METHOD,
-                lambda _: self._reset_value(),
-        )
-
-    def _reset_value(self):
-        self._result = self._unsaved
 
 # vim: set ts=4 sts=4 sw=4 et:
