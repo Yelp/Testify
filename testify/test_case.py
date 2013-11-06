@@ -45,30 +45,39 @@ class MetaTestCase(type):
     """
     __test__ = False
 
-    def __init__(cls, name, bases, dct):
-
+    def __new__(mcls, name, bases, dct):
+        # This is the constructor for all TestCase *classes*.
         for member_name, member in dct.iteritems():
             if member_name.startswith('test') and isinstance(member, types.FunctionType):
                 if not hasattr(member, '_suites'):
                     member._suites = set()
 
-        super(MetaTestCase, cls).__init__(name, bases, dct)
+        # Unfortunately, this implementation detail has become a public interface.
+        # The set of suites must include the suites from all bases classes.
+        cls_suites = dct.pop('_suites', ())
+        bases_suites = [
+            getattr(base, '_suites', ())
+            for base in bases
+        ]
+        dct['_suites'] = set().union(cls_suites, *bases_suites)
 
-    @classmethod
-    def _cmp_str(cls, instance):
+        return super(MetaTestCase, mcls).__new__(mcls, name, bases, dct)
+
+    @staticmethod
+    def _cmp_str(instance):
         """Return a canonical representation of a TestCase for sorting and hashing."""
         return "%s.%s" % (instance.__module__, instance.__name__)
 
-    def __cmp__(self, other):
+    def __cmp__(cls, other):
         """Sort TestCases by a particular string representation."""
-        return cmp(MetaTestCase._cmp_str(self), MetaTestCase._cmp_str(other))
+        return cmp(MetaTestCase._cmp_str(cls), MetaTestCase._cmp_str(other))
 
-    def bucket(self, bucket_count, bucket_salt=None):
+    def bucket(cls, bucket_count, bucket_salt=None):
         """Bucket a TestCase using a relatively consistant hash - for dividing tests across runners."""
         if bucket_salt:
-            return hash(MetaTestCase._cmp_str(self) + bucket_salt) % bucket_count
+            return hash(MetaTestCase._cmp_str(cls) + bucket_salt) % bucket_count
         else:
-            return hash(MetaTestCase._cmp_str(self)) % bucket_count
+            return hash(MetaTestCase._cmp_str(cls)) % bucket_count
 
 
 class TestCase(object):
@@ -407,3 +416,4 @@ class TestifiedUnitTest(TestCase, unittest.TestCase):
         return MetaTestCase(new_name, tuple(bases), unittest_dict)
 
 
+# vim: set ts=4 sts=4 sw=4 et:
