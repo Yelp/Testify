@@ -102,6 +102,7 @@ class TestCase(object):
     __metaclass__ = MetaTestCase
     __test__ = False
 
+    STAGE_UNSTARTED = 0
     STAGE_CLASS_SETUP = 1
     STAGE_SETUP = 2
     STAGE_TEST_METHOD = 3
@@ -134,6 +135,11 @@ class TestCase(object):
         # callbacks for various stages of execution, used for stuff like logging
         self.__callbacks = defaultdict(list)
 
+        self.__all_test_results = {}
+        self.__current_test_method = None
+
+        self._stage = self.STAGE_UNSTARTED
+
         # for now, we still support the use of unittest-style assertions defined on the TestCase instance
         for name in dir(deprecated_assertions):
             if name.startswith(('assert', 'fail')):
@@ -141,6 +147,10 @@ class TestCase(object):
 
         self.failure_limit = kwargs.pop('failure_limit', None)
         self.failure_count = 0
+
+    @property
+    def test_result(self):
+        return self.__all_test_results.get(self.__current_test_method)
 
     def _generate_test_method(self, method_name, function):
         """Allow tests to define new test methods in their __init__'s and have appropriate suites applied."""
@@ -240,6 +250,12 @@ class TestCase(object):
             suites |= getattr(method, '_suites', set())
         return suites
 
+    def results(self):
+        """Available after calling `self.run()`."""
+        if self._stage != self.STAGE_CLASS_TEARDOWN:
+            raise RuntimeError('results() called before tests have executed')
+        return self.__all_test_results.values()
+
     def method_excluded(self, method):
         """Given this TestCase's included/excluded suites, is this test method excluded?
 
@@ -261,12 +277,19 @@ class TestCase(object):
         will continue with the teardown phase.
         """
         for test_method in self.runnable_test_methods():
+            self.__current_test_method = test_method
 
             result = TestResult(test_method)
+
             # Sometimes, test cases want to take further action based on
             # results, e.g. further clean-up or reporting if a test method
-            # fails. (Yelp's Selenium test cases do this.)
-            test_method.im_self.test_result = result
+            # fails. (Yelp's Selenium test cases do this.) If you need to
+            # programatically inspect test results, you should use
+            # self.results().
+
+            # NOTE: THIS IS INCORRECT -- im_self is shared among all test
+            # methods on the TestCase instance. This is preserved for backwards
+            # compatibility and should be removed eventually.
 
             try:
                 # run "on-run" callbacks. e.g. print out the test method name
@@ -280,6 +303,7 @@ class TestCase(object):
                     # we haven't had any problems in class/instance setup, onward!
                     if not (fixture_failures + class_fixture_failures):
                         self._stage = self.STAGE_TEST_METHOD
+                        self.__all_test_results[self.__current_test_method] = result
                         result.record(test_method)
                     self._stage = self.STAGE_TEARDOWN
 
@@ -301,7 +325,9 @@ class TestCase(object):
                 if not result.success:
                     self.failure_count += 1
                     if self.failure_limit and self.failure_count >= self.failure_limit:
-                        return
+                        break
+
+        self.__current_test_method = None
 
     def register_callback(self, event, callback):
         """Register a callback for an internal event, usually used for logging.
