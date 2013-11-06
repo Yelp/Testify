@@ -54,13 +54,12 @@ class MetaTestCase(type):
 
         # Unfortunately, this implementation detail has become a public interface.
         # The set of suites must include the suites from all bases classes.
-        dct['_suites'] = set().union(
-                dct.pop('_suites', ()),
-                *[
-                    getattr(base, '_suites', ())
-                    for base in bases
-                ]
-        )
+        cls_suites = dct.pop('_suites', ())
+        bases_suites = [
+            getattr(base, '_suites', ())
+            for base in bases
+        ]
+        dct['_suites'] = set().union(cls_suites, *bases_suites)
 
         return super(MetaTestCase, mcls).__new__(mcls, name, bases, dct)
 
