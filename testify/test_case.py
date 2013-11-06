@@ -135,8 +135,7 @@ class TestCase(object):
         # callbacks for various stages of execution, used for stuff like logging
         self.__callbacks = defaultdict(list)
 
-        self.__all_test_results = {}
-        self.__current_test_method = None
+        self.__all_test_results = []
 
         self._stage = self.STAGE_UNSTARTED
 
@@ -150,7 +149,7 @@ class TestCase(object):
 
     @property
     def test_result(self):
-        return self.__all_test_results.get(self.__current_test_method)
+        return self.__all_test_results[-1] if self.__all_test_results else None
 
     def _generate_test_method(self, method_name, function):
         """Allow tests to define new test methods in their __init__'s and have appropriate suites applied."""
@@ -254,7 +253,7 @@ class TestCase(object):
         """Available after calling `self.run()`."""
         if self._stage != self.STAGE_CLASS_TEARDOWN:
             raise RuntimeError('results() called before tests have executed')
-        return self.__all_test_results.values()
+        return list(self.__all_test_results)
 
     def method_excluded(self, method):
         """Given this TestCase's included/excluded suites, is this test method excluded?
@@ -277,8 +276,6 @@ class TestCase(object):
         will continue with the teardown phase.
         """
         for test_method in self.runnable_test_methods():
-            self.__current_test_method = test_method
-
             result = TestResult(test_method)
 
             # Sometimes, test cases want to take further action based on
@@ -296,6 +293,7 @@ class TestCase(object):
                 self.fire_event(self.EVENT_ON_RUN_TEST_METHOD, result)
 
                 result.start()
+                self.__all_test_results.append(result)
 
                 # first, run setup fixtures
                 self._stage = self.STAGE_SETUP
@@ -303,7 +301,6 @@ class TestCase(object):
                     # we haven't had any problems in class/instance setup, onward!
                     if not (fixture_failures + class_fixture_failures):
                         self._stage = self.STAGE_TEST_METHOD
-                        self.__all_test_results[self.__current_test_method] = result
                         result.record(test_method)
                     self._stage = self.STAGE_TEARDOWN
 
@@ -326,8 +323,6 @@ class TestCase(object):
                     self.failure_count += 1
                     if self.failure_limit and self.failure_count >= self.failure_limit:
                         break
-
-        self.__current_test_method = None
 
     def register_callback(self, event, callback):
         """Register a callback for an internal event, usually used for logging.
