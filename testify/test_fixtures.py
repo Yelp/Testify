@@ -58,17 +58,17 @@ class TestFixtures(object):
         )
 
     def ensure_generator(self, fixture):
-        if fixture._fixture_type in ('setup', 'class_setup'):
-            def wrapper(self):
-                fixture()
-                yield
-        elif fixture._fixture_type in ('teardown', 'class_teardown'):
-            def wrapper(self):
-                yield
-                fixture()
-        else:
+        if fixture._fixture_type in ('setup_teardown', 'class_setup_teardown'):
             # already a context manager, nothing to do
             return fixture
+
+        def wrapper(self):
+            if fixture._fixture_type in ('setup', 'class_setup'):
+                fixture()
+                yield
+            elif fixture._fixture_type in ('teardown', 'class_teardown'):
+                yield
+                fixture()
 
         wrapper.__name__ = fixture.__name__
         wrapper.__doc__ = fixture.__doc__
