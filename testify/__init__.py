@@ -24,21 +24,22 @@ The basic components of this system are:
         a class which collects TestCase subclasses based on search criteria and asks them
         to kindly execute themselves.
 """
+from __future__ import absolute_import
 __testify = 1
-__version__ = "0.4.2"
+__version__ = "0.5.0"
 
 import sys
 
-from assertions import *
+from .assertions import *
 
-from errors import TestifyError
+from .errors import TestifyError
 
-from test_case import (
+from .test_case import (
                         MetaTestCase,
                         TestCase,
 )
 
-from test_fixtures import (
+from .test_fixtures import (
                         class_setup,
                         setup,
                         teardown,
@@ -46,10 +47,16 @@ from test_fixtures import (
                         setup_teardown,
                         class_setup_teardown,
                         suite,
-						let,
+                        let,
 )
 
-from utils import turtle
+from .utils import turtle
 
-import test_program
-run = lambda: test_program.TestProgram(["__main__"] + sys.argv[1:])
+from .test_program import TestProgram
+run = lambda: TestProgram(["__main__"] + sys.argv[1:])
+
+
+# We want default warning behavior for DeprecationWarning's thrown within testify.
+# This gives consistent behavior (and makes our tests pass) under python2.7.
+import warnings
+warnings.filterwarnings('default', module='^testify(\.|$)', category=DeprecationWarning)
