@@ -393,13 +393,13 @@ class ExceptionDuringClassSetupTest(TestCase):
         @class_setup
         def parent_setup(self):
             self.run_methods.append("parent class_setup")
-            #raise Exception
+            raise Exception
 
         @class_teardown
         def parent_teardown(self):
             self.run_methods.append("parent class_teardown")
 
-        def parent_test(self):
+        def test_parent(self):
             self.run_methods.append("parent test method")
             #assert False, "This test method should not be reached!"
 
@@ -415,7 +415,7 @@ class ExceptionDuringClassSetupTest(TestCase):
             self.run_methods.append("child class_teardown")
             #assert False, "This fixture should not be reached!"
 
-        def child_test(self):
+        def test_child(self):
             self.run_methods.append("child test method")
             #assert False, "This test method should not be reached!"
 
@@ -423,21 +423,14 @@ class ExceptionDuringClassSetupTest(TestCase):
         test_case = self.FakeParentTestCase()
         test_case.run()
         expected = ["parent class_setup", "parent class_teardown",]
-        #assert_equal(expected, test_case.run_methods)
-        print "test_case.run_methods: %s" % test_case.run_methods
-
-        results = test_case.results()
-        print "parent results: %s" % results
+        assert_equal(expected, test_case.run_methods)
 
     def test_child(self):
         test_case = self.FakeChildTestCase()
         test_case.run()
         expected = ["parent class_setup", "parent class_teardown",]
-        #assert_equal(expected, test_case.run_methods)
-        print "test_case.run_methods: %s" % test_case.run_methods
-
-        results = test_case.results()
-        print "child results: %s" % results
+        #expected = ["parent class_setup", "parent class_teardown", "child class teardown"]
+        assert_equal(expected, test_case.run_methods)
 
 
 if __name__ == '__main__':
