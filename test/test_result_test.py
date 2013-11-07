@@ -84,7 +84,7 @@ class TestResultStateTest(TestCase):
 
         @setup_teardown
         def assert_result_state(self):
-            assert self.test_result is None
+            assert self.test_result
             yield
             assert self.test_result
 
@@ -97,15 +97,14 @@ class TestResultStateTest(TestCase):
     def test_results(self):
         test_suite = self.WompTest()
 
+        # we only get a test_result once we enter setup
+        assert test_suite.test_result is None
+
         with assert_raises(RuntimeError):
             # results? what results?!
             test_suite.results()
 
         test_suite.run()
-
-        # do this before checking ``results()`` to make sure we don't insert a
-        # None result
-        assert test_suite.test_result is None
 
         test_results = test_suite.results()
 
