@@ -428,8 +428,7 @@ class ExceptionDuringClassSetupTest(TestCase):
     def test_child(self):
         test_case = self.FakeChildTestCase()
         test_case.run()
-        expected = ["parent class_setup", "parent class_teardown",]
-        #expected = ["parent class_setup", "parent class_teardown", "child class teardown"]
+        expected = ["parent class_setup", "child class_teardown", "parent class_teardown"]
         assert_equal(expected, test_case.run_methods)
 
 
