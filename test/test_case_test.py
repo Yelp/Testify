@@ -382,6 +382,64 @@ class RegexMatcher(object):
         )
 
 
+class ExceptionDuringClassSetupTest(TestCase):
+
+    class FakeParentTestCase(TestCase):
+
+        def __init__(self, *args, **kwargs):
+            self.run_methods = []
+            super(ExceptionDuringClassSetupTest.FakeParentTestCase, self).__init__(*args, **kwargs)
+
+        @class_setup
+        def parent_setup(self):
+            self.run_methods.append("parent class_setup")
+            #raise Exception
+
+        @class_teardown
+        def parent_teardown(self):
+            self.run_methods.append("parent class_teardown")
+
+        def parent_test(self):
+            self.run_methods.append("parent test method")
+            #assert False, "This test method should not be reached!"
+
+    class FakeChildTestCase(FakeParentTestCase):
+
+        @class_setup
+        def child_setup(self):
+            self.run_methods.append("child class_setup")
+            #assert False, "This fixture should not be reached!"
+
+        @class_teardown
+        def child_teardown(self):
+            self.run_methods.append("child class_teardown")
+            #assert False, "This fixture should not be reached!"
+
+        def child_test(self):
+            self.run_methods.append("child test method")
+            #assert False, "This test method should not be reached!"
+
+    def test_parent(self):
+        test_case = self.FakeParentTestCase()
+        test_case.run()
+        expected = ["parent class_setup", "parent class_teardown",]
+        #assert_equal(expected, test_case.run_methods)
+        print "test_case.run_methods: %s" % test_case.run_methods
+
+        results = test_case.results()
+        print "parent results: %s" % results
+
+    def test_child(self):
+        test_case = self.FakeChildTestCase()
+        test_case.run()
+        expected = ["parent class_setup", "parent class_teardown",]
+        #assert_equal(expected, test_case.run_methods)
+        print "test_case.run_methods: %s" % test_case.run_methods
+
+        results = test_case.results()
+        print "child results: %s" % results
+
+
 if __name__ == '__main__':
     run()
 
