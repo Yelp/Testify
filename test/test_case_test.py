@@ -401,23 +401,19 @@ class ExceptionDuringClassSetupTest(TestCase):
 
         def test_parent(self):
             self.run_methods.append("parent test method")
-            #assert False, "This test method should not be reached!"
 
     class FakeChildTestCase(FakeParentTestCase):
 
         @class_setup
         def child_setup(self):
             self.run_methods.append("child class_setup")
-            #assert False, "This fixture should not be reached!"
 
         @class_teardown
         def child_teardown(self):
             self.run_methods.append("child class_teardown")
-            #assert False, "This fixture should not be reached!"
 
         def test_child(self):
             self.run_methods.append("child test method")
-            #assert False, "This test method should not be reached!"
 
     def test_parent(self):
         test_case = self.FakeParentTestCase()
