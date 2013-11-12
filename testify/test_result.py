@@ -96,7 +96,7 @@ class TestResult(object):
             return True
 
     def _postmortem(self, exc_info):
-        exc, val, tb = exc_info
+        _, _, tb = exc_info
         print "\nDEBUGGER"
         print self.format_exception_info()
         import ipdb
