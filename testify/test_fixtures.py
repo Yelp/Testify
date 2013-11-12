@@ -116,10 +116,11 @@ class TestFixtures(object):
         # setup phase of this fake context manager.
         suppress_callbacks = bool(fixture._fixture_type in TEARDOWN_FIXTURES)
 
-        # if a previous setup fixture failed, stop running new setup fixtures.
-        # this doesn't apply to teardown fixtures, however, because behind the
-        # scenes they're setup_teardowns, and we need to run the setup portion
-        # in order to get the teardown portion later.
+        # if a previous setup fixture failed, stop running new setup
+        # fixtures.  this doesn't apply to teardown fixtures, however,
+        # because behind the scenes they're setup_teardowns, and we need
+        # to run the (empty) setup portion in order to get the teardown
+        # portion later.
         if not stop_setups or fixture._fixture_type in TEARDOWN_FIXTURES:
             enter_failures = self.run_fixture(
                 fixture,
