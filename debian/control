@@ -10,7 +10,8 @@ Package: python-testify
 Architecture: all
 Homepage: http://github.com/Yelp/Testify
 XB-Python-Version: ${python:Versions}
-Depends: ${misc:Depends}, ${python:Depends}, ipython (>= 0.8.1-2), python-pkg-resources (>= 0.6c8-0ubuntu2)
+Depends: ${misc:Depends}, ${python:Depends}, python-pkg-resources (>= 0.6c8-0ubuntu2)
+Suggests: ipython (>= 0.8.1-2)
 Description: Testify is a replacement for Python's unittest module.  
   It is modeled after unittest, and tests written for unittest will run under testify with a minimum 
   of adjustments, but it has features above and beyond unittest:
