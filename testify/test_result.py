@@ -90,14 +90,17 @@ class TestResult(object):
             self.end_in_failure(exc_info)
 
             if self.debug:
-                exc, val, tb = exc_info
-                print "\nDEBUGGER"
-                print self.format_exception_info()
-                import ipdb
-                ipdb.post_mortem(tb)
+                self._postmortem(exc_info)
             return False
         else:
             return True
+
+    def _postmortem(self, exc_info):
+        exc, val, tb = exc_info
+        print "\nDEBUGGER"
+        print self.format_exception_info()
+        import ipdb
+        ipdb.post_mortem(tb)
 
     def _complete(self):
         self.complete = True
