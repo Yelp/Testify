@@ -72,7 +72,7 @@ class MetaTestCase(type):
         """Sort TestCases by a particular string representation."""
         return cmp(MetaTestCase._cmp_str(cls), MetaTestCase._cmp_str(other))
 
-    def bucket(cls, bucket_count, bucket_salt=None):
+    def _testify_bucket(cls, bucket_count, bucket_salt=None):
         """Bucket a TestCase using a relatively consistant hash - for dividing tests across runners."""
         if bucket_salt:
             return hash(MetaTestCase._cmp_str(cls) + bucket_salt) % bucket_count
