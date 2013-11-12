@@ -470,9 +470,8 @@ class ExceptionDuringSetupTest(TestCase):
     def test_child(self):
         test_case = self.FakeChildTestCase()
         test_case.run()
-        expected = ["parent setup", "child teardown", "parent teardown",]
-        ### this is what actually returns:
-        ### ['parent setup', 'child teardown', 'parent teardown', 'parent setup', 'child teardown', 'parent teardown']
+        # FakeChildTestCase has two test methods (test_parent and test_child), so the fixtures are run twice.
+        expected = ["parent setup", "child teardown", "parent teardown",] * 2
         assert_equal(expected, test_case.run_methods)
 
 
@@ -572,15 +571,20 @@ class ExceptionDuringTeardownTest(TestCase):
         test_case = self.FakeChildTestCase()
         test_case.run()
         expected = [
+            # Fixtures run before and after each test method.
+            # Here's test_child.
             "parent setup",
             "child setup",
             "child test method",
+            "child teardown",
+            "parent teardown",
+            # Here's test_parent.
+            "parent setup",
+            "child setup",
             "parent test method",
             "child teardown",
             "parent teardown",
         ]
-        ### what actually happens:
-        ### ['parent setup', 'child setup', 'child test method', 'child teardown', 'parent teardown', 'parent setup', 'child setup', 'parent test method', 'child teardown', 'parent teardown']
         assert_equal(expected, test_case.run_methods)
 
 
