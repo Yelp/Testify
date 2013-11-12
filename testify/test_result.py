@@ -96,11 +96,16 @@ class TestResult(object):
             return True
 
     def _postmortem(self, exc_info):
-        _, _, tb = exc_info
+        _, _, traceback = exc_info
         print "\nDEBUGGER"
         print self.format_exception_info()
-        import ipdb
-        ipdb.post_mortem(tb)
+        try:
+            import ipdb
+            detected_postmortem_tool = ipdb.post_mortem
+        except ImportError:
+            import pdb
+            detected_postmortem_tool = pdb.post_mortem
+        detected_postmortem_tool(traceback)
 
     def _complete(self):
         self.complete = True
