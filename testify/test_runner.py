@@ -90,7 +90,7 @@ class TestRunner(object):
             for test_case_class in test_discovery.discover(self.test_path_or_test_case):
                 override_bucket = self.bucket_overrides.get(MetaTestCase._cmp_str(test_case_class))
                 if (self.bucket is None
-                    or (override_bucket is None and test_case_class.bucket(self.bucket_count, self.bucket_salt) == self.bucket)
+                    or (override_bucket is None and test_case_class._testify_bucket(self.bucket_count, self.bucket_salt) == self.bucket)
                     or (override_bucket is not None and override_bucket == self.bucket)):
                     if not self.module_method_overrides or test_case_class.__name__ in self.module_method_overrides:
                         test_case = test_case_class(
