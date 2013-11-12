@@ -97,7 +97,12 @@ class TestFixtures(object):
     @contextlib.contextmanager
     def enter(self, fixtures, setup_callbacks=None, teardown_callbacks=None, stop_setups=False):
         """Transform each fixture_method into a context manager, enter them
-        recursively, and yield any failures."""
+        recursively, and yield any failures.
+
+        `stop_setups` is set after a setup fixture fails. This flag prevents
+        more setup fixtures from being added to the onion after a failure as we
+        recurse through the list of fixtures.
+        """
 
         # base case
         if not fixtures:
