@@ -1,3 +1,11 @@
+python-testify (0.5.1) lucid; urgency=low
+
+  * If a setup fixture raises an exception, stop running additional setup fixtures (fixes three year-old issue #12!)
+  * Fall back to pdb if ipdb is not available; remove hard Debian package dependency on ipdb
+  * Rename MetaTestCase method 'bucket' to less generic 'get_testify_bucket'
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 12 Nov 2013 22:59:09 -0800
+
 python-testify (0.5.0) lucid; urgency=low
 
   * Run all parent-class fixtures before any subclass fixtures
