@@ -37,6 +37,12 @@ DEPRECATED_FIXTURE_TYPE_MAP = {
     'classTearDown': 'class_teardown',
 }
 
+TEARDOWN_FIXTURES = ['teardown', 'class_teardown']
+
+SETUP_FIXTURES = ['setup', 'class_setup']
+
+HYBRID_FIXTURES = ['setup_teardown', 'class_setup_teardown']
+
 
 class TestFixtures(object):
     """
@@ -58,15 +64,15 @@ class TestFixtures(object):
         )
 
     def ensure_generator(self, fixture):
-        if fixture._fixture_type in ('setup_teardown', 'class_setup_teardown'):
+        if fixture._fixture_type in HYBRID_FIXTURES:
             # already a context manager, nothing to do
             return fixture
 
         def wrapper(self):
-            if fixture._fixture_type in ('setup', 'class_setup'):
+            if fixture._fixture_type in SETUP_FIXTURES:
                 fixture()
                 yield
-            elif fixture._fixture_type in ('teardown', 'class_teardown'):
+            elif fixture._fixture_type in TEARDOWN_FIXTURES:
                 yield
                 fixture()
 
@@ -89,9 +95,14 @@ class TestFixtures(object):
             yield fixture_failures
 
     @contextlib.contextmanager
-    def enter(self, fixtures, setup_callbacks=None, teardown_callbacks=None):
+    def enter(self, fixtures, setup_callbacks=None, teardown_callbacks=None, stop_setups=False):
         """Transform each fixture_method into a context manager, enter them
-        recursively, and yield any failures."""
+        recursively, and yield any failures.
+
+        `stop_setups` is set after a setup fixture fails. This flag prevents
+        more setup fixtures from being added to the onion after a failure as we
+        recurse through the list of fixtures.
+        """
 
         # base case
         if not fixtures:
@@ -108,24 +119,44 @@ class TestFixtures(object):
         # class_teardown fixture is wrapped as
         # class_setup_teardown. We should not fire events for the
         # setup phase of this fake context manager.
-        suppress_callbacks = bool(fixture._fixture_type in ('teardown', 'class_teardown'))
+        suppress_callbacks = bool(fixture._fixture_type in TEARDOWN_FIXTURES)
 
-        enter_failures = self.run_fixture(
-            fixture,
-            ctm.__enter__,
-            enter_callback=None if suppress_callbacks else setup_callbacks[0],
-            exit_callback=None if suppress_callbacks else setup_callbacks[1],
-        )
+        # if a previous setup fixture failed, stop running new setup
+        # fixtures.  this doesn't apply to teardown fixtures, however,
+        # because behind the scenes they're setup_teardowns, and we need
+        # to run the (empty) setup portion in order to get the teardown
+        # portion later.
+        if not stop_setups or fixture._fixture_type in TEARDOWN_FIXTURES:
+            enter_failures = self.run_fixture(
+                fixture,
+                ctm.__enter__,
+                enter_callback=None if suppress_callbacks else setup_callbacks[0],
+                exit_callback=None if suppress_callbacks else setup_callbacks[1],
+            )
+            # keep skipping setups once we've had a failure
+            stop_setups = stop_setups or bool(enter_failures)
+        else:
+            # we skipped the setup, pretend like nothing happened.
+            enter_failures = []
 
-        with self.enter(fixtures[1:], setup_callbacks, teardown_callbacks) as all_failures:
+        with self.enter(fixtures[1:], setup_callbacks, teardown_callbacks, stop_setups) as all_failures:
             all_failures += enter_failures or []
             # need to only yield one failure
             yield all_failures
 
+        # this setup fixture got skipped due to an earlier setup fixture
+        # failure, or failed itself. all of these fixtures are basically
+        # represented by setup_teardowns, but because we never ran this setup,
+        # we have nothing to do for teardown (if we did visit it here, that
+        # would have the effect of running the setup we just skipped), so
+        # instead bail out and move on to the next fixture on the stack.
+        if stop_setups and fixture._fixture_type in SETUP_FIXTURES:
+            return
+
         # class_setup fixture is wrapped as
         # class_setup_teardown. We should not fire events for the
         # teardown phase of this fake context manager.
-        suppress_callbacks = bool(fixture._fixture_type in ('setup', 'class_setup'))
+        suppress_callbacks = bool(fixture._fixture_type in SETUP_FIXTURES)
 
         # this is hack to finish the remainder of the context manager without
         # calling contextlib's __exit__; doing that messes up the stack trace

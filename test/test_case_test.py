@@ -382,6 +382,212 @@ class RegexMatcher(object):
         )
 
 
+class ExceptionDuringClassSetupTest(TestCase):
+
+    class FakeParentTestCase(TestCase):
+
+        def __init__(self, *args, **kwargs):
+            self.run_methods = []
+            super(ExceptionDuringClassSetupTest.FakeParentTestCase, self).__init__(*args, **kwargs)
+
+        @class_setup
+        def parent_setup(self):
+            self.run_methods.append("parent class_setup")
+            raise Exception
+
+        @class_teardown
+        def parent_teardown(self):
+            self.run_methods.append("parent class_teardown")
+
+        def test_parent(self):
+            self.run_methods.append("parent test method")
+
+    class FakeChildTestCase(FakeParentTestCase):
+
+        @class_setup
+        def child_setup(self):
+            self.run_methods.append("child class_setup")
+
+        @class_teardown
+        def child_teardown(self):
+            self.run_methods.append("child class_teardown")
+
+        def test_child(self):
+            self.run_methods.append("child test method")
+
+    def test_parent(self):
+        test_case = self.FakeParentTestCase()
+        test_case.run()
+        expected = ["parent class_setup", "parent class_teardown",]
+        assert_equal(expected, test_case.run_methods)
+
+    def test_child(self):
+        test_case = self.FakeChildTestCase()
+        test_case.run()
+        expected = ["parent class_setup", "child class_teardown", "parent class_teardown",]
+        assert_equal(expected, test_case.run_methods)
+
+
+class ExceptionDuringSetupTest(TestCase):
+
+    class FakeParentTestCase(TestCase):
+
+        def __init__(self, *args, **kwargs):
+            self.run_methods = []
+            super(ExceptionDuringSetupTest.FakeParentTestCase, self).__init__(*args, **kwargs)
+
+        @setup
+        def parent_setup(self):
+            self.run_methods.append("parent setup")
+            raise Exception
+
+        @teardown
+        def parent_teardown(self):
+            self.run_methods.append("parent teardown")
+
+        def test_parent(self):
+            self.run_methods.append("parent test method")
+
+    class FakeChildTestCase(FakeParentTestCase):
+
+        @setup
+        def child_setup(self):
+            self.run_methods.append("child setup")
+
+        @teardown
+        def child_teardown(self):
+            self.run_methods.append("child teardown")
+
+        def test_child(self):
+            self.run_methods.append("child test method")
+
+    def test_parent(self):
+        test_case = self.FakeParentTestCase()
+        test_case.run()
+        expected = ["parent setup", "parent teardown",]
+        assert_equal(expected, test_case.run_methods)
+
+    def test_child(self):
+        test_case = self.FakeChildTestCase()
+        test_case.run()
+        # FakeChildTestCase has two test methods (test_parent and test_child), so the fixtures are run twice.
+        expected = ["parent setup", "child teardown", "parent teardown",] * 2
+        assert_equal(expected, test_case.run_methods)
+
+
+class ExceptionDuringClassTeardownTest(TestCase):
+
+    class FakeParentTestCase(TestCase):
+
+        def __init__(self, *args, **kwargs):
+            self.run_methods = []
+            super(ExceptionDuringClassTeardownTest.FakeParentTestCase, self).__init__(*args, **kwargs)
+
+        @class_setup
+        def parent_setup(self):
+            self.run_methods.append("parent class_setup")
+
+        @class_teardown
+        def parent_teardown(self):
+            self.run_methods.append("parent class_teardown")
+            raise Exception
+
+        def test_parent(self):
+            self.run_methods.append("parent test method")
+
+    class FakeChildTestCase(FakeParentTestCase):
+
+        @class_setup
+        def child_setup(self):
+            self.run_methods.append("child class_setup")
+
+        @class_teardown
+        def child_teardown(self):
+            self.run_methods.append("child class_teardown")
+
+        def test_child(self):
+            self.run_methods.append("child test method")
+
+    def test_parent(self):
+        test_case = self.FakeParentTestCase()
+        test_case.run()
+        expected = ["parent class_setup", "parent test method", "parent class_teardown",]
+        assert_equal(expected, test_case.run_methods)
+
+    def test_child(self):
+        test_case = self.FakeChildTestCase()
+        test_case.run()
+        expected = [
+            "parent class_setup",
+            "child class_setup",
+            "child test method",
+            "parent test method",
+            "child class_teardown",
+            "parent class_teardown",
+        ]
+        assert_equal(expected, test_case.run_methods)
+
+
+class ExceptionDuringTeardownTest(TestCase):
+
+    class FakeParentTestCase(TestCase):
+
+        def __init__(self, *args, **kwargs):
+            self.run_methods = []
+            super(ExceptionDuringTeardownTest.FakeParentTestCase, self).__init__(*args, **kwargs)
+
+        @setup
+        def parent_setup(self):
+            self.run_methods.append("parent setup")
+
+        @teardown
+        def parent_teardown(self):
+            self.run_methods.append("parent teardown")
+            raise Exception
+
+        def test_parent(self):
+            self.run_methods.append("parent test method")
+
+    class FakeChildTestCase(FakeParentTestCase):
+
+        @setup
+        def child_setup(self):
+            self.run_methods.append("child setup")
+
+        @teardown
+        def child_teardown(self):
+            self.run_methods.append("child teardown")
+
+        def test_child(self):
+            self.run_methods.append("child test method")
+
+    def test_parent(self):
+        test_case = self.FakeParentTestCase()
+        test_case.run()
+        expected = ["parent setup", "parent test method", "parent teardown",]
+        assert_equal(expected, test_case.run_methods)
+
+    def test_child(self):
+        test_case = self.FakeChildTestCase()
+        test_case.run()
+        expected = [
+            # Fixtures run before and after each test method.
+            # Here's test_child.
+            "parent setup",
+            "child setup",
+            "child test method",
+            "child teardown",
+            "parent teardown",
+            # Here's test_parent.
+            "parent setup",
+            "child setup",
+            "parent test method",
+            "child teardown",
+            "parent teardown",
+        ]
+        assert_equal(expected, test_case.run_methods)
+
+
 if __name__ == '__main__':
     run()
 
