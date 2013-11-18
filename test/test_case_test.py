@@ -595,7 +595,15 @@ class NoAttributesNamedTest(TestCase):
 
     def test_attributes(self):
         test_case = self.FakeTestCase()
-        expected_attributes = sorted(["test_your_might"])
+
+        from pprint import pprint
+        pprint(sorted(dir(test_case)))
+        #import ipdb; ipdb.set_trace()
+
+        expected_attributes = sorted([
+            "test_result",     # Part of the public API (its name is unfortunate but e.g. Selenium relies on it)
+            "test_your_might", # "Actual" test method in the test case
+        ])
         actual_attributes = sorted([attribute for attribute in dir(test_case) if attribute.startswith("test")])
         assert_equal(expected_attributes, actual_attributes)
 
