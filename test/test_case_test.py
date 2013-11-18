@@ -588,6 +588,18 @@ class ExceptionDuringTeardownTest(TestCase):
         assert_equal(expected, test_case.run_methods)
 
 
+class NoAttributesNamedTest(TestCase):
+    class FakeTestCase(TestCase):
+        def test_your_might(self):
+            assert True
+
+    def test_attributes(self):
+        test_case = self.FakeTestCase()
+        expected_attributes = sorted(["test_your_might"])
+        actual_attributes = sorted([attribute for attribute in dir(test_case) if attribute.startswith("test")])
+        assert_equal(expected_attributes, actual_attributes)
+
+
 if __name__ == '__main__':
     run()
 
