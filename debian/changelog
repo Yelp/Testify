@@ -1,3 +1,9 @@
+python-testify (0.5.2) lucid; urgency=low
+
+  * Rename TestCase.test_fixtures attribute to _test_fixtures (otherwise it breaks internal stuff)
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Mon, 18 Nov 2013 18:32:11 -0800
+
 python-testify (0.5.1) lucid; urgency=low
 
   * If a setup fixture raises an exception, stop running additional setup fixtures (fixes three year-old issue #12!)
