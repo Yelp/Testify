@@ -136,7 +136,7 @@ class TestCase(object):
     def __init__(self, *args, **kwargs):
         super(TestCase, self).__init__()
 
-        self.test_fixtures = TestFixtures.discover_from(self)
+        self.__test_fixtures = TestFixtures.discover_from(self)
 
         self.__suites_include = kwargs.get('suites_include', set())
         self.__suites_exclude = kwargs.get('suites_exclude', set())
@@ -220,7 +220,7 @@ class TestCase(object):
         self.fire_event(self.EVENT_ON_RUN_TEST_CASE, test_case_result)
 
         self._stage = self.STAGE_CLASS_SETUP
-        with self.test_fixtures.class_context(
+        with self.__test_fixtures.class_context(
                 setup_callbacks=[
                     functools.partial(self.fire_event, self.EVENT_ON_RUN_CLASS_SETUP_METHOD),
                     functools.partial(self.fire_event, self.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD),
@@ -310,7 +310,7 @@ class TestCase(object):
 
                 # first, run setup fixtures
                 self._stage = self.STAGE_SETUP
-                with self.test_fixtures.instance_context() as fixture_failures:
+                with self.__test_fixtures.instance_context() as fixture_failures:
                     # we haven't had any problems in class/instance setup, onward!
                     if not (fixture_failures + class_fixture_failures):
                         self._stage = self.STAGE_TEST_METHOD

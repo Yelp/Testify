@@ -312,11 +312,6 @@ class CallbacksGetCalledTest(TestCase):
         ])
 
 
-class TestCaseKeepsReferenceToResultsForTestMethod(TestCase):
-    def test_reference_to_results(self):
-        assert self.test_result
-
-
 class FailingTeardownMethodsTest(TestCase):
 
     class ClassWithTwoFailingTeardownMethods(TestCase):
@@ -588,6 +583,11 @@ class ExceptionDuringTeardownTest(TestCase):
         assert_equal(expected, test_case.run_methods)
 
 
+class TestCaseKeepsReferenceToResultsForTestMethod(TestCase):
+    def test_reference_to_results(self):
+        assert self.test_result
+
+
 class NoAttributesNamedTest(TestCase):
     class FakeTestCase(TestCase):
         def test_your_might(self):
@@ -595,11 +595,6 @@ class NoAttributesNamedTest(TestCase):
 
     def test_attributes(self):
         test_case = self.FakeTestCase()
-
-        from pprint import pprint
-        pprint(sorted(dir(test_case)))
-        #import ipdb; ipdb.set_trace()
-
         expected_attributes = sorted([
             "test_result",     # Part of the public API (its name is unfortunate but e.g. Selenium relies on it)
             "test_your_might", # "Actual" test method in the test case
