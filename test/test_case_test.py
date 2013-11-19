@@ -312,11 +312,6 @@ class CallbacksGetCalledTest(TestCase):
         ])
 
 
-class TestCaseKeepsReferenceToResultsForTestMethod(TestCase):
-    def test_reference_to_results(self):
-        assert self.test_result
-
-
 class FailingTeardownMethodsTest(TestCase):
 
     class ClassWithTwoFailingTeardownMethods(TestCase):
@@ -586,6 +581,26 @@ class ExceptionDuringTeardownTest(TestCase):
             "parent teardown",
         ]
         assert_equal(expected, test_case.run_methods)
+
+
+class TestCaseKeepsReferenceToResultsForTestMethod(TestCase):
+    def test_reference_to_results(self):
+        assert self.test_result
+
+
+class NoAttributesNamedTest(TestCase):
+    class FakeTestCase(TestCase):
+        def test_your_might(self):
+            assert True
+
+    def test_attributes(self):
+        test_case = self.FakeTestCase()
+        expected_attributes = sorted([
+            "test_result",     # Part of the public API (its name is unfortunate but e.g. Selenium relies on it)
+            "test_your_might", # "Actual" test method in the test case
+        ])
+        actual_attributes = sorted([attribute for attribute in dir(test_case) if attribute.startswith("test")])
+        assert_equal(expected_attributes, actual_attributes)
 
 
 if __name__ == '__main__':
