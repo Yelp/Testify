@@ -240,4 +240,3 @@ class TestRunner(object):
         return test_list
 
 # vim: set ts=4 sts=4 sw=4 et:
-
