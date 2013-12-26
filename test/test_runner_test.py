@@ -158,6 +158,21 @@ class TestTestRunnerPrintsTestNames(test_case.TestCase):
 
 
 class TestMoreFairBucketing(test_case.TestCase):
+    """This tests the "more fair bucketing" approach to bucketing tests.
+
+    The algorithm for bucketing tests is as follows:
+
+    - If there is no bucketing, don't sort or bucket
+    - Otherwise bucket as follows:
+
+        1. Sort the tests, first by number of tests and then by name
+           (Sorting by name is merely for determinism)
+        2. In order, round robin associate the tests with a bucket
+           following this pattern:
+
+           (for example 3 buckets)
+           1 2 3 3 2 1 1 2 3 (etc.)
+    """
 
     all_tests = (
         bucketing_test.TestCaseWithManyTests,
@@ -166,7 +181,7 @@ class TestMoreFairBucketing(test_case.TestCase):
         bucketing_test.ZZZ_SecondTestCaseWithSameNumberOfTests,
     )
 
-    all_tests_sorted_by_tests = (
+    all_tests_sorted_by_number_of_tests = (
         all_tests[0],
         all_tests[2],
         all_tests[3],
@@ -200,7 +215,7 @@ class TestMoreFairBucketing(test_case.TestCase):
 
         instance = test_runner.TestRunner(mock.sentinel.test_path, bucket=0, bucket_count=1)
         discovered = instance.discover()
-        self.assert_types_of_discovered(discovered, self.all_tests_sorted_by_tests)
+        self.assert_types_of_discovered(discovered, self.all_tests_sorted_by_number_of_tests)
 
     def test_multiple_buckets(self):
         self.discover_mock.return_value = self.all_tests
