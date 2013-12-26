@@ -2,9 +2,15 @@ import __builtin__
 import contextlib
 import imp
 import mock
-from testify import assert_equal, test_case, test_runner, setup, setup_teardown
+from testify import assert_equal
+from testify import setup
+from testify import setup_teardown
+from testify import test_case
+from testify import test_discovery
+from testify import test_runner
 
 from .test_runner_subdir.inheriting_class import InheritingClass
+from .test_runner_bucketing import bucketing_test
 
 prepared = False
 running = False
@@ -149,3 +155,75 @@ class TestTestRunnerPrintsTestNames(test_case.TestCase):
             mock.call(self.get_test_method_name_mock.return_value)
             for _ in self.get_tests_for_suite_mock.return_value
         ])
+
+
+class TestMoreFairBucketing(test_case.TestCase):
+
+    all_tests = (
+        bucketing_test.TestCaseWithManyTests,
+        bucketing_test.TestCaseWithFewTests,
+        bucketing_test.AAA_FirstTestCaseWithSameNumberOfTests,
+        bucketing_test.ZZZ_SecondTestCaseWithSameNumberOfTests,
+    )
+
+    all_tests_sorted_by_tests = (
+        all_tests[0],
+        all_tests[2],
+        all_tests[3],
+        all_tests[1],
+    )
+
+    @setup_teardown
+    def mock_out_test_discovery(self):
+        with mock.patch.object(
+            test_discovery,
+            'discover',
+            autospec=True,
+        ) as self.discover_mock:
+            yield
+
+    def assert_types_of_discovered(self, discovered, expected):
+        assert_equal(tuple(map(type, discovered)), tuple(expected))
+
+    def test_bucketing_no_buckets(self):
+        self.discover_mock.return_value = self.all_tests
+
+        instance = test_runner.TestRunner(mock.sentinel.test_path)
+        discovered = instance.discover()
+        # The tests we discover should be in the order that test_discovery
+        # returns them as
+        self.assert_types_of_discovered(discovered, self.all_tests)
+
+    def test_bucketing_one_bucket(self):
+        """Trivial base case, should return similar to no_buckets, but with sorting"""
+        self.discover_mock.return_value = self.all_tests
+
+        instance = test_runner.TestRunner(mock.sentinel.test_path, bucket=0, bucket_count=1)
+        discovered = instance.discover()
+        self.assert_types_of_discovered(discovered, self.all_tests_sorted_by_tests)
+
+    def test_multiple_buckets(self):
+        self.discover_mock.return_value = self.all_tests
+
+        # Buckets should be assigned:
+        # 0 -> TestCaseWithManyTesets, TestCaseWithFewTests
+        # 1 -> AAA_FirstTestCaseWithSameNumberOfTests, ZZZ_SecondTestCaseWithSameNumberOfTests
+        instance = test_runner.TestRunner(mock.sentinel.test_path, bucket=0, bucket_count=2)
+        discovered = instance.discover()
+        self.assert_types_of_discovered(
+            discovered,
+            (
+                bucketing_test.TestCaseWithManyTests,
+                bucketing_test.TestCaseWithFewTests,
+            ),
+        )
+
+        instance = test_runner.TestRunner(mock.sentinel.test_path, bucket=1, bucket_count=2)
+        discovered = instance.discover()
+        self.assert_types_of_discovered(
+            discovered,
+            (
+                bucketing_test.AAA_FirstTestCaseWithSameNumberOfTests,
+                bucketing_test.ZZZ_SecondTestCaseWithSameNumberOfTests,
+            ),
+        )
