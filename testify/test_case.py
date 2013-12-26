@@ -72,17 +72,6 @@ class MetaTestCase(type):
         """Sort TestCases by a particular string representation."""
         return cmp(MetaTestCase._cmp_str(cls), MetaTestCase._cmp_str(other))
 
-    def get_testify_bucket(cls, bucket_count, bucket_salt=None):
-        """Bucket a TestCase using a relatively consistant hash - for dividing tests across runners.
-        
-        Because this method is in public namespace (users' TestCases descend from us), we have kind
-        of a goofy name to prevent conflicts.
-        """
-        if bucket_salt:
-            return hash(MetaTestCase._cmp_str(cls) + bucket_salt) % bucket_count
-        else:
-            return hash(MetaTestCase._cmp_str(cls)) % bucket_count
-
 
 class TestCase(object):
     """The TestCase class defines test methods and fixture methods; it is the meat and potatoes of testing.

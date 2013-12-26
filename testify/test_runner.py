@@ -19,6 +19,7 @@ __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 
 from collections import defaultdict
+import itertools
 import functools
 import pprint
 import sys
@@ -82,30 +83,56 @@ class TestRunner(object):
         )
 
     def discover(self):
-        def discover_inner():
-            if isinstance(self.test_path_or_test_case, (TestCase, MetaTestCase)):
-                # For testing purposes only.
-                yield self.test_path_or_test_case()
-                return
-            for test_case_class in test_discovery.discover(self.test_path_or_test_case):
-                override_bucket = self.bucket_overrides.get(MetaTestCase._cmp_str(test_case_class))
-                if (self.bucket is None
-                    or (override_bucket is None and test_case_class.get_testify_bucket(self.bucket_count, self.bucket_salt) == self.bucket)
-                    or (override_bucket is not None and override_bucket == self.bucket)):
-                    if not self.module_method_overrides or test_case_class.__name__ in self.module_method_overrides:
-                        test_case = test_case_class(
-                            suites_include=self.suites_include,
-                            suites_exclude=self.suites_exclude,
-                            suites_require=self.suites_require,
-                            name_overrides=self.module_method_overrides.get(test_case_class.__name__, None),
-                            failure_limit=(self.failure_limit - self.failure_count) if self.failure_limit else None,
-                            debugger=self.debugger,
-                        )
-                        yield test_case
+        def construct_test(test_case_class):
+            test_case = test_case_class(
+                suites_include=self.suites_include,
+                suites_exclude=self.suites_exclude,
+                suites_require=self.suites_require,
+                name_overrides=self.module_method_overrides.get(test_case_class.__name__, None),
+                failure_limit=(self.failure_limit - self.failure_count) if self.failure_limit else None,
+                debugger=self.debugger,
+            )
+            return test_case
+
+        def discover_tests():
+            return map(construct_test, test_discovery.discover(self.test_path_or_test_case))
+
+        def discover_tests_by_buckets():
+            # Sort by the test count, use the cmp_str as a fallback for determinism
+            test_cases = sorted(
+                discover_tests(),
+                key=lambda test_case: (
+                    -1 * len(list(test_case.runnable_test_methods())),
+                    MetaTestCase._cmp_str(type(test_case)),
+                )
+            )
+
+            # Assign buckets round robin
+            buckets = defaultdict(list)
+            for bucket, test_case in itertools.izip(
+                itertools.cycle(
+                    range(self.bucket_count) + list(reversed(range(self.bucket_count)))
+                ),
+                test_cases,
+            ):
+                # If the class is supposed to be specially bucketed, do so
+                bucket = self.bucket_overrides.get(MetaTestCase._cmp_str(type(test_case)), bucket)
+                buckets[bucket].append(test_case)
+
+            return buckets[self.bucket]
+
+        def discover_tests_testing():
+            # For testing purposes only
+            return [self.test_path_or_test_case()]
 
         discovered_tests = []
         try:
-            discovered_tests = list(discover_inner())
+            if isinstance(self.test_path_or_test_case, (TestCase, MetaTestCase)):
+                discovered_tests = discover_tests_testing()
+            elif self.bucket is not None:
+                discovered_tests = discover_tests_by_buckets()
+            else:
+                discovered_tests = discover_tests()
         except test_discovery.DiscoveryError, exc:
             for reporter in self.test_reporters:
                 reporter.test_discovery_failure(exc)
