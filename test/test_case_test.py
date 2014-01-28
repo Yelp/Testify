@@ -386,13 +386,22 @@ class ExceptionDuringClassSetupTest(TestCase):
             super(ExceptionDuringClassSetupTest.FakeParentTestCase, self).__init__(*args, **kwargs)
 
         @class_setup
-        def parent_setup(self):
+        def parent_class_setup(self):
             self.run_methods.append("parent class_setup")
             raise Exception
 
         @class_teardown
-        def parent_teardown(self):
+        def parent_class_teardown(self):
             self.run_methods.append("parent class_teardown")
+
+        @setup
+        def parent_setup(self):
+            self.run_methods.append("parent setup")
+            raise Exception
+
+        @teardown
+        def parent_teardown(self):
+            self.run_methods.append("parent teardown")
 
         def test_parent(self):
             self.run_methods.append("parent test method")
@@ -400,12 +409,20 @@ class ExceptionDuringClassSetupTest(TestCase):
     class FakeChildTestCase(FakeParentTestCase):
 
         @class_setup
-        def child_setup(self):
+        def child_class_setup(self):
             self.run_methods.append("child class_setup")
 
         @class_teardown
-        def child_teardown(self):
+        def child_class_teardown(self):
             self.run_methods.append("child class_teardown")
+
+        @setup
+        def child_setup(self):
+            self.run_methods.append("child setup")
+
+        @teardown
+        def child_teardown(self):
+            self.run_methods.append("child teardown")
 
         def test_child(self):
             self.run_methods.append("child test method")
