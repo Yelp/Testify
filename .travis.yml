@@ -10,4 +10,4 @@ before_install:
 install:
   - python setup.py install
 
-script: bin/testify test
+script: bin/testify --exclude catbox test
