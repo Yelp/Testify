@@ -95,7 +95,11 @@ class TestRunner(object):
             return test_case
 
         def discover_tests():
-            return map(construct_test, test_discovery.discover(self.test_path_or_test_case))
+            return [
+                construct_test(test_case_class)
+                for test_case_class in test_discovery.discover(self.test_path_or_test_case)
+                if not self.module_method_overrides or test_case_class.__name__ in self.module_method_overrides
+            ]
 
         def discover_tests_by_buckets():
             # Sort by the test count, use the cmp_str as a fallback for determinism
