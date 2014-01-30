@@ -28,6 +28,29 @@ class TestResultTestCase(TestCase):
         return value, tb
 
     @mock.patch('traceback.format_exception', wraps=fake_format_exception)
+    def test_frame_stripping(self, mock_format_exception):
+        """On assertion error, testify strips head and tail frame which originate from testify."""
+        test_result = TestResult(lambda:'wat', runner_id='foo!')
+        test_result.start()
+
+        root_tb = tb = mock.Mock()
+        testify_frames = [True, True, False, True, False, True, True]
+        for testify_frame in testify_frames:
+            tb.tb_next = mock.Mock()
+            tb = tb.tb_next
+            tb.configure_mock(**{'tb_frame.f_globals.has_key.return_value': testify_frame})
+        tb.tb_next = None
+        tb = root_tb.tb_next
+
+        test_result.end_in_failure((AssertionError, 'wat', tb))
+
+        formatted = test_result.format_exception_info()
+        assert_equal(formatted, 'Traceback: AssertionError\n')
+
+        # It should format three frames of the stack, starting with the third frame.
+        mock_format_exception.assert_called_with(AssertionError, 'wat', tb.tb_next.tb_next, 3)
+
+    @mock.patch('traceback.format_exception', wraps=fake_format_exception)
     def test_format_exception_info_assertion(self, mock_format_exception):
         value, tb = self._append_exc_info(AssertionError)
         formatted = self.test_result.format_exception_info()

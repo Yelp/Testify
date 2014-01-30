@@ -158,22 +158,30 @@ class TestResult(object):
         tb_formatter = fancy_tb_formatter if (pretty and fancy_tb_formatter) else plain_tb_formatter
 
         def is_relevant_tb_level(tb):
-            return tb.tb_frame.f_globals.has_key('__testify')
+            if tb.tb_frame.f_globals.has_key('__testify'):
+                # nobody *wants* to read testify
+                return False
+            else:
+                return True
 
         def count_relevant_tb_levels(tb):
+            # count up to the *innermost* relevant frame
             length = 0
-            while tb and not is_relevant_tb_level(tb):
+            relevant = 0
+            while tb:
                 length += 1
+                if is_relevant_tb_level(tb):
+                    relevant = length
                 tb = tb.tb_next
-            return length
+            return relevant
 
         def formatter(exctype, value, tb):
-            # Skip test runner traceback levels
-            while tb and is_relevant_tb_level(tb):
+            # Skip test runner traceback levels at the top.
+            while tb and not is_relevant_tb_level(tb):
                 tb = tb.tb_next
 
             if exctype is AssertionError:
-                # Skip testify.assertions traceback levels
+                # Skip testify.assertions traceback levels at the bottom.
                 length = count_relevant_tb_levels(tb)
                 return tb_formatter(exctype, value, tb, length)
             elif not tb:
