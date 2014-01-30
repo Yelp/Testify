@@ -297,17 +297,25 @@ class TestCase(object):
                 result.start()
                 self.__all_test_results.append(result)
 
+                # if class setup failed, this test has already failed.
+                self._stage = self.STAGE_CLASS_SETUP
+                for exc_info in class_fixture_failures:
+                    result.end_in_failure(exc_info)
+
+                if result.complete:
+                    continue
+
                 # first, run setup fixtures
                 self._stage = self.STAGE_SETUP
                 with self.__test_fixtures.instance_context() as fixture_failures:
                     # we haven't had any problems in class/instance setup, onward!
-                    if not (fixture_failures + class_fixture_failures):
+                    if not fixture_failures:
                         self._stage = self.STAGE_TEST_METHOD
                         result.record(test_method)
                     self._stage = self.STAGE_TEARDOWN
 
                 # maybe something broke during teardown -- record it
-                for exc_info in fixture_failures + class_fixture_failures:
+                for exc_info in fixture_failures:
                     result.end_in_failure(exc_info)
 
                 # if nothing's gone wrong, it's not about to start
