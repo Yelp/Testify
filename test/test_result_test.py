@@ -69,11 +69,13 @@ class TestResultTestCase(TestCase):
         ])
         assert_equal(
                 formatted,
-                ''.join((
-                    'There were multiple errors in this test:\n',
-                    'Traceback: Error1\n',
-                    'Traceback: Error2\n',
-                ))
+                (
+                    'Traceback: Error1\n'
+                    '\n'
+                    'During handling of the above exception, another exception occurred:\n'
+                    '\n'
+                    'Traceback: Error2\n'
+                )
         )
 
 
