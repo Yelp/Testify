@@ -147,10 +147,9 @@ class TestResult(object):
         if len(result) == 1:
             return result[0]
         else:
-            return (
-                    'There were multiple errors in this test:\n' +
-                    ''.join(result)
-            )
+            # Meant to match the python3 multiple-exception support:
+            #   http://docs.python.org/3.1/reference/simple_stmts.html#the-raise-statement
+            return '\nDuring handling of the above exception, another exception occurred:\n\n'.join(result)
 
     def format_exception_info(self, pretty=False):
         if not self.exception_infos:
