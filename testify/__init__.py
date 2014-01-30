@@ -52,8 +52,8 @@ from .test_fixtures import (
 
 from .utils import turtle
 
-from .test_program import TestProgram
-run = lambda: TestProgram(["__main__"] + sys.argv[1:])
+from .test_program import TestProgram, main
+run = main
 
 
 # We want default warning behavior for DeprecationWarning's thrown within testify.
