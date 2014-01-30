@@ -9,5 +9,7 @@ before_install:
 
 install:
   - python setup.py install
+  - pip install catbox
 
-script: bin/testify --exclude catbox test
+script:
+  - bin/testify test
