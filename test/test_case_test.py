@@ -349,15 +349,15 @@ class FailingTeardownMethodsTest(TestCase):
             [
                 'There were multiple errors in this test:',
                 'Traceback (most recent call last):',
-                RegexMatcher('  File "\./test/test_case_test\.py", line \d+, in test_method'),
+                RegexMatcher('  File "(\./)?test/test_case_test\.py", line \d+, in test_method'),
                 '    assert False',
                 'AssertionError',
                 'Traceback (most recent call last):',
-                RegexMatcher('  File "\./test/test_case_test\.py", line \d+, in first_teardown'),
+                RegexMatcher('  File "(\./)?test/test_case_test\.py", line \d+, in first_teardown'),
                 '    assert False',
                 'AssertionError',
                 'Traceback (most recent call last):',
-                RegexMatcher('  File "\./test/test_case_test\.py", line \d+, in second_teardown'),
+                RegexMatcher('  File "(\./)?test/test_case_test\.py", line \d+, in second_teardown'),
                 '    assert False',
                 'AssertionError',
                 '', # Ends with newline.

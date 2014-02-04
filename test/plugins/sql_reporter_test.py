@@ -141,7 +141,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         assert_equal(failed_test['method_name'], 'test_fail')
         assert_equal(failed_test.traceback.split('\n'), [
             'Traceback (most recent call last):',
-            RegexMatcher('  File "\./test/plugins/sql_reporter_test\.py", line \d+, in test_fail'),
+            RegexMatcher('  File "(\./)?test/plugins/sql_reporter_test\.py", line \d+, in test_fail'),
             '    assert False',
             'AssertionError',
             '' # ends with newline
@@ -151,7 +151,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         assert_equal(failed_test_2['method_name'], 'test_multiline')
         assert_equal(failed_test_2.traceback.split('\n'), [
             'Traceback (most recent call last):',
-            RegexMatcher('  File "\./test/plugins/sql_reporter_test\.py", line \d+, in test_multiline'),
+            RegexMatcher('  File "(\./)?test/plugins/sql_reporter_test\.py", line \d+, in test_multiline'),
             '    3""")',
             'Exception: I love lines:',
             '    1',
