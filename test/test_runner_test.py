@@ -242,3 +242,17 @@ class TestMoreFairBucketing(test_case.TestCase):
                 bucketing_test.ZZZ_SecondTestCaseWithSameNumberOfTests,
             ),
         )
+
+    def test_bucketing_with_filtering(self):
+        self.discover_mock.return_value = self.all_tests
+        instance = test_runner.TestRunner(
+            mock.sentinel.test_path,
+            bucket=0,
+            bucket_count=1,
+            module_method_overrides={
+                self.all_tests[0].__name__: set(),
+            },
+        )
+        
+        discovered = instance.discover()
+        self.assert_types_of_discovered(discovered, (self.all_tests[0],))
