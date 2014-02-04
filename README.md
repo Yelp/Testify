@@ -1,5 +1,7 @@
 # Testify - A Testing Framework
 
+[![Build Status](https://travis-ci.org/Yelp/Testify.png?branch=master)](https://travis-ci.org/Yelp/Testify)
+
 Testify is a replacement for Python's unittest module and nose. It is modeled
 after unittest, and existing unittest classes are fully supported.
 
