@@ -22,4 +22,4 @@ if __name__ == "__main__":
     sys.path.insert(0, ".")
 
     # Start the program
-    test_program.TestProgram()
+    test_program.main()

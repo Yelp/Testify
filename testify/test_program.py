@@ -202,7 +202,9 @@ def _parse_test_runner_command_line_module_method_overrides(args):
 
     return test_path, module_method_overrides
 
+
 class TestProgram(object):
+
     def __init__(self, command_line_args=None):
         """Initialize and run the test with the given command_line_args
             command_line_args will be passed to parser.parse_args
@@ -219,8 +221,6 @@ class TestProgram(object):
             if hasattr(plugin_mod, "prepare_test_program"):
                 plugin_mod.prepare_test_program(self.other_opts, self)
 
-        self.run()
-
     def get_reporters(self, options, plugin_modules):
         reporters = []
         if options.disable_color:
@@ -234,6 +234,7 @@ class TestProgram(object):
         return reporters
 
     def run(self):
+        """Run testify, return True on success, False on failure."""
         self.setup_logging(self.other_opts)
 
         bucket_overrides = {}
@@ -277,10 +278,10 @@ class TestProgram(object):
 
         if self.runner_action == ACTION_LIST_SUITES:
             runner.list_suites()
-            sys.exit(0)
+            return True
         elif self.runner_action == ACTION_LIST_TESTS:
             runner.list_tests()
-            sys.exit(0)
+            return True
         elif self.runner_action == ACTION_RUN_TESTS:
             label_text = ""
             bucket_text = ""
@@ -296,8 +297,7 @@ class TestProgram(object):
                 if hasattr(plugin_mod, "prepare_test_runner"):
                     plugin_mod.prepare_test_runner(self.test_runner_args['options'], runner)
 
-            result = runner.run()
-            sys.exit(not result)
+            return runner.run()
 
     def setup_logging(self, options):
         root_logger = logging.getLogger()
@@ -326,5 +326,9 @@ class TestProgram(object):
                 logging.getLogger(logger_name).addHandler(handler)
 
 
+def main():
+    sys.exit(not TestProgram().run())
+
+
 if __name__ == "__main__":
-    TestProgram()
+    main()
