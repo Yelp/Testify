@@ -95,7 +95,10 @@ def load_plugins():
 
 def parse_test_runner_command_line_args(plugin_modules, args):
     """Parse command line args for the TestRunner to determine verbosity and other stuff"""
-    parser = OptionParser(usage="%prog <test path> [options]", version="%%prog %s" % testify.__version__)
+    parser = OptionParser(
+            usage="%prog <test path> [options]",
+            version="%%prog %s" % testify.__version__,
+            prog='testify')
 
     parser.set_defaults(verbosity=test_logger.VERBOSITY_NORMAL)
     parser.add_option("-s", "--silent", action="store_const", const=test_logger.VERBOSITY_SILENT, dest="verbosity")
@@ -184,10 +187,10 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     return runner_action, test_path, test_runner_args, options
 
 def _parse_test_runner_command_line_module_method_overrides(args):
-    """Parse a set of positional args (returned from an OptionParser probably) for specific modules or test methods.
+    """Parse a set of positional args (returned from an OptionParser probably)
+    for specific modules or test methods.
     eg/ > python some_module_test.py SomeTestClass.some_test_method
     """
-
     test_path = args[0] if args else None
 
     module_method_overrides = defaultdict(set)
@@ -324,6 +327,12 @@ class TestProgram(object):
 
             for logger_name in options.print_loggers:
                 logging.getLogger(logger_name).addHandler(handler)
+
+
+def run():
+    """Entry point for running a test file directly."""
+    args = ["__main__"] + sys.argv[1:]
+    sys.exit(not TestProgram(command_line_args=args).run())
 
 
 def main():
