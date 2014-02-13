@@ -1,5 +1,8 @@
+import subprocess
+
 import mock
-from testify import assert_equal, assert_raises, setup_teardown, TestCase, test_program
+from testify import setup_teardown, TestCase, test_program
+from testify.assertions import assert_equal, assert_raises, assert_in
 from optparse import OptionParser
 
 
@@ -39,3 +42,62 @@ class ParseTestRunnerCommandLineArgsTest(TestCase):
         """Make sure that if no options and no arguments are passed, parse_test_runner_command_line_args DOES complain about a missing test path."""
         with assert_raises(OptionParserErrorException):
             test_program.parse_test_runner_command_line_args([], [])
+
+
+def test_call(command):
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    if proc.returncode:
+        raise subprocess.CalledProcessError(proc.returncode, command)
+    return stdout.strip()
+
+
+class TestifyRunAcceptanceTestCase(TestCase):
+
+    expected_list = (
+        'testing_suite.example_test ExampleTestCase.test_one\n'
+        'testing_suite.example_test ExampleTestCase.test_two\n'
+        'testing_suite.example_test SecondTestCase.test_one'
+    )
+
+    expected_tests = 'PASSED.  3 tests'
+
+    def test_run_testify_from_bin_list_tests(self):
+        output = test_call(['bin/testify', '--list-tests', 'testing_suite'])
+        assert_equal(output, self.expected_list)
+
+    def test_run_testify_as_module_list_tests(self):
+        output = test_call([
+                'python', '-m', 'testify.test_program',
+                '--list-tests', 'testing_suite'])
+        assert_equal(output, self.expected_list)
+
+    def test_run_testify_from_bin(self):
+        output = test_call(['bin/testify', 'testing_suite', '-v'])
+        assert_in(self.expected_tests, output)
+
+    def test_run_testify_test_module(self):
+        output = test_call(['python', '-m', 'testing_suite.example_test', '-v'])
+        assert_in(self.expected_tests, output)
+
+    def test_run_testify_test_file(self):
+        output = test_call(['python', 'testing_suite/example_test.py', '-v'])
+        assert_in(self.expected_tests, output)
+
+    def test_run_testify_test_file_class(self):
+        output = test_call([
+                'python', 'testing_suite/example_test.py', '-v',
+                'ExampleTestCase'])
+        assert_in('PASSED.  2 tests', output)
+
+    def test_run_testify_test_file_class_and_method(self):
+        output = test_call([
+                'python', 'testing_suite/example_test.py', '-v',
+                'ExampleTestCase.test_one'])
+        assert_in('PASSED.  1 test', output)
+
+    def test_run_testify_with_failure(self):
+        assert_raises(
+                subprocess.CalledProcessError,
+                test_call,
+                ['python', 'testing_suite/example_test.py', 'DoesNotExist'])
