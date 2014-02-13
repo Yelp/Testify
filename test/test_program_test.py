@@ -46,7 +46,9 @@ class ParseTestRunnerCommandLineArgsTest(TestCase):
 
 def test_call(command):
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
-    stdout, _stderr = proc.communicate()
+    stdout, stderr = proc.communicate()
+    if proc.returncode:
+        raise subprocess.CalledProcessError(proc.returncode, command)
     return stdout.strip()
 
 
@@ -81,3 +83,21 @@ class TestifyRunAcceptanceTestCase(TestCase):
     def test_run_testify_test_file(self):
         output = test_call(['python', 'testing_suite/example_test.py', '-v'])
         assert_in(self.expected_tests, output)
+
+    def test_run_testify_test_file_class(self):
+        output = test_call([
+                'python', 'testing_suite/example_test.py', '-v',
+                'ExampleTestCase'])
+        assert_in('PASSED.  2 tests', output)
+
+    def test_run_testify_test_file_class_and_method(self):
+        output = test_call([
+                'python', 'testing_suite/example_test.py', '-v',
+                'ExampleTestCase.test_one'])
+        assert_in('PASSED.  1 test', output)
+
+    def test_run_testify_with_failure(self):
+        assert_raises(
+                subprocess.CalledProcessError,
+                test_call,
+                ['python', 'testing_suite/example_test.py', 'DoesNotExist'])
