@@ -5,7 +5,7 @@ import tornado.web
 import Queue
 
 from test.test_logger_test import ExceptionInClassFixtureSampleTests
-from testify import assert_equal, setup_teardown, TestCase
+from testify import assert_equal, assert_is, setup_teardown, TestCase
 from testify.test_runner import TestRunner
 from testify.plugins.http_reporter import HTTPReporter
 
@@ -71,7 +71,8 @@ class HTTPReporterTestCase(TestCase):
         """A simple test to make sure the HTTPReporter actually reports things."""
 
         runner = TestRunner(DummyTestCase, test_reporters=[HTTPReporter(None, self.connect_addr, 'runner1')])
-        runner.run()
+        ret = runner.run()
+        assert_is(ret, True)
 
         (method_result, test_case_result) = self.results_reported
         assert_equal(method_result['runner_id'], 'runner1')
