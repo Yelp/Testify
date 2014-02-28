@@ -1,1 +1,1 @@
-# __test__ = False
+_suites = ['fake']

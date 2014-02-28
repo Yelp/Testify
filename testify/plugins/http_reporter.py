@@ -67,6 +67,8 @@ class HTTPReporter(test_reporter.TestReporter):
     def report(self):
         """Wait until all results have been sent back."""
         self.result_queue.join()
+        return True
+
 
 def build_test_reporters(options):
     if options.connect_addr:
