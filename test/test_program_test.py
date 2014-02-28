@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 import mock
@@ -101,3 +102,55 @@ class TestifyRunAcceptanceTestCase(TestCase):
                 subprocess.CalledProcessError,
                 test_call,
                 ['python', 'testing_suite/example_test.py', 'DoesNotExist'])
+
+
+class TestClientServerReturnCode(TestCase):
+    def test_client_returns_zero_on_success(self):
+        server_process = subprocess.Popen(
+            [
+                'python', '-m', 'testify.test_program',
+                'testing_suite.example_test',
+                '--serve', '9001',
+            ],
+            stdout=open(os.devnull, 'w'),
+            stderr=open(os.devnull, 'w'),
+        )
+        # test_call has the side-effect of asserting the return code is 0
+        ret = test_call([
+            'python', '-m', 'testify.test_program',
+            '--connect', 'localhost:9001',
+        ])
+        assert_in('PASSED', ret)
+        assert_equal(server_process.wait(), 0)
+
+    def test_client_returns_nonzero_on_failure(self):
+        server_process = subprocess.Popen(
+            [
+                'python', '-m', 'testify.test_program',
+                'test.failing_test',
+                '--serve', '9001',
+            ],
+            stdout=open(os.devnull, 'w'),
+            stderr=open(os.devnull, 'w'),
+        )
+        # Need two clients in order to finish running tests
+        client_1 = subprocess.Popen(
+            [
+                'python', '-m', 'testify.test_program',
+                '--connect', 'localhost:9001',
+            ],
+            stdout=open(os.devnull, 'w'),
+            stderr=open(os.devnull, 'w'),
+        )
+        client_2 = subprocess.Popen(
+            [
+                'python', '-m', 'testify.test_program',
+                '--connect', 'localhost:9001',
+            ],
+            stdout=open(os.devnull, 'w'),
+            stderr=open(os.devnull, 'w'),
+        )
+        assert_equal(client_1.wait(), 1)
+        assert_equal(client_2.wait(), 1)
+        assert_equal(server_process.wait(), 1)
+            
