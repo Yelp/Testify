@@ -12,4 +12,4 @@ install:
   - pip install catbox
 
 script:
-  - bin/testify test -x fake
+  - make test
