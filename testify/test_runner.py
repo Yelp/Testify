@@ -145,6 +145,8 @@ class TestRunner(object):
         test_method_count = sum(len(list(test_case.runnable_test_methods())) for test_case in discovered_tests)
         for reporter in self.test_reporters:
             reporter.test_counts(test_case_count, test_method_count)
+
+        del discovered_tests[100:]
         return discovered_tests
 
     def run(self):

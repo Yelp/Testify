@@ -50,7 +50,8 @@ class TestRunnerClient(TestRunner):
             else:
                 url = 'http://%s/tests?runner=%s' % (self.connect_addr, self.runner_id)
             response = urllib2.urlopen(url)
-            d = json.load(response)
+            d_list = json.load(response)
+            d = d_list[0]
             return (d.get('class'), d.get('methods'), d['finished'])
         except urllib2.HTTPError, e:
             logging.warning("Got HTTP status %d when requesting tests -- bailing" % (e.code))

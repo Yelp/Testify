@@ -38,7 +38,7 @@ class AsyncDelayedQueue(object):
     def get(self, c_priority, callback, runner=None):
         """Queue up a callback to receive a test."""
         if self.finalized:
-            callback(None, None)
+            callback(None)
             return
 
         self.callback_queue.put((c_priority, callback, runner))
@@ -65,6 +65,7 @@ class AsyncDelayedQueue(object):
         runner = None
         data = None
 
+        data_list = []
         skipped_callbacks = []
         while callback is None:
 
@@ -74,21 +75,23 @@ class AsyncDelayedQueue(object):
                 break
 
             skipped_tests = []
-            while data is None:
+            while len(data_list) < 1:
                 try:
                     d_priority, data = self.data_queue.get_nowait()
+                    data_list.append((d_priority, data))
                 except Queue.Empty:
                     break
 
                 if runner is not None and data.get('last_runner') == runner:
                     skipped_tests.append((d_priority, data))
                     data = None
+                    data_list = []
                     continue
 
             for skipped in skipped_tests:
                 self.data_queue.put(skipped)
 
-            if data is None:
+            if len(data_list) < 1:
                 skipped_callbacks.append((c_priority, callback, runner))
                 callback = None
                 continue
@@ -97,7 +100,7 @@ class AsyncDelayedQueue(object):
             self.callback_queue.put(skipped)
 
         if callback is not None:
-            callback(d_priority, data)
+            callback(data_list)
             tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def empty(self):
@@ -115,7 +118,7 @@ class AsyncDelayedQueue(object):
         try:
             while True:
                 _, callback, _ = self.callback_queue.get_nowait()
-                callback(None, None)
+                callback(None)
         except Queue.Empty:
             pass
 
@@ -145,13 +148,15 @@ class TestRunnerServer(TestRunner):
 
         self.runners.add(runner_id)
 
-        def callback(priority, test_dict):
-            if not test_dict:
+        #def callback(priority, test_dict):
+        def callback(data_list):
+            if data_list is None or len(data_list) < 1:
                 return on_empty_callback()
 
+            priority, test_dict = data_list[0]
             if test_dict.get('last_runner', None) != runner_id or (self.test_queue.empty() and len(self.runners) <= 1):
                 self.check_out_class(runner_id, test_dict)
-                on_test_callback(test_dict)
+                on_test_callback([test_dict])
             else:
                 if self.test_queue.empty():
                     # Put the test back in the queue, and queue ourselves to pick up the next test queued.
@@ -209,26 +214,35 @@ class TestRunnerServer(TestRunner):
 
                 if self.shutting_down:
                     self.runners_outstanding.discard(runner_id)
-                    return handler.finish(json.dumps({
+                    strs = json.dumps({
                         'finished': True,
-                    }))
+                    })
+                    json_str = '['+strs+']'
+                    print '               ***** SHUTTING DOWN *** ->',json_str
+                    return handler.finish(json_str)
 
                 if self.revision and self.revision != handler.get_argument('revision'):
                     return handler.send_error(409, reason="Incorrect revision %s -- server is running revision %s" % (handler.get_argument('revision'), self.revision))
 
-                def callback(test_dict):
+                def callback(data_list):
                     self.runners_outstanding.discard(runner_id)
-                    handler.finish(json.dumps({
+                    strs = [json.dumps({
                         'class': test_dict['class_path'],
                         'methods': test_dict['methods'],
                         'finished': False,
-                    }))
+                    }) for test_dict in data_list]
+                    json_str = '[%s]' % ',\n'.join(strs)
+                    #print 'json str->',json_str
+                    handler.finish(json_str)
 
                 def empty_callback():
                     self.runners_outstanding.discard(runner_id)
-                    handler.finish(json.dumps({
+                    strs = json.dumps({
                         'finished': True,
-                    }))
+                    })
+                    json_str = '['+strs+']'
+                    print '               ***** empty callback *** ->',json_str
+                    return handler.finish(json_str)
 
                 self.get_next_test(runner_id, callback, empty_callback)
 
