@@ -32,16 +32,21 @@ class TestRunnerClient(TestRunner):
         finished = False
         first_connect = True
         while not finished:
-            class_path, methods, finished = self.get_next_tests(
+            #class_path, methods, finished = self.get_next_tests(
+            d_list = self.get_next_tests(
                 retry_limit=(self.retry_limit if first_connect else self.reconnect_retry_limit),
                 retry_interval=self.retry_interval,
             )
             first_connect = False
-            if class_path and methods:
-                module_path, _, class_name = class_path.partition(' ')
+            for d_ins in d_list:
+                class_path = d_ins.get('class')
+                methods = d_ins.get('methods')
+                finished = d_ins['finished']
+                if class_path and methods:
+                    module_path, _, class_name = class_path.partition(' ')
 
-                klass = test_discovery.import_test_class(module_path, class_name)
-                yield klass(name_overrides=methods)
+                    klass = test_discovery.import_test_class(module_path, class_name)
+                    yield klass(name_overrides=methods)
 
     def get_next_tests(self, retry_interval=2, retry_limit=0):
         try:
@@ -51,8 +56,9 @@ class TestRunnerClient(TestRunner):
                 url = 'http://%s/tests?runner=%s' % (self.connect_addr, self.runner_id)
             response = urllib2.urlopen(url)
             d_list = json.load(response)
-            d = d_list[0]
-            return (d.get('class'), d.get('methods'), d['finished'])
+            return d_list
+#            d = d_list[0]
+#            return (d.get('class'), d.get('methods'), d['finished'])
         except urllib2.HTTPError, e:
             logging.warning("Got HTTP status %d when requesting tests -- bailing" % (e.code))
             return None, None, True
