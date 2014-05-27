@@ -153,19 +153,26 @@ class TestRunnerServer(TestRunner):
             if data_list is None or len(data_list) < 1:
                 return on_empty_callback()
 
-            priority, test_dict = data_list[0]
-            if test_dict.get('last_runner', None) != runner_id or (self.test_queue.empty() and len(self.runners) <= 1):
-                self.check_out_class(runner_id, test_dict)
-                on_test_callback([test_dict])
+            #priority, test_dict = data_list[0]
+            dict_list = []
+            for priority, test_dict in data_list:
+                if test_dict.get('last_runner', None) != runner_id or (self.test_queue.empty() and len(self.runners) <= 1):
+                    self.check_out_class(runner_id, test_dict)
+                    dict_list.append(test_dict)
+
+            if len(dict_list) > 0:
+                on_test_callback(dict_list)
             else:
                 if self.test_queue.empty():
                     # Put the test back in the queue, and queue ourselves to pick up the next test queued.
-                    self.test_queue.put(priority, test_dict)
+                    for priority, test_dict in data_list:
+                        self.test_queue.put(priority, test_dict)
                     self.test_queue.callback_queue.put((-1, callback))
                 else:
                     # Get the next test, process it, then place the old test back in the queue.
                     self.test_queue.get(0, callback, runner=runner_id)
-                    self.test_queue.put(priority, test_dict)
+                    for priority, test_dict in data_list:
+                        self.test_queue.put(priority, test_dict)
 
         self.test_queue.get(0, callback, runner=runner_id)
 
