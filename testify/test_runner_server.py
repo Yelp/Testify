@@ -77,13 +77,14 @@ class AsyncDelayedQueue(object):
             skipped_tests = []
             while len(data_list) < 1:
                 try:
-                    for i in range(0,1):
+                    for i in range(0,2):
                         d_priority, data = self.data_queue.get_nowait()
                         if runner is not None and data.get('last_runner') == runner:
                             skipped_tests.append((d_priority, data))
                         else:
                             data_list.append((d_priority, data))
                 except Queue.Empty:
+                    print '     !!!!!! Queue empty !!!!!'
                     break
 
                 #if runner is not None and data.get('last_runner') == runner:
@@ -198,6 +199,7 @@ class TestRunnerServer(TestRunner):
                 raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
         self.activity()
+        print ' --- report_result runner->',runner_id,' class->',class_path
 
         if result['success']:
             d['passed_methods'][result['method']['name']] = result
@@ -339,6 +341,7 @@ class TestRunnerServer(TestRunner):
 
     def check_out_class(self, runner, test_dict):
         self.activity()
+        print ' --- check_out runner->',runner,' class->',test_dict['class_path']
 
         self.checked_out[test_dict['class_path']] = {
             'runner' : runner,
@@ -355,6 +358,7 @@ class TestRunnerServer(TestRunner):
     def check_in_class(self, runner, class_path, timed_out=False, finished=False, early_shutdown=False):
         if not timed_out:
             self.activity()
+            print ' --- check_in runner->',runner,' class->',class_path
 
         if 1 != len([opt for opt in (timed_out, finished, early_shutdown) if opt]):
             raise ValueError("Must set exactly one of timed_out, finished, or early_shutdown.")
