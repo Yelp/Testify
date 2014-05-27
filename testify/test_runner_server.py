@@ -77,16 +77,20 @@ class AsyncDelayedQueue(object):
             skipped_tests = []
             while len(data_list) < 1:
                 try:
-                    d_priority, data = self.data_queue.get_nowait()
-                    data_list.append((d_priority, data))
+                    for i in range(0,1):
+                        d_priority, data = self.data_queue.get_nowait()
+                        if runner is not None and data.get('last_runner') == runner:
+                            skipped_tests.append((d_priority, data))
+                        else:
+                            data_list.append((d_priority, data))
                 except Queue.Empty:
                     break
 
-                if runner is not None and data.get('last_runner') == runner:
-                    skipped_tests.append((d_priority, data))
-                    data = None
-                    data_list = []
-                    continue
+                #if runner is not None and data.get('last_runner') == runner:
+                #    skipped_tests.append((d_priority, data))
+                #    data = None
+                #    data_list = []
+                #    continue
 
             for skipped in skipped_tests:
                 self.data_queue.put(skipped)

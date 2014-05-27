@@ -146,7 +146,7 @@ class TestRunner(object):
         for reporter in self.test_reporters:
             reporter.test_counts(test_case_count, test_method_count)
 
-        del discovered_tests[100:]
+        #del discovered_tests[100:]
         return discovered_tests
 
     def run(self):
