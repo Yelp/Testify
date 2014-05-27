@@ -184,7 +184,7 @@ class TestRunner(object):
             print(x,'->',sorted_discovered_tests[x])
 #####
 
-        del sorted_discovered_tests[100:]
+        #del sorted_discovered_tests[100:]
         print(' ======== num of tests ->',len(sorted_discovered_tests))
         return sorted_discovered_tests
 
