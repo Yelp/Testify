@@ -192,6 +192,7 @@ class TestRunnerServer(TestRunner):
         class_path = '%s %s' % (result['method']['module'], result['method']['class'])
         d = self.checked_out.get(class_path)
 
+        print ' --- report_result runner->',runner_id,' class->',class_path,' m->',result['method']['name']
         if not d:
             raise ValueError("Class %s not checked out." % class_path)
         if d['runner'] != runner_id:
@@ -206,7 +207,6 @@ class TestRunnerServer(TestRunner):
                 raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
         self.activity()
-        #print ' --- report_result runner->',runner_id,' class->',class_path
 
         if result['success']:
             d['passed_methods'][result['method']['name']] = result
@@ -223,7 +223,11 @@ class TestRunnerServer(TestRunner):
         if result['method']['fixture_type'] not in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
             d['methods'].remove(result['method']['name'])
 
+        #print '   rr c->',class_path,' m->',d['methods']
         if not d['methods']:
+        #if len(d['methods']) == 1:
+            #mypop = d['methods'].pop()
+            #print ' -  ccccccccc checking in c->',class_path,' p->',mypop
             self.check_in_class(runner_id, class_path, finished=True)
 
     def run(self):
@@ -278,6 +282,7 @@ class TestRunnerServer(TestRunner):
         class ResultsHandler(tornado.web.RequestHandler):
             def post(handler):
                 runner_id = handler.get_argument('runner')
+                print '     hhhhhhh r->',runner_id,' res->',handler.request.body
                 self.runners_outstanding.add(runner_id)
                 result = json.loads(handler.request.body)
 
@@ -458,7 +463,9 @@ class TestRunnerServer(TestRunner):
         if requeue_dict['methods']:
             self.test_queue.put(-1, requeue_dict)
 
-        if self.test_queue.empty() and len(self.checked_out) == 0:
+        #if self.test_queue.empty() and len(self.checked_out) == 0:
+        if self.test_queue.empty() and len(self.checked_out) <=1 :
+            print '         oooooooooo calling shutdown len->',len(self.checked_out),' class->',self.checked_out
             self.shutdown()
 
     def _fake_result(self, class_path, method, runner):

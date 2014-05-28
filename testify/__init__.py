@@ -26,7 +26,7 @@ The basic components of this system are:
 """
 from __future__ import absolute_import
 __testify = 1
-__version__ = "0.5.4_osarood_client1.8"
+__version__ = "0.5.4_osarood_client1.12"
 
 import sys
 

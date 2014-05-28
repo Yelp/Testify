@@ -22,9 +22,11 @@ class HTTPReporter(test_reporter.TestReporter):
             try:
                 try:
                     urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result))
+                    logging.warning('--------- res-> %s' % str(result))
                 except (urllib2.URLError, httplib.BadStatusLine), e:
                     # Retry once.
                     urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result))
+                    logging.warning('--------- RR res-> %s' % str(result))
             except urllib2.HTTPError, e:
                 logging.error('Skipping returning results for test %s because of error: %s' % (result['method']['full_name'], e.read()))
             except Exception, e:
