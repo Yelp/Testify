@@ -78,7 +78,7 @@ class AsyncDelayedQueue(object):
             skipped_tests = []
             total_expected_time = 0
             #while len(data_list) < 1:
-            while total_expected_time < 20:
+            while total_expected_time < 8:
                 try:
                     #for i in range(0,2):
                     d_priority, data = self.data_queue.get_nowait()
@@ -331,6 +331,7 @@ class TestRunnerServer(TestRunner):
             def timeout_server():
                 if time.time() > self.last_activity_time + self.server_timeout:
                     logging.error('No client activity for %ss, shutting down.' % self.server_timeout)
+                    print '      xxxxxxxxxx check_out q length->',len(self.checked_out)
                     self.shutdown()
                 else:
                     tornado.ioloop.IOLoop.instance().add_timeout(self.last_activity_time + self.server_timeout, timeout_server)
@@ -366,8 +367,10 @@ class TestRunnerServer(TestRunner):
 
     def check_in_class(self, runner, class_path, timed_out=False, finished=False, early_shutdown=False):
         if not timed_out:
-            self.activity()
             print ' --- check_in runner->',runner,' class->',class_path
+            self.activity()
+        else:
+            print ' --- check_in TIME_OUT runner->',runner,' class->',class_path
 
         if 1 != len([opt for opt in (timed_out, finished, early_shutdown) if opt]):
             raise ValueError("Must set exactly one of timed_out, finished, or early_shutdown.")
@@ -510,6 +513,7 @@ class TestRunnerServer(TestRunner):
         self.shutdown()
 
     def shutdown(self):
+        print '  **************** PROPER SHUTDOWN ******************'
         if self.shutting_down:
             # Try not to shut down twice.
             return

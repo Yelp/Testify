@@ -167,7 +167,7 @@ class TestRunner(object):
             if class_path in exe_times_dict:
                 exe_t = exe_times_dict[class_path]
             else:
-                exe_t = 0.05
+                exe_t = 1
             self.big_dict.append({'class_name':class_path,'org_idx':idx,'exe_time':exe_t})
 
         print('       ----> starting sorting ')
@@ -180,11 +180,11 @@ class TestRunner(object):
             this_class_name = big_sorted[idx]['class_name']
             self.class_exe_times_dict[this_class_name] = big_sorted[idx]['exe_time']
         print('---- top 10 methods')
-        for x in range(0,9):
+        for x in range(0,1):
             print(x,'->',sorted_discovered_tests[x])
 #####
 
-        #del sorted_discovered_tests[100:]
+        #del sorted_discovered_tests[0:len(sorted_discovered_tests)-12700]
         print(' ======== num of tests ->',len(sorted_discovered_tests))
         return sorted_discovered_tests
 
