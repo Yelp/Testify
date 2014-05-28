@@ -88,6 +88,7 @@ class AsyncDelayedQueue(object):
                         data_list.append((d_priority, data))
                         this_class_name = data['class_path'].split()
                         total_expected_time += self.class_exe_times_dict[this_class_name[0]+'.'+this_class_name[1]]
+                        break
                 except Queue.Empty:
                     print '     !!!!!! Queue empty !!!!!'
                     break
@@ -205,7 +206,7 @@ class TestRunnerServer(TestRunner):
                 raise ValueError("Method %s not checked out by runner %s." % (result['method']['name'], runner_id))
 
         self.activity()
-        print ' --- report_result runner->',runner_id,' class->',class_path
+        #print ' --- report_result runner->',runner_id,' class->',class_path
 
         if result['success']:
             d['passed_methods'][result['method']['name']] = result
