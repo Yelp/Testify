@@ -90,7 +90,7 @@ class AsyncDelayedQueue(object):
                         total_expected_time += self.class_exe_times_dict[this_class_name[0]+'.'+this_class_name[1]]
                         break
                 except Queue.Empty:
-                    print '     !!!!!! Queue empty !!!!!'
+                    #print '     !!!!!! Queue empty !!!!!'
                     break
 
                 #if runner is not None and data.get('last_runner') == runner:
@@ -192,7 +192,7 @@ class TestRunnerServer(TestRunner):
         class_path = '%s %s' % (result['method']['module'], result['method']['class'])
         d = self.checked_out.get(class_path)
 
-        print ' --- report_result runner->',runner_id,' class->',class_path,' m->',result['method']['name']
+        #print ' --- report_result runner->',runner_id,' class->',class_path,' m->',result['method']['name']
         if not d:
             raise ValueError("Class %s not checked out." % class_path)
         if d['runner'] != runner_id:
@@ -217,7 +217,7 @@ class TestRunnerServer(TestRunner):
                 logging.error('Too many failures, shutting down.')
                 return self.early_shutdown()
 
-        d['timeout_time'] = time.time() + self.runner_timeout
+        #d['timeout_time'] = time.time() + self.runner_timeout
 
         # class_teardowns are special.
         if result['method']['fixture_type'] not in FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS:
@@ -357,7 +357,9 @@ class TestRunnerServer(TestRunner):
 
     def check_out_class(self, runner, test_dict):
         self.activity()
-        print ' --- check_out runner->',runner,' class->',test_dict['class_path']
+        this_class_name = test_dict['class_path'].split()
+        class_expected_time = self.class_exe_times_dict[this_class_name[0]+'.'+this_class_name[1]]
+        print ' --- check_out runner->',runner,' class->',test_dict['class_path'],' timeout->',2*class_expected_time
 
         self.checked_out[test_dict['class_path']] = {
             'runner' : runner,
@@ -366,7 +368,7 @@ class TestRunnerServer(TestRunner):
             'failed_methods' : {},
             'passed_methods' : {},
             'start_time' : time.time(),
-            'timeout_time' : time.time() + self.runner_timeout,
+            'timeout_time' : time.time() + 1000,
         }
 
         self.timeout_class(runner, test_dict['class_path'])
@@ -464,9 +466,9 @@ class TestRunnerServer(TestRunner):
         if requeue_dict['methods']:
             self.test_queue.put(-1, requeue_dict)
 
-        #if self.test_queue.empty() and len(self.checked_out) == 0:
-        if self.test_queue.empty() and len(self.checked_out) <=1 :
-            print '         oooooooooo calling shutdown len->',len(self.checked_out),' class->',self.checked_out
+        if self.test_queue.empty() and len(self.checked_out) == 0:
+        #if self.test_queue.empty() and len(self.checked_out) <=1 :
+        #    print '         oooooooooo calling shutdown len->',len(self.checked_out),' class->',self.checked_out
             self.shutdown()
 
     def _fake_result(self, class_path, method, runner):
