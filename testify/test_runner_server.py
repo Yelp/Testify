@@ -284,10 +284,11 @@ class TestRunnerServer(TestRunner):
                 runner_id = handler.get_argument('runner')
                 print '  t->',time.time(),'   hhhhhhh r->',runner_id,' res->',handler.request.body
                 self.runners_outstanding.add(runner_id)
-                result = json.loads(handler.request.body)
+                result_set = json.loads(handler.request.body)
 
                 try:
-                    self.report_result(runner_id, result)
+                    for result in result_set:
+                        self.report_result(runner_id, result)
                 except ValueError, e:
                     return handler.send_error(409, reason=str(e))
 
