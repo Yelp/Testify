@@ -78,7 +78,7 @@ class AsyncDelayedQueue(object):
             skipped_tests = []
             total_expected_time = 0
             #while len(data_list) < 1:
-            while total_expected_time < 8:
+            while total_expected_time < 4:
                 try:
                     #for i in range(0,2):
                     d_priority, data = self.data_queue.get_nowait()
@@ -88,7 +88,7 @@ class AsyncDelayedQueue(object):
                         data_list.append((d_priority, data))
                         this_class_name = data['class_path'].split()
                         total_expected_time += self.class_exe_times_dict[this_class_name[0]+'.'+this_class_name[1]]
-                        break
+            #            break
                 except Queue.Empty:
                     #print '     !!!!!! Queue empty !!!!!'
                     break
@@ -111,6 +111,7 @@ class AsyncDelayedQueue(object):
             self.callback_queue.put(skipped)
 
         if callback is not None:
+            print ' -- INFO -- batch length->',len(data_list)
             callback(data_list)
             tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
@@ -281,8 +282,8 @@ class TestRunnerServer(TestRunner):
 
         class ResultsHandler(tornado.web.RequestHandler):
             def post(handler):
+                print '  server t->',time.time(),'   hhhhhhh res->',handler.request.body
                 runner_id = handler.get_argument('runner')
-                print '  t->',time.time(),'   hhhhhhh r->',runner_id,' res->',handler.request.body
                 self.runners_outstanding.add(runner_id)
                 result_set = json.loads(handler.request.body)
 

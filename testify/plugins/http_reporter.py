@@ -18,7 +18,8 @@ class HTTPReporter(test_reporter.TestReporter):
     def report_results(self):
         while True:
             result_set = self.result_queue.get()
-            print ' tttttt res->',result_set
+            my_url = 'http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result_set)
+            print ' tttttt runner->',self.runner_id, ' url->',my_url
             for result in result_set:
                 result['runner_id'] = self.runner_id
 

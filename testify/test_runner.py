@@ -167,7 +167,7 @@ class TestRunner(object):
             if class_path in exe_times_dict:
                 exe_t = exe_times_dict[class_path]
             else:
-                exe_t = 1
+                exe_t = 0.5
             self.big_dict.append({'class_name':class_path,'org_idx':idx,'exe_time':exe_t})
 
         print('       ----> starting sorting ')
@@ -187,6 +187,15 @@ class TestRunner(object):
         #del sorted_discovered_tests[100:]
         #del sorted_discovered_tests[0:len(sorted_discovered_tests)-10]
         print(' ======== num of tests ->',len(sorted_discovered_tests))
+
+#        for idx, test_case in enumerate(sorted_discovered_tests):
+#            class_path = test_case.__module__ + '.' + test_case.__class__.__name__
+#            if class_path == 'yelp.tests.logic.random_sampling_test.TestRandomSampling':
+#                sorted_discovered_tests.pop(idx)
+#                print(' ---- test yelp.tests.logic.random_sampling_test.TestRandomSampling removed! ----')
+               
+        print(' ======== num of tests after removing ->',len(sorted_discovered_tests)) 
+        
         return sorted_discovered_tests
 
     def run(self):
