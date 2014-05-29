@@ -287,7 +287,7 @@ class TestRunnerServer(TestRunner):
 
         class ResultsHandler(tornado.web.RequestHandler):
             def post(handler):
-                print '  server t->',time.time(),'   hhhhhhh res->',handler.request.body
+                #print '  server t->',time.time(),'   hhhhhhh res->',handler.request.body
                 runner_id = handler.get_argument('runner')
                 self.runners_outstanding.add(runner_id)
                 result_set = json.loads(handler.request.body)
@@ -477,12 +477,12 @@ class TestRunnerServer(TestRunner):
             self.shutdown()
             return 
 
-        if self.test_queue.empty() and len(self.checked_out) <=1:
-            mykey = self.checked_out.keys()
-            print ' !!!! STILL 1 checked out class !!!!. Wait for a 5 secs ... class->',mykey[0]
-            time.sleep(5)
-            print 'Mark it timed-out and requeue'
-            self.check_in_class(runner, mykey[0], timed_out=True)
+        #if self.test_queue.empty() and len(self.checked_out) <=1:
+        #    mykey = self.checked_out.keys()
+        #    print ' !!!! STILL 1 checked out class !!!!. Wait for a 5 secs ... class->',mykey[0]
+        #    time.sleep(5)
+        #    print 'Mark it timed-out and requeue'
+        #    self.check_in_class(runner, mykey[0], timed_out=True)
             
 
     def _fake_result(self, class_path, method, runner):

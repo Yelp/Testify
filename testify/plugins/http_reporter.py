@@ -32,9 +32,9 @@ class HTTPReporter(test_reporter.TestReporter):
                     urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result_set))
                     logging.warning('t-> %s --------- RR res-> %s' % (str(time.time()), str(result_set)))
             except urllib2.HTTPError, e:
-                logging.error('Skipping returning results for test %s because of error: %s' % (result[0]['method']['full_name'], e.read()))
+                logging.error('Skipping returning results for test %s because of error: %s' % (result_set[0]['method']['full_name'], e.read()))
             except Exception, e:
-                logging.error('Skipping returning results for test %s because of unknown error: %s' % (result[0]['method']['full_name'], e))
+                logging.error('Skipping returning results for test %s because of unknown error: %s' % (result_set[0]['method']['full_name'], e))
 
             self.result_queue.task_done()
 
