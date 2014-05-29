@@ -167,10 +167,15 @@ class TestRunnerServer(TestRunner):
                 return on_empty_callback()
 
             #priority, test_dict = data_list[0]
+
+            total_expected_time = 0
             dict_list = []
             for priority, test_dict in data_list:
                 if test_dict.get('last_runner', None) != runner_id or (self.test_queue.empty() and len(self.runners) <= 1):
-                    self.check_out_class(runner_id, test_dict)
+                    this_class_name = test_dict['class_path'].split()
+                    class_expected_time = self.class_exe_times_dict[this_class_name[0]+'.'+this_class_name[1]]
+                    total_expected_time += class_expected_time
+                    self.check_out_class(runner_id, test_dict, total_expected_time)
                     dict_list.append(test_dict)
 
             if len(dict_list) > 0:
@@ -356,11 +361,9 @@ class TestRunnerServer(TestRunner):
     def activity(self):
         self.last_activity_time = time.time()
 
-    def check_out_class(self, runner, test_dict):
+    def check_out_class(self, runner, test_dict, total_expected_time_batch):
         self.activity()
-        this_class_name = test_dict['class_path'].split()
-        class_expected_time = self.class_exe_times_dict[this_class_name[0]+'.'+this_class_name[1]]
-        print ' --- check_out runner->',runner,' class->',test_dict['class_path'],' timeout->',2*class_expected_time
+        print ' --- check_out runner->',runner,' class->',test_dict['class_path'],' timeout->',total_expected_time_batch+200
 
         self.checked_out[test_dict['class_path']] = {
             'runner' : runner,
@@ -369,7 +372,7 @@ class TestRunnerServer(TestRunner):
             'failed_methods' : {},
             'passed_methods' : {},
             'start_time' : time.time(),
-            'timeout_time' : time.time() + 1000,
+            'timeout_time' : time.time() + total_expected_time_batch + 200,
         }
 
         self.timeout_class(runner, test_dict['class_path'])
@@ -472,6 +475,7 @@ class TestRunnerServer(TestRunner):
         #    print '         oooooooooo calling shutdown len->',len(self.checked_out),' class->',self.checked_out
             print '  **************** PROPER SHUTDOWN ******************'
             self.shutdown()
+            return 
 
         if self.test_queue.empty() and len(self.checked_out) <=1:
             mykey = self.checked_out.keys()
