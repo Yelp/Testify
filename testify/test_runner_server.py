@@ -470,7 +470,16 @@ class TestRunnerServer(TestRunner):
         if self.test_queue.empty() and len(self.checked_out) == 0:
         #if self.test_queue.empty() and len(self.checked_out) <=1 :
         #    print '         oooooooooo calling shutdown len->',len(self.checked_out),' class->',self.checked_out
+            print '  **************** PROPER SHUTDOWN ******************'
             self.shutdown()
+
+        if self.test_queue.empty() and len(self.checked_out) <=1:
+            mykey = self.checked_out.keys()
+            print ' !!!! STILL 1 checked out class !!!!. Wait for a 5 secs ... class->',mykey[0]
+            time.sleep(5)
+            print 'Mark it timed-out and requeue'
+            self.check_in_class(runner, mykey[0], timed_out=True)
+            
 
     def _fake_result(self, class_path, method, runner):
         error_message = "The runner running this method (%s) didn't respond within %ss.\n" % (runner, self.runner_timeout)
@@ -524,7 +533,6 @@ class TestRunnerServer(TestRunner):
         self.shutdown()
 
     def shutdown(self):
-        print '  **************** PROPER SHUTDOWN ******************'
         if self.shutting_down:
             # Try not to shut down twice.
             return
