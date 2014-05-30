@@ -153,13 +153,15 @@ class TestRunner(object):
 # osarood scheduling change
         sorted_disc_tests = []
         print('--- about to open file -----')
-        fd = open('/nail/home/osarood/yelp/Testify/testify/exe_times.dat','r')
+        #fd = open('/nail/home/osarood/yelp/Testify/testify/exe_times.dat','r')
+        fd = open('/nail/home/osarood/run_times.dat','r')
         print('---- file opened ----')
         exe_times_dict = {}
         for line in fd:
         #    print('line->',line)
             l = line.split()
-            exe_times_dict[l[0]]= float(l[1])
+            full_path = l[0]+'.'+l[1]
+            exe_times_dict[full_path]= float(l[2])
         #print('\n\nxxxx->',exe_times_dict)
         for idx, test_case in enumerate(discovered_tests):
         #    print('dddddddddddddddddd  m->',test_case.__module__,' c->',test_case.__class__.__name__)
@@ -167,6 +169,7 @@ class TestRunner(object):
             if class_path in exe_times_dict:
                 exe_t = exe_times_dict[class_path]
             else:
+                print('No exe-time for c->'+class_path)
                 exe_t = 0.5
             self.big_dict.append({'class_name':class_path,'org_idx':idx,'exe_time':exe_t})
 
@@ -185,7 +188,7 @@ class TestRunner(object):
 #####
 
         #del sorted_discovered_tests[100:]
-        #del sorted_discovered_tests[0:len(sorted_discovered_tests)-10]
+        #del sorted_discovered_tests[0:len(sorted_discovered_tests)-5000]
         print(' ======== num of tests ->',len(sorted_discovered_tests))
 
 #        for idx, test_case in enumerate(sorted_discovered_tests):

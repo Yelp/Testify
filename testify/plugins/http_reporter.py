@@ -17,24 +17,30 @@ except ImportError:
 class HTTPReporter(test_reporter.TestReporter):
     def report_results(self):
         while True:
-            result_set = self.result_queue.get()
-            my_url = 'http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result_set)
-            print ' tttttt runner->',self.runner_id, ' url->',my_url
-            for result in result_set:
-                result['runner_id'] = self.runner_id
+            result_batch = []
+            while time.time() - self.batch_timer < self.BATCH_FREQ or len(result_batch)==0:
+                result_case = self.result_queue.get()
+                result_batch.append(result_case)
+
+            print ' TIME->',time.time(),' runner->',self.runner_id, ' sending batch of size->',len(result_batch)
+            for result_case in result_batch:
+                for result in result_case:
+                    result['runner_id'] = self.runner_id
 
             try:
                 try:
-                    urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result_set))
-                    logging.warning('t -> %s--------- res-> %s' % (str(time.time()),str(result_set)))
+                    urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result_batch))
+                    logging.warning('t -> %s--------- res-> %s' % (str(time.time()),str(result_batch)))
+                    self.batch_timer = time.time()
                 except (urllib2.URLError, httplib.BadStatusLine), e:
                     # Retry once.
-                    urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result_set))
-                    logging.warning('t-> %s --------- RR res-> %s' % (str(time.time()), str(result_set)))
+                    urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result_batch))
+                    self.batch_timer = time.time()
+                    logging.warning('t-> %s --------- RR res-> %s' % (str(time.time()), str(result_batch)))
             except urllib2.HTTPError, e:
-                logging.error('Skipping returning results for test %s because of error: %s' % (result_set[0]['method']['full_name'], e.read()))
+                logging.error('Skipping returning results for current batch because of error: %s' % (e.read()))
             except Exception, e:
-                logging.error('Skipping returning results for test %s because of unknown error: %s' % (result_set[0]['method']['full_name'], e))
+                logging.error('Skipping returning results for current batch because of unknown error: %s' % (e))
 
             self.result_queue.task_done()
 
@@ -42,7 +48,8 @@ class HTTPReporter(test_reporter.TestReporter):
     def __init__(self, options, connect_addr, runner_id, *args, **kwargs):
         self.connect_addr = connect_addr
         self.runner_id = runner_id
-
+        self.BATCH_FREQ = 5
+        self.batch_timer = time.time()
         self.result_queue = Queue.Queue()
         self.results_dict = {}
         self.reporting_thread = threading.Thread(target=self.report_results)

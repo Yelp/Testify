@@ -77,8 +77,9 @@ class AsyncDelayedQueue(object):
 
             skipped_tests = []
             total_expected_time = 0
+            num_tests = 0
             #while len(data_list) < 1:
-            while total_expected_time < 8:
+            while total_expected_time < 16 and num_tests < 1000:
                 try:
                     #for i in range(0,2):
                     d_priority, data = self.data_queue.get_nowait()
@@ -88,6 +89,7 @@ class AsyncDelayedQueue(object):
                         data_list.append((d_priority, data))
                         this_class_name = data['class_path'].split()
                         total_expected_time += self.class_exe_times_dict[this_class_name[0]+'.'+this_class_name[1]]
+                        num_tests += 1
             #            break
                 except Queue.Empty:
                     #print '     !!!!!! Queue empty !!!!!'
@@ -196,10 +198,10 @@ class TestRunnerServer(TestRunner):
 
     def report_result(self, runner_id, result):
         class_path = '%s %s' % (result['method']['module'], result['method']['class'])
-        if result['method']['name']=='run':
-            fd_e = open('/nail/home/osarood/run_times.dat','a')
-            fd_e.write(class_path+' '+str(result['run_time'])+'\n')   
-            fd_e.close()
+#        if result['method']['name']=='run':
+#            fd_e = open('/nail/home/osarood/run_times.dat','a')
+#            fd_e.write(class_path+' '+str(result['run_time'])+'\n')   
+#            fd_e.close()
          
             
         d = self.checked_out.get(class_path)
@@ -296,11 +298,12 @@ class TestRunnerServer(TestRunner):
                 #print '  server t->',time.time(),'   hhhhhhh res->',handler.request.body
                 runner_id = handler.get_argument('runner')
                 self.runners_outstanding.add(runner_id)
-                result_set = json.loads(handler.request.body)
+                result_batch = json.loads(handler.request.body)
 
                 try:
-                    for result in result_set:
-                        self.report_result(runner_id, result)
+                    for result_case in result_batch:
+                        for result in result_case:
+                            self.report_result(runner_id, result)
                 except ValueError, e:
                     return handler.send_error(409, reason=str(e))
 
