@@ -78,7 +78,7 @@ class AsyncDelayedQueue(object):
             skipped_tests = []
             total_expected_time = 0
             #while len(data_list) < 1:
-            while total_expected_time < 4:
+            while total_expected_time < 8:
                 try:
                     #for i in range(0,2):
                     d_priority, data = self.data_queue.get_nowait()
@@ -196,6 +196,12 @@ class TestRunnerServer(TestRunner):
 
     def report_result(self, runner_id, result):
         class_path = '%s %s' % (result['method']['module'], result['method']['class'])
+        if result['method']['name']=='run':
+            fd_e = open('/nail/home/osarood/run_times.dat','a')
+            fd_e.write(class_path+' '+str(result['run_time'])+'\n')   
+            fd_e.close()
+         
+            
         d = self.checked_out.get(class_path)
 
         #print ' --- report_result runner->',runner_id,' class->',class_path,' m->',result['method']['name']
