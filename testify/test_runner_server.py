@@ -79,7 +79,7 @@ class AsyncDelayedQueue(object):
             total_expected_time = 0
             num_tests = 0
             #while len(data_list) < 1:
-            while total_expected_time < 16 and num_tests < 1000:
+            while total_expected_time < 4 and num_tests < 400:
                 try:
                     #for i in range(0,2):
                     d_priority, data = self.data_queue.get_nowait()
@@ -113,7 +113,7 @@ class AsyncDelayedQueue(object):
             self.callback_queue.put(skipped)
 
         if callback is not None:
-            print ' -- INFO -- batch length->',len(data_list)
+            print ' -- t->',time.time(),' INFO -- batch length->',len(data_list)
             callback(data_list)
             tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
@@ -372,7 +372,7 @@ class TestRunnerServer(TestRunner):
 
     def check_out_class(self, runner, test_dict, total_expected_time_batch):
         self.activity()
-        print ' --- check_out runner->',runner,' class->',test_dict['class_path'],' timeout->',total_expected_time_batch+200
+        print ' --- t->',time.time(),' check_out runner->',runner,' class->',test_dict['class_path'],' timeout->',total_expected_time_batch+200
 
         self.checked_out[test_dict['class_path']] = {
             'runner' : runner,
@@ -388,7 +388,7 @@ class TestRunnerServer(TestRunner):
 
     def check_in_class(self, runner, class_path, timed_out=False, finished=False, early_shutdown=False):
         if not timed_out:
-            print ' --- check_in runner->',runner,' class->',class_path
+            print ' --- t-> ',time.time(),' check_in runner->',runner,' class->',class_path
             self.activity()
         else:
             print ' --- check_in TIME_OUT runner->',runner,' class->',class_path

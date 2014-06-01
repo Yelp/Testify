@@ -16,11 +16,25 @@ except ImportError:
 
 class HTTPReporter(test_reporter.TestReporter):
     def report_results(self):
+        ended = False
         while True:
             result_batch = []
             while time.time() - self.batch_timer < self.BATCH_FREQ or len(result_batch)==0:
-                result_case = self.result_queue.get()
-                result_batch.append(result_case)
+                print '    t->',time.time(),'    -> calling get on queue'
+                try:
+                    result_case = self.result_queue.get_nowait()
+                    if result_case =='finished':
+                        print '--------------- t->',time.time(),' got a finish --------'
+                        ended = True
+                        break
+                    else:
+                        print ' ------- t->',time.time(),'vvvv got some task vvvvvv'
+                        result_batch.append(result_case)
+                except Queue.Empty:
+                    print '---- t->',time.time(),' q empty .. sleep for a sec'
+                    time.sleep(1)
+            if ended = True:
+                print ' EVERYTHING FINISHED t->',time.time()
 
             print ' TIME->',time.time(),' runner->',self.runner_id, ' sending batch of size->',len(result_batch)
             for result_case in result_batch:
@@ -67,12 +81,12 @@ class HTTPReporter(test_reporter.TestReporter):
         running an entire TestCase.
         """
         full_name = result['method']['module'] + '.' + result['method']['class']
-        print ' ---- in test_CASE_complete full_name->',full_name
+        print ' ---- t->',time.time(),' in test_CASE_complete full_name->',full_name
         if full_name not in self.results_dict.keys():
             print ' !!!!!!! ERROR: something weird is going on'
         self.results_dict[full_name].append(result)
         #self.result_queue.put(result)
-        print '------- in test_CASE_complete class->',full_name,' done res->',self.results_dict[full_name]
+        print '------- t->',time.time(),'  in test_CASE_complete class->',full_name,' done res->',self.results_dict[full_name]
         self.result_queue.put(self.results_dict[full_name])
 
     def class_teardown_complete(self, result):
@@ -85,14 +99,22 @@ class HTTPReporter(test_reporter.TestReporter):
     def test_complete(self, result):
         #self.result_queue.put(result)
         full_name = result['method']['module'] + '.' + result['method']['class']
-        print ' ---- in test_complete full_name->',full_name
+        print ' ---- t->',time.time(),' in test_complete full_name->',full_name
         if full_name not in self.results_dict.keys():
             self.results_dict[full_name] = []
 
         self.results_dict[full_name].append(result)
 
+    def add_finished(self):
+        print '+++++++++++++++++++++++++ called at the end +++++++++++++++++'
+        self.result_queue.put('finished')
+        print '++++++++++++++++ pushed finished +++++++'
+
+
     def report(self):
         """Wait until all results have been sent back."""
+#        self.add_finished()
+        print '======== called join ======='
         self.result_queue.join()
         return True
 

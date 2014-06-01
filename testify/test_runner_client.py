@@ -48,9 +48,9 @@ class TestRunnerClient(TestRunner):
                     klass = test_discovery.import_test_class(module_path, class_name)
                     yield klass(name_overrides=methods)
 
-        print ' ******* Client finishing ******* just sleeping for 7 seconds for reports to go'
+        print ' ******* t->',time.time(),' Client finishing ******* just sleeping for 7 seconds for reports to go'
         time.sleep(7)
-        print ' ****** ALL DONE! *****'
+        print ' ****** ALL DONE! ***** t->',time.time()
 
     def get_next_tests(self, retry_interval=2, retry_limit=0):
         try:

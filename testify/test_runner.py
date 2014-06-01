@@ -170,7 +170,7 @@ class TestRunner(object):
                 exe_t = exe_times_dict[class_path]
             else:
                 print('No exe-time for c->'+class_path)
-                exe_t = 0.5
+                exe_t = 500
             self.big_dict.append({'class_name':class_path,'org_idx':idx,'exe_time':exe_t})
 
         print('       ----> starting sorting ')
@@ -188,7 +188,7 @@ class TestRunner(object):
 #####
 
         #del sorted_discovered_tests[100:]
-        #del sorted_discovered_tests[0:len(sorted_discovered_tests)-5000]
+        #del sorted_discovered_tests[0:len(sorted_discovered_tests)-500]
         print(' ======== num of tests ->',len(sorted_discovered_tests))
 
 #        for idx, test_case in enumerate(sorted_discovered_tests):
@@ -260,7 +260,11 @@ class TestRunner(object):
             # but still get a testing summary.
             pass
 
+        print('xxxxxxxxxx calling report on all reporters xxxxxxxx')
+        #reporter[0].add_finished()
         report = [reporter.report() for reporter in self.test_reporters]
+        print(' dddddd calling reporter ddddddddd')
+
         return all(report)
 
     def list_suites(self):
