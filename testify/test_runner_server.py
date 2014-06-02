@@ -482,7 +482,7 @@ class TestRunnerServer(TestRunner):
         if self.test_queue.empty() and len(self.checked_out) == 0:
         #if self.test_queue.empty() and len(self.checked_out) <=1 :
         #    print '         oooooooooo calling shutdown len->',len(self.checked_out),' class->',self.checked_out
-            print '  **************** PROPER SHUTDOWN ******************'
+            print '  **************** t->', time.time(),' PROPER SHUTDOWN ******************'
             self.shutdown()
             return 
 

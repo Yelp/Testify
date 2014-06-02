@@ -5,8 +5,12 @@ scp ../python-testify_0.5.2_all.deb bb63-useast1adevc.dev.yelpcorp.com:
 scp ../python-testify_0.5.2_all.deb bb64-useast1adevc.dev.yelpcorp.com:
 scp ../python-testify_0.5.2_all.deb bb65-useast1adevc.dev.yelpcorp.com:
 scp ../python-testify_0.5.2_all.deb bb66-useast1adevc.dev.yelpcorp.com:
-#scp ../python-testify_0.5.2_all.deb bb200-useast1adevc.dev.yelpcorp.com:
-#scp ../python-testify_0.5.2_all.deb bb68-useast1adevc.dev.yelpcorp.com:
+scp ../python-testify_0.5.2_all.deb bb67-useast1adevc.dev.yelpcorp.com:
+scp ../python-testify_0.5.2_all.deb bb68-useast1adevc.dev.yelpcorp.com:
+scp ../python-testify_0.5.2_all.deb bb69-useast1adevc.dev.yelpcorp.com:
+scp ../python-testify_0.5.2_all.deb bb200-useast1adevc.dev.yelpcorp.com:
+scp ../python-testify_0.5.2_all.deb bb201-useast1adevc.dev.yelpcorp.com:
+scp ../python-testify_0.5.2_all.deb bb202-useast1adevc.dev.yelpcorp.com:
 
 echo '---------------------------------------------------------'
 ssh -A bb60-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-testify_0.5.2_all.deb && testify --version'
@@ -23,7 +27,15 @@ ssh -A bb65-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-t
 echo '---------------------------------------------------------'
 ssh -A bb66-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-testify_0.5.2_all.deb && testify --version'
 echo '---------------------------------------------------------'
-#ssh -A bb200-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-testify_0.5.2_all.deb && testify --version'
+ssh -A bb67-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-testify_0.5.2_all.deb && testify --version'
 echo '---------------------------------------------------------'
-#ssh -A bb68-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-testify_0.5.2_all.deb && testify --version'
+ssh -A bb68-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-testify_0.5.2_all.deb && testify --version'
+echo '---------------------------------------------------------'
+ssh -A bb69-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-testify_0.5.2_all.deb && testify --version'
+echo '---------------------------------------------------------'
+ssh -A bb200-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-testify_0.5.2_all.deb && testify --version'
+echo '---------------------------------------------------------'
+ssh -A bb201-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-testify_0.5.2_all.deb && testify --version'
+echo '---------------------------------------------------------'
+ssh -A bb202-useast1adevc.dev.yelpcorp.com 'rm -f logs/* && sudo dpkg -i python-testify_0.5.2_all.deb && testify --version'
 echo '---------------------------------------------------------'

@@ -33,8 +33,9 @@ class HTTPReporter(test_reporter.TestReporter):
                 except Queue.Empty:
                     print '---- t->',time.time(),' q empty .. sleep for a sec'
                     time.sleep(1)
-            if ended = True:
+            if ended == True:
                 print ' EVERYTHING FINISHED t->',time.time()
+                break
 
             print ' TIME->',time.time(),' runner->',self.runner_id, ' sending batch of size->',len(result_batch)
             for result_case in result_batch:
@@ -57,6 +58,8 @@ class HTTPReporter(test_reporter.TestReporter):
                 logging.error('Skipping returning results for current batch because of unknown error: %s' % (e))
 
             self.result_queue.task_done()
+        
+        print '      -> t->',time.time(),' QUITTING ---------'
 
 
     def __init__(self, options, connect_addr, runner_id, *args, **kwargs):
@@ -109,11 +112,11 @@ class HTTPReporter(test_reporter.TestReporter):
         print '+++++++++++++++++++++++++ called at the end +++++++++++++++++'
         self.result_queue.put('finished')
         print '++++++++++++++++ pushed finished +++++++'
-
+    
 
     def report(self):
         """Wait until all results have been sent back."""
-#        self.add_finished()
+        self.add_finished()
         print '======== called join ======='
         self.result_queue.join()
         return True

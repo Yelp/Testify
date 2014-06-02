@@ -152,7 +152,7 @@ class TestRunner(object):
 
 # osarood scheduling change
         sorted_disc_tests = []
-        print('--- about to open file -----')
+        print('--- about to open file ----- 11')
         #fd = open('/nail/home/osarood/yelp/Testify/testify/exe_times.dat','r')
         fd = open('/nail/home/osarood/run_times.dat','r')
         print('---- file opened ----')
