@@ -116,9 +116,9 @@ class HTTPReporter(test_reporter.TestReporter):
 
     def report(self):
         """Wait until all results have been sent back."""
-        self.add_finished()
+#        self.add_finished()
         print '======== called join ======='
-        self.result_queue.join()
+        #self.result_queue.join()
         return True
 
 

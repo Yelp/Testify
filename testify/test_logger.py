@@ -57,6 +57,7 @@ class TestLoggerBase(test_reporter.TestReporter):
 
     def report(self):
         # All the TestCases have been run - now collate results by status and log them
+        print ' bbbb in report 11 --'
         results_by_status = collections.defaultdict(list)
         for result in self.results:
             if result['success']:
@@ -68,13 +69,16 @@ class TestLoggerBase(test_reporter.TestReporter):
             else:
                 results_by_status['unknown'].append(result)
 
+        print ' bbbb in report 22 --'
         if self.options.summary_mode:
             self.report_failures(results_by_status['failed'])
         self.report_stats(len(self.test_case_classes), **results_by_status)
 
         if len(self.results) == 0:
+            print ' bbbb in report 33 --'
             return False
         else:
+            print ' bbbb in report 44 --'
             return bool((len(results_by_status['failed']) + len(results_by_status['unknown'])) == 0)
 
     def report_test_name(self, test_method):
