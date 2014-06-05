@@ -1,4 +1,4 @@
-import sqlalchemy as SA 
+import sqlalchemy as SA
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -10,11 +10,18 @@ import logging
 
 Base = declarative_base()
 
+
 def add_command_line_options(parser):
     """Command line options for unittest annotation"""
-    parser.add_option("--unittest-db-url", action="store", dest="unittest_db_url", type="string", default='sqlite:///unittest.db', help="Path to the violations db for unittest identification")
+    parser.add_option("--unittest-db-url", action="store",
+                      dest="unittest_db_url", type="string",
+                      default='sqlite:///unittest.db',
+                      help="Path to the violations db for unittest id")
 
-    parser.add_option("--unittest-db-config", action="store", dest="unittest_db_config", type="string", help="Path to a config file which contains violations db information")
+    parser.add_option("--unittest-db-config", action="store",
+                      dest="unittest_db_config", type="string",
+                      help="Path to a config file for violations db info")
+
 
 def prepare_test_runner(options, runner):
     """Add data structure to runner for future use"""
@@ -54,7 +61,7 @@ def find_db_url(options):
         # Read in the yaml file
         with open(options.unittest_db_config) as db_config_file:
             return SA.engine.url.URL(**yaml.safe_load(db_config_file))
-    
+
     elif options.violation_dbconfig:
         # Read in the yaml file
         with open(options.violation_dbconfig) as db_config_file:
@@ -66,11 +73,12 @@ def find_db_url(options):
     else:
         return options.unittest_db_url
 
+
 class Database(object):
 
     def __init__(self, options):
         url = find_db_url(options)
-    
+
         self.engine = SA.create_engine(url)
 
         Session = SA.orm.sessionmaker()
@@ -81,19 +89,26 @@ class Database(object):
 
     def last_time(self):
         """Grabs timestamp of last nightly build from catbox"""
-        return self.session.query(SA.func.max(Denormalized.start_time)).scalar()
+        return self.session.query(SA.func.max(Denormalized.start_time)) \
+                           .scalar()
 
     def buildbot_run_id(self, last_time):
         """Finds run id from timestamp"""
-        return self.session.query(Denormalized).filter(Denormalized.start_time == last_time).first().buildbot_run_id
+        return self.session.query(Denormalized) \
+                           .filter(Denormalized.start_time == last_time) \
+                           .first().buildbot_run_id
 
     def all_tests(self, buildbot_run):
         """Returns all tests in run"""
-        return self.session.query(Methods).filter(Methods.buildbot_run_id == buildbot_run).all()
-    
+        return self.session.query(Methods) \
+                           .filter(Methods.buildbot_run_id == buildbot_run) \
+                           .all()
+
     def all_violating_tests(self, buildbot_run):
         """Returns all non-unit tests (not setup, teardown)"""
-        return self.session.query(Methods).filter(Methods.method_type == 'test').join(Violations).all()
+        return self.session.query(Methods) \
+                           .filter(Methods.method_type == 'test') \
+                           .join(Violations).all()
 
     def build_dict(self):
         last_time = self.last_time()
@@ -104,16 +119,18 @@ class Database(object):
 
         for test in all_tests:
             #Unit until proven not
-            print test
-            test_name = "%s %s.%s" % (test.module, test.class_name, test.method_name)
+            test_name = "%s %s.%s" % (test.module,
+                                      test.class_name, test.method_name)
             self.unittest[test_name] = True
 
         for test in all_violates:
             # Methods that are not unit tests
-            test_name = "%s %s.%s" % (test.module, test.class_name, test.method_name)
+            test_name = "%s %s.%s" % (test.module,
+                                      test.class_name, test.method_name)
             self.unittest[test_name] = False
 
         return self.unittest
+
 
 class Denormalized(Base):
     __tablename__ = 'catbox_denormalized_builds'
@@ -123,6 +140,7 @@ class Denormalized(Base):
     branch = Column(String, nullable=True)
     revision = Column(String, nullable=True)
     start_time = Column(Integer, nullable=True)
+
 
 class Methods(Base):
     __tablename__ = 'catbox_methods'
@@ -135,7 +153,10 @@ class Methods(Base):
     module = Column(Text, nullable=False)
     class_name = Column(Text, nullable=False)
     method_name = Column(Text, nullable=False)
-    method_type = Column(Enum('undefined', 'test', 'setup', 'teardown', 'class_setup', 'class_teardown'), nullable=False)
+    method_type = Column(Enum('undefined', 'test', 'setup',
+                              'teardown', 'class_setup', 'class_teardown'),
+                         nullable=False)
+
 
 class Violations(Base):
     __tablename__ = 'catbox_violations'
@@ -145,4 +166,3 @@ class Violations(Base):
     syscall = Column(String, nullable=False)
     syscall_args = Column(Text, nullable=True)
     start_time = Column(Integer)
-
