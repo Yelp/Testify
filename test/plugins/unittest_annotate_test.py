@@ -197,9 +197,9 @@ class DatabaseTestCase(testify.TestCase):
         mocked_open.__enter__ = mock.Mock()
         mocked_open.__exit__ = mock.Mock()
         with mock.patch(
-        'testify.plugins.unittest_annotate.open',
-        create=True,
-        return_value=mocked_open
+       		'testify.plugins.unittest_annotate.open',
+        	create=True,
+        	return_value=mocked_open
         ):
             with mock.patch.object(sqlalchemy.engine.url,
                                    'URL') as mocked_sa_url:

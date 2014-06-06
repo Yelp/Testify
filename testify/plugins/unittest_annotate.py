@@ -14,13 +14,13 @@ Base = declarative_base()
 def add_command_line_options(parser):
     """Command line options for unittest annotation"""
     parser.add_option("--unittest-db-url", action="store",
-                      dest="unittest_db_url", type="string",
-                      default='sqlite:///unittest.db',
-                      help="Path to the violations db for unittest id")
+    	dest="unittest_db_url", type="string",
+        default='sqlite:///unittest.db',
+        help="Path to the violations db for unittest id")
 
     parser.add_option("--unittest-db-config", action="store",
-                      dest="unittest_db_config", type="string",
-                      help="Path to a config file for violations db info")
+    	dest="unittest_db_config", type="string",
+        help="Path to a config file for violations db info")
 
 
 def prepare_test_runner(options, runner):
@@ -120,13 +120,15 @@ class Database(object):
         for test in all_tests:
             #Unit until proven not
             test_name = "%s %s.%s" % (test.module,
-                                      test.class_name, test.method_name)
+            	test.class_name, test.method_name)
+
             self.unittest[test_name] = True
 
         for test in all_violates:
             # Methods that are not unit tests
             test_name = "%s %s.%s" % (test.module,
-                                      test.class_name, test.method_name)
+            	test.class_name, test.method_name)
+
             self.unittest[test_name] = False
 
         return self.unittest
