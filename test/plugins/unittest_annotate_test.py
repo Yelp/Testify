@@ -11,6 +11,7 @@ from testify.plugins.unittest_annotate import find_db_url
 from testify.plugins.unittest_annotate import add_testcase_info
 from testify.test_case import TestCase
 from testify.test_runner import TestRunner
+from testify import suite
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column
 from sqlalchemy import Integer
@@ -23,6 +24,16 @@ class DummyClass(object):
 
 class DatabaseTestCase(testify.TestCase):
     """Tests for the Database class"""
+
+    def sample_method1():
+        pass
+
+    @suite('test_suite')
+    def sample_method2():
+        pass
+
+    def sample_method3():
+        pass
 
     @testify.class_setup
     def setup(self):
@@ -216,21 +227,29 @@ class DatabaseTestCase(testify.TestCase):
 
         # Populate runner with fake structure
         runner.unittests = {}
-        runner.unittests['mod class.test1'] = True
-        runner.unittests['mod class.test2'] = False
+        runner.unittests['mod class.sample_method1'] = True
+        runner.unittests['mod class.sample_method2'] = False
+        runner.unittests['mod class.sample_method3'] = True
 
         # Populate fake test_case with 3 fake methods
-        test_methods = []
-        for test in xrange(1, 4):
-            test_method = mock.Mock()
-            test_method.im_class.__module__ = 'mod'
-            test_method.im_class.__name__ = 'class'
-            test_method.__name__ = 'test' + str(test)
-            test_methods.append(test_method)
+        self.sample_method1.im_class.__module__ = 'mod'
+        self.sample_method1.im_class.__name__ = 'class'
+        self.sample_method2.im_class.__module__ = 'mod'
+        self.sample_method2.im_class.__name__ = 'class'
+        self.sample_method3.im_class.__module__ = 'mod'
+        self.sample_method3.im_class.__name__ = 'class'
+
+        test_methods = [self.sample_method1, self.sample_method2, self.sample_method3]
 
         # Run add_testcase_info
         mock_methods.return_value = test_methods
         add_testcase_info(test_case, runner)
 
         # Verify that unittests work
-        self.assertEqual(len(test_case.unittests), 1)
+        suites1 = getattr(self.sample_method1.__func__, '_suites', [])
+        self.assertEqual('unittest' in suites1, True)
+        suites2 = getattr(self.sample_method2.__func__, '_suites', [])
+        self.assertEqual('notunit' in suites2, True)
+        self.assertEqual('test_suite' in suites2, True)
+        suites3 = getattr(self.sample_method3.__func__, '_suites', [])
+        self.assertEqual('unittest' in suites3, True)

@@ -6,6 +6,7 @@ from sqlalchemy import Text
 from sqlalchemy import Enum
 from sqlalchemy import ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
+from testify import suite
 import logging
 
 Base = declarative_base()
@@ -43,17 +44,21 @@ def add_testcase_info(test_case, runner):
         # Test runner was never prepared - occurs in some acceptance tests
         return
 
+
     for test_method in test_case.runnable_test_methods():
         # Check if method is runnable
         test_name = runner.get_test_method_name(test_method)
 
         try:
             if runner.unittests[test_name]:
-                test_case.unittests.append(test_name)
+                test_method = suite('unittest')(test_method.__func__)
+
+            else:
+                test_method = suite('notunit')(test_method.__func__)
 
         except KeyError:
             # This test has never been in the nightly before
-            continue
+            test_method = suite('notunit')(test_method.__func__)
 
 
 def find_db_url(options):
