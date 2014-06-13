@@ -10,6 +10,7 @@ before_install:
 install:
   - python setup.py install
   - pip install catbox
+  - pip install flake8
 
 script:
   - make test
