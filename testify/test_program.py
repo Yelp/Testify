@@ -16,7 +16,10 @@ from __future__ import with_statement
 from collections import defaultdict
 from optparse import OptionParser
 import os
-import pwd
+try:
+    import pwd
+except ImportError:
+    pwd = None
 import socket
 import sys
 import logging
@@ -162,7 +165,7 @@ def parse_test_runner_command_line_args(plugin_modules, args):
 
     test_path, module_method_overrides = _parse_test_runner_command_line_module_method_overrides(args)
 
-    if pwd.getpwuid(os.getuid()).pw_name == 'buildbot':
+    if pwd and pwd.getpwuid(os.getuid()).pw_name == 'buildbot':
         options.disable_color = True
 
     if options.list_suites:
