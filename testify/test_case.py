@@ -23,6 +23,7 @@ __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 
 from collections import defaultdict
+from collections import deque
 from new import instancemethod
 import functools
 import inspect
@@ -165,6 +166,8 @@ class TestCase(object):
         any of our exclude_suites.  If there are any include_suites, it will then further
         limit itself to test methods in those suites.
         """
+        ordered_tests = deque(maxlen=len(dir(self)))
+
         for member_name in dir(self):
             if not member_name.startswith("test"):
                 continue
@@ -173,12 +176,11 @@ class TestCase(object):
                 continue
 
             member_suites = self.suites(member)
-
-            # if there are any exclude suites, exclude methods under them
+           # if there are any exclude suites, exclude methods under them
             if self.__suites_exclude and self.__suites_exclude & member_suites:
                 continue
             # if there are any include suites, only run methods in them
-            if self.__suites_include and not (self.__suites_include & member_suites):
+            if self.__suites_include and not self.__suites_include & member_suites:
                 continue
             # if there are any require suites, only run methods in *all* of those suites
             if self.__suites_require and not ((self.__suites_require & member_suites) == self.__suites_require):
@@ -186,7 +188,19 @@ class TestCase(object):
 
             # if there are any name overrides, only run the named methods
             if self.__name_overrides is None or member.__name__ in self.__name_overrides:
-                yield member
+                if hasattr(self, 'order_tests'):
+                    # Order tests True places test at front
+                    if self.order_tests(member_suites):
+                        ordered_tests.append(member)
+                    else:
+                        ordered_tests.appendleft(member)
+
+                else:
+                    yield member
+
+        if hasattr(self, 'order_tests'):
+            while ordered_tests:
+                yield ordered_tests.pop()
 
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance.
