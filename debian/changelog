@@ -1,3 +1,25 @@
+python-testify (0.5.4) lucid; urgency=low
+
+  * Regression for runnig files directly (dnephin, #233)
+  * Testify client exits based on test results (asotille, #234)
+  * HTTPReporter now always returns True (asottile, #235)
+
+ -- milki <milki@yelp.com>  Thu, 05 Jun 2014 17:09:55 -0700
+
+python-testify (0.5.3) lucid; urgency=low
+
+  * Fix travis builds when catbox is unavailable (baris, #224)
+  * Enable coverage tests for catbox (bukzor, #225)
+  * Refactor test bucketing for fairness
+    (asoittle, mrtyler, #215, #216, #217, #226, #227, #230)
+  * The main entrypoint for Testify is now test_programin.main
+    (dnephin, #219, #229)
+  * Don't run fixtures after class setup failure (bukzor, #220, #221)
+  * Reformat multiple-exception message (bukzor, #222)
+  * Fix stack trace from stripping out related frames (bukzor, #177, #223)
+
+ -- milki <milki@yelp.com>  Thu, 05 Jun 2014 16:53:08 -0700
+
 python-testify (0.5.2) lucid; urgency=low
 
   * Rename TestCase.test_fixtures attribute to _test_fixtures (otherwise it breaks internal stuff)
