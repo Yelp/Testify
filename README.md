@@ -1,5 +1,7 @@
 # Testify - A Testing Framework
 
+*PLEASE NOTE:* Yelp is in the process of switching to [py.test](http://pytest.org/latest/). We recommend you use it instead of Testify.
+
 [![Build Status](https://travis-ci.org/Yelp/Testify.png?branch=master)](https://travis-ci.org/Yelp/Testify)
 
 Testify is a replacement for Python's unittest module and nose. It is modeled
