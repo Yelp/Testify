@@ -37,7 +37,5 @@ clean:
 
 test:
 	PYTHONPATH=. $(PYTHON) ./bin/testify -x fake --verbose --summary test
-	flake8 testify
-	flake8 test
 
 .PHONY: test
