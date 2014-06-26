@@ -92,7 +92,7 @@ class Database(object):
 
         self.unittest = {}
 
-    def last_time(self):
+    def last_time_of_catbox_run(self):
         """Grabs timestamp of last nightly build from catbox"""
         return self.session.query(SA.func.max(Denormalized.start_time)) \
                            .scalar()
@@ -116,7 +116,12 @@ class Database(object):
                            .join(Violations).all()
 
     def build_dict(self):
-        last_time = self.last_time()
+        """ Builds a data structure to help find unit tests from violations info
+
+        Structure format: self.unittest[test_name] -> is test_name a unit test? (boolean)
+        """
+
+        last_time = self.last_time_of_catbox_run()
         bb_runid = self.buildbot_run_id(last_time)
 
         all_tests = self.all_tests(bb_runid)

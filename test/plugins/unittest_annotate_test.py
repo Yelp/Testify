@@ -60,8 +60,23 @@ class DatabaseTestCase(testify.TestCase):
 
     @testify.setup
     def fixtures(self):
-        # Build denormalized table
+        """ Builds mock versions of the three violations tables
+
+        The violations collector plugin currently creates three tables
+        worth of information.
+        Methods - a table showing which methods have violations and information
+                  about specific methods
+        Violations - a table showing specific information about the violations
+                     that occured by those methods
+        Denormalized - a table showing high-level information about a particular run
+
+        This method will setup test fixtures for these three tables
+        """
+        # Build denormalized table - 10 entries
         times = xrange(1, 10)
+        methods_with_test_attribute = (2, 3)
+        violations_with_tests = (1,2,3)
+         
         for time in times:
             bb_runid = str(time)
             build = Denormalized(buildbot_run_id=bb_runid,
@@ -75,8 +90,8 @@ class DatabaseTestCase(testify.TestCase):
         for time in times:
             bb_runid = 9
             method_type = 'undefined'
-            if time == 2 or time == 3:
-                # Undefined with Violations
+            if time in methods_with_test_attribute:
+                # These methods will be labeled as tests, not undefined
                 method_type = 'test'
             method = Methods(buildbot_run_id=bb_runid,
                 branch=u"test",
@@ -91,7 +106,8 @@ class DatabaseTestCase(testify.TestCase):
 
         for time in times:
             testid = 100
-            if time == 1 or time == 2 or time == 3:
+            if time in violations_with_tests:
+                # These violations will be associated with a particular test
                 testid = time
             violation = Violations(test_id=testid,
                 syscall='test',
@@ -121,12 +137,12 @@ class DatabaseTestCase(testify.TestCase):
         self.session.close()
         os.remove('unittest.db')
 
-    def test_last_time(self):
+    def test_last_time_of_catbox_run(self):
         db_class = Database(self.options_db)
-        last_time = db_class.last_time()
+        last_time = db_class.last_time_of_catbox_run()
 
         # Find actual last time
-        self.assertEqual(last_time, max(range(1, 10)))
+        self.assertEqual(last_time, 9)
 
     def test_bb_run_id(self):
         # We know that 9 is max_time
