@@ -1,3 +1,14 @@
+# Testify Unit TestAnnotation Plugin
+# Requires: sqlalchemy, violations_collector plugin,
+#           a fully formed database previously filled with data 
+#           from the violations collector plugin
+# 
+# This plugin will find all test methods that do not make any system
+# calls according to the information collected from the violations collector
+# plugin. All test methods that do not make any system calls will then
+# be categorized with the "unittest" suite.
+
+
 import sqlalchemy as SA
 from sqlalchemy import Column
 from sqlalchemy import Integer
@@ -32,8 +43,8 @@ def prepare_test_runner(options, runner):
         runner.unittests = db.build_dict()
 
     except SA.exc.OperationalError:
-        logging.error('db does not exist')
-        logging.info('this is being run in neither test or production')
+        logging.error('TESTIFY ERROR: db could not be accessed')
+        logging.info('the database may not be running or incorrect config information was given')
 
 
 def add_testcase_info(test_case, runner):
@@ -53,12 +64,10 @@ def add_testcase_info(test_case, runner):
             if runner.unittests[test_name]:
                 test_method = suite('unittest')(test_method.__func__)
 
-            else:
-                test_method = suite('notunit')(test_method.__func__)
 
         except KeyError:
-            # This test has never been in the nightly before
-            test_method = suite('notunit')(test_method.__func__)
+            # This test has never been in nightly - don't know if unit
+            pass
 
 
 def find_db_url(options):
@@ -75,8 +84,11 @@ def find_db_url(options):
     elif options.violation_dburl:
         return options.violation_dburl
 
-    else:
+    elif options.unittest_db_url:
         return options.unittest_db_url
+
+    else:
+        raise ValueError('No database was found for unittest annotation')
 
 
 class Database(object):

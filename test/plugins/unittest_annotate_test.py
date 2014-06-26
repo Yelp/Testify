@@ -197,43 +197,37 @@ class DatabaseTestCase(testify.TestCase):
 
         self.assertEqual(db_url, find_db_url(self.options_db))
 
-    def test_get_violation_with_dbconfig(self):
+    @mock.patch.object(sqlalchemy.engine.url, 'URL')
+    @mock.patch('testify.plugins.unittest_annotate.open', create=True)
+    def test_get_violation_with_dbconfig(self, mock_openfile, mocked_sa_url):
         self.options_db.violation_dburl = 'sqlite:///fake/database'
         self.options_db.violation_dbconfig = '/fake/path/to/db/'
 
         mocked_open = mock.Mock(spec=file)
         mocked_open.__enter__ = mock.Mock()
         mocked_open.__exit__ = mock.Mock()
-        with mock.patch(
-        'testify.plugins.unittest_annotate.open',
-        create=True,
-        return_value=mocked_open
-        ):
-            with mock.patch.object(sqlalchemy.engine.url,
-                                   'URL') as mocked_sa_url:
-                testify.assert_not_equal(find_db_url(self.options_db),
-                                         self.options_db.violation_dburl)
-                mocked_open.read.assert_called
-                mocked_sa_url.URL.assert_called
+        mock_openfile.return_value = mocked_open
 
-    def test_get_unittest_with_dbconfig(self):
+        testify.assert_not_equal(find_db_url(self.options_db),
+                                 self.options_db.violation_dburl)
+        mocked_open.read.assert_called
+        mocked_sa_url.URL.assert_called
+
+    @mock.patch.object(sqlalchemy.engine.url, 'URL')
+    @mock.patch('testify.plugins.unittest_annotate.open', create=True)
+    def test_get_unittest_with_dbconfig(self, mock_openfile, mocked_sa_url):
         self.options_db.unittest_db_url = 'sqlite:///fake/database'
         self.options_db.unittest_db_config = '/fake/path/to/db/'
 
         mocked_open = mock.Mock(spec=file)
         mocked_open.__enter__ = mock.Mock()
         mocked_open.__exit__ = mock.Mock()
-        with mock.patch(
-       		'testify.plugins.unittest_annotate.open',
-        	create=True,
-        	return_value=mocked_open
-        ):
-            with mock.patch.object(sqlalchemy.engine.url,
-                                   'URL') as mocked_sa_url:
-                testify.assert_not_equal(find_db_url(self.options_db),
-                                         self.options_db.unittest_db_url)
-                mocked_open.read.assert_called
-                mocked_sa_url.URL.assert_called
+        mock_openfile.return_value = mocked_open
+
+        testify.assert_not_equal(find_db_url(self.options_db),
+                                 self.options_db.unittest_db_url)
+        mocked_open.read.assert_called
+        mocked_sa_url.URL.assert_called
 
     @mock.patch('testify.test_case.TestCase.runnable_test_methods')
     def test_add_testcase_info(self, mock_methods):
@@ -265,7 +259,7 @@ class DatabaseTestCase(testify.TestCase):
         suites1 = getattr(self.sample_method1.__func__, '_suites', [])
         self.assertEqual('unittest' in suites1, True)
         suites2 = getattr(self.sample_method2.__func__, '_suites', [])
-        self.assertEqual('notunit' in suites2, True)
+        self.assertEqual('unittest' not in suites2, True)
         self.assertEqual('test_suite' in suites2, True)
         suites3 = getattr(self.sample_method3.__func__, '_suites', [])
         self.assertEqual('unittest' in suites3, True)
