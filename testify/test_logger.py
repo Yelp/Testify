@@ -243,7 +243,7 @@ class TextTestLogger(TestLoggerBase):
 
         total_test_time = reduce(
             operator.add,
-            (int(result['run_time'] or 0) for result in (successful+failed+interrupted)),
+            (result['run_time'] for result in (successful+failed+interrupted)),
             0,
             )
         self.writeln("(Total test time %.2fs)" % total_test_time)

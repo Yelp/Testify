@@ -20,11 +20,10 @@ except ImportError:
     pass
 import yaml
 
-fcntl = None
 try:
     import fcntl
 except ImportError:
-    pass
+    fnctl = None
 
 from testify import test_reporter
 from testify import test_logger
