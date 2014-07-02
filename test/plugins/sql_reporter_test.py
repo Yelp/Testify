@@ -18,7 +18,7 @@ except ImportError:
 from test.discovery_failure_test import BrokenImportTestCase
 from test.test_logger_test import ExceptionInClassFixtureSampleTests
 from test.test_case_test import RegexMatcher
-from testify import TestCase, assert_equal, assert_gt, assert_in,  assert_in_range, setup_teardown
+from testify import TestCase, assert_equal, assert_gt, assert_in,  assert_in_range, assert_raises, setup_teardown
 from testify.plugins.sql_reporter import add_command_line_options, SQLReporter
 from testify.test_result import TestResult
 from testify.test_runner import TestRunner
@@ -225,6 +225,50 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         assert_equal(len(failure.error), 50)
         assert_in('Exception truncated.', failure.traceback)
         assert_in('Exception truncated.', failure.error)
+
+
+class RetryTestCase(SQLReporterBaseTestCase):
+    @setup_teardown
+    def patch_engine(self):
+        class BadConnector(object):
+            def __init__(self, connect, max_failures=10):
+                self.connect = connect
+                self.failures = 0
+                self.max_failures = 10
+
+            def __call__(self, *args, **kwargs):
+                if self.failures < self.max_failures:
+                    self.failures += 1
+                    # needs three arguments for i-dont-care reason.
+                    raise SA.exc.OperationalError(1, 2, 3)
+                else:
+                    return self.connect(*args, **kwargs)
+
+        self.reporter.retry_period = .01
+        self.reporter.retry_backoff = .01
+        with patch.object(
+            self.reporter.engine,
+            'connect',
+            BadConnector(self.reporter.engine.connect),
+        ) as self.bad_connector:
+            yield
+
+    def test_can_succeed(self):
+        self.reporter.retry_limit = .45
+
+        assert self.bad_connector.failures == 0
+        conn = self.reporter._connect()
+        assert self.bad_connector.failures == 10
+
+        assert conn
+        assert type(conn) is SA.engine.base.Connection
+
+    def test_can_fail(self):
+        self.reporter.retry_limit = .44
+
+        assert self.bad_connector.failures == 0
+        with assert_raises(SA.exc.OperationalError):
+            self.reporter._connect()
 
 
 class SQLReporterDiscoveryFailureTestCase(SQLReporterBaseTestCase, BrokenImportTestCase):
