@@ -49,9 +49,13 @@ class SQLReporter(test_reporter.TestReporter):
             'pool_recycle' : 3600,
         })
 
+        self.retry_period = kwargs.pop('retry_period', 1)
+        self.retry_limit = kwargs.pop('retry_limit', 300)
+        self.retry_backoff = kwargs.pop('retry_backoff', 1)
+
         self.init_database()
         self.engine = SA.create_engine(dburl, **create_engine_opts)
-        self.conn = self.engine.connect()
+        self.conn = self._connect()
         self.metadata.create_all(self.engine)
 
         if not options.build_info:
@@ -78,6 +82,25 @@ class SQLReporter(test_reporter.TestReporter):
         self.reporting_thread.start()
 
         super(SQLReporter, self).__init__(options, *args, **kwargs)
+
+    def _connect(self):
+        """Return an SA connection, based on self.engine.
+        The connection will be retried a limited number of times if necessary.
+        """
+        wait = self.retry_period
+        limit = self.retry_limit
+
+        while True:
+            try:
+                return self.engine.connect()
+            except SA.exc.OperationalError:
+                if limit <= 0:
+                    raise
+                else:
+                    print 'SQL connection failed, retrying in %g seconds (giving up in %g seconds)...' % (wait, limit)
+                    time.sleep(min(wait, limit))
+                    limit -= wait
+                    wait += self.retry_backoff
 
     def init_database(self):
         self.metadata = SA.MetaData()
@@ -271,7 +294,7 @@ class SQLReporter(test_reporter.TestReporter):
     def report_results(self):
         """A worker func that runs in another thread and reports results to the database.
         Create a self.TestResults row from a test result dict. Also inserts the previous_run row."""
-        conn = self.engine.connect()
+        conn = self._connect()
 
         while True:
             results = []
