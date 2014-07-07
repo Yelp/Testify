@@ -92,6 +92,12 @@ class TestRunner(object):
                 failure_limit=(self.failure_limit - self.failure_count) if self.failure_limit else None,
                 debugger=self.debugger,
             )
+
+            # Add in information from plugins
+            for plugin_mod in self.plugin_modules:
+                if hasattr(plugin_mod, 'add_testcase_info'):
+                    plugin_mod.add_testcase_info(test_case, self)
+
             return test_case
 
         def discover_tests():

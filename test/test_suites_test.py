@@ -87,7 +87,7 @@ class ListSuitesMixin(object):
             'disabled': '2 tests',
             'module-level': '%d tests' % num_tests,
             'class-level-suite': '%d tests' % num_tests,
-            'crazy': '1 tests',
+            'crazy': '1 tests'
         })
 
 

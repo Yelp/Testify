@@ -27,6 +27,9 @@ def run_test_case(options, test_case, runnable):
     finally:
         running = False
 
+def add_testcase_info(test_case, runner):
+    test_case.__testattr__ = True
+
 
 class TestTestRunnerGetTestMethodName(test_case.TestCase):
 
@@ -59,6 +62,7 @@ class PluginTestCase(test_case.TestCase):
         self.our_module = imp.new_module("our_module")
         setattr(self.our_module, "prepare_test_case", prepare_test_case)
         setattr(self.our_module, "run_test_case", run_test_case)
+        setattr(self.our_module, "add_testcase_info", add_testcase_info)
 
     @setup
     def build_test_case(self):
@@ -68,6 +72,7 @@ class PluginTestCase(test_case.TestCase):
                 self.ran_test = True
                 assert self.our_module.prepared
                 assert self.our_module.running
+                assert self.__testattr__
 
         self.dummy_test_class = DummyTestCase
 
