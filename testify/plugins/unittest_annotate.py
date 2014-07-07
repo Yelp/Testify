@@ -52,7 +52,8 @@ def add_testcase_info(test_case, runner):
     test_case.unittests = []
 
     if not hasattr(runner, 'unittests'):
-        # Test runner was never prepared - occurs in some acceptance tests
+        # In some acceptance tests, the plugin will be run without being properly prepared
+        # This will occur for partial runs
         return
 
 
