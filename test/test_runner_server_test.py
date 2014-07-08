@@ -181,7 +181,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         first_test = get_test(self.server, 'runner1')
 
         assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(first_test['methods'], ['test', 'run'])
+        assert_equal(set(first_test['methods']), set(['test', 'run']))
 
         self.run_test('runner1')
 
@@ -192,13 +192,13 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         """Start a server with one test case to run. Make sure it hands out that test, report it as failure, then make sure it gives us the same one, then nothing else."""
         first_test = get_test(self.server, 'runner1')
         assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(first_test['methods'], ['test', 'run'])
+        assert_equal(set(first_test['methods']), set(['test', 'run']))
 
         self.run_test('runner1', should_pass=False)
 
         second_test = get_test(self.server, 'runner2')
         assert_equal(second_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-        assert_equal(second_test['methods'], ['test', 'run'])
+        assert_equal(set(second_test['methods']), set(['test', 'run']))
 
         self.run_test('runner2', should_pass=False)
 
@@ -221,14 +221,14 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         assert second_test
 
         assert_equal(first_test['class_path'], second_test['class_path'])
-        assert_equal(first_test['methods'], second_test['methods'])
+        assert_equal(set(first_test['methods']), set(second_test['methods']))
         assert_equal(third_test, None)
 
     def test_disable_requeueing_on_failure(self):
         with disable_requeueing(self.server):
             first_test = get_test(self.server, 'runner1')
             assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-            assert_equal(first_test['methods'], ['test', 'run'])
+            assert_equal(set(first_test['methods']), set(['test', 'run']))
 
             self.run_test('runner1', should_pass=False)
 
@@ -245,7 +245,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         with disable_requeueing(self.server):
             first_test = get_test(self.server, 'runner1')
             assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
-            assert_equal(first_test['methods'], ['test', 'run'])
+            assert_equal(set(first_test['methods']), set(['test', 'run']))
 
             self.run_test('runner1', should_pass=False)
 
@@ -269,10 +269,10 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
 
 
         assert_equal(first_test['class_path'], second_test['class_path'])
-        assert_equal(first_test['methods'], second_test['methods'])
+        assert_equal(set(first_test['methods']), set(second_test['methods']))
 
         assert_equal(first_test['class_path'], third_test['class_path'])
-        assert_equal(first_test['methods'], third_test['methods'])
+        assert_equal(set(first_test['methods']), set(third_test['methods']))
 
         # Check that it didn't requeue again.
         assert_equal(get_test(self.server, 'runner4'), None)
@@ -289,9 +289,9 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         third_test = get_test(self.server, 'runner3')
         self.run_test('runner3', should_pass=False)
         assert_equal(first_test['class_path'], second_test['class_path'])
-        assert_equal(first_test['methods'], second_test['methods'])
+        assert_equal(set(first_test['methods']), set(second_test['methods']))
         assert_equal(first_test['class_path'], third_test['class_path'])
-        assert_equal(first_test['methods'], third_test['methods'])
+        assert_equal(set(first_test['methods']), set(third_test['methods']))
 
         # Check that it didn't requeue again.
         assert_equal(get_test(self.server, 'runner4'), None)
