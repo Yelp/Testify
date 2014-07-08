@@ -89,6 +89,7 @@ class SQLReporter(test_reporter.TestReporter):
         """
         wait = self.retry_period
         limit = self.retry_limit
+        backoff = self.retry_backoff
 
         while True:
             try:
@@ -100,7 +101,7 @@ class SQLReporter(test_reporter.TestReporter):
                     print 'SQL connection failed, retrying in %g seconds (giving up in %g seconds)...' % (wait, limit)
                     time.sleep(min(wait, limit))
                     limit -= wait
-                    wait += self.retry_backoff
+                    wait += backoff
 
     def init_database(self):
         self.metadata = SA.MetaData()
