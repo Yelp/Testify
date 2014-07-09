@@ -1,5 +1,7 @@
 import os
+import signal
 import subprocess
+import tempfile
 
 import mock
 from testify import setup_teardown, TestCase, test_program
@@ -123,34 +125,102 @@ class TestClientServerReturnCode(TestCase):
         assert_in('PASSED', ret)
         assert_equal(server_process.wait(), 0)
 
+
+class TestClientScheduling(TestCase):
+    @setup_teardown
+    def create_temporary_files(self):
+        self.tempfile1 = tempfile.mkstemp()[1]
+        self.tempfile2 = tempfile.mkstemp()[1]
+        try:
+            yield
+        finally:
+            os.remove(self.tempfile1)
+            os.remove(self.tempfile2)
+
     def test_client_returns_nonzero_on_failure(self):
         server_process = subprocess.Popen(
             [
                 'python', '-m', 'testify.test_program',
-                'test.failing_test',
+                'test.failing_test_after_signal',
                 '--serve', '9001',
+                '--server-timeout', '10',
+                '-v',
             ],
             stdout=open(os.devnull, 'w'),
             stderr=open(os.devnull, 'w'),
         )
-        # Need two clients in order to finish running tests
-        client_1 = subprocess.Popen(
-            [
-                'python', '-m', 'testify.test_program',
-                '--connect', 'localhost:9001',
-            ],
-            stdout=open(os.devnull, 'w'),
-            stderr=open(os.devnull, 'w'),
-        )
-        client_2 = subprocess.Popen(
-            [
-                'python', '-m', 'testify.test_program',
-                '--connect', 'localhost:9001',
-            ],
-            stdout=open(os.devnull, 'w'),
-            stderr=open(os.devnull, 'w'),
-        )
-        assert_equal(client_1.wait(), 1)
-        assert_equal(client_2.wait(), 1)
+
+        # Read from both of the processes until we get some output
+        # Then send sigint to that process
+        # We're doing this as a synchronization mechanism to guarantee
+        # two clients are connected to the server when the test fails.
+        # The expected behaviour is that the failed test is not re-run on
+        # the same client
+
+        class Client(object):
+            def __init__(self, filename):
+                self.proc = subprocess.Popen(
+                    [
+                        'python', '-m', 'testify.test_program',
+                        '--connect', 'localhost:9001',
+                        '--runner-timeout', '5',
+                        '-v',
+                    ],
+                    stdout=open(filename, 'w'),
+                    stderr=open(os.devnull, 'w'),
+                )
+                self.output = ''
+                self.ready = 0
+                self.filename = filename
+                self.exit = None
+
+        clients = [Client(self.tempfile1), Client(self.tempfile2)]
+        while True:
+            for client in clients:
+                client.output = open(client.filename).read()
+                client.ready = client.output.count('ready!\n')
+
+            if all(client.ready for client in clients):
+                # all ready!
+                break
+
+        # All of our tests are ready, send them SIGINT so they continue
+        for client in clients:
+            os.kill(client.proc.pid, signal.SIGINT)
+
+        while True:
+            for client in clients:
+                if client.exit is not None:
+                    continue
+
+                client.exit = client.proc.poll()
+                client.output = open(client.filename).read()
+                ready = client.output.count('ready!\n')
+                if ready > client.ready:
+                    os.kill(client.proc.pid, signal.SIGINT)
+                    client.ready = ready
+
+            if all(client.exit is not None for client in clients):
+                break
+
+        assert_equal(clients[0].proc.returncode, 1)
+        assert_equal(clients[1].proc.returncode, 1)
         assert_equal(server_process.wait(), 1)
-            
+
+        # Our test should have been run on both clients
+        for client in clients:
+            assert_in('Intentional failure!', clients[0].output)
+
+        assert_equal(set([1, 2]), set([client.ready for client in clients]))
+
+        for client in clients:
+            if client.ready == 1:
+                assert_in(
+                    'FAILED.  1 test / 1 case: 0 passed, 1 failed.  (Total test time',
+                    client.output,
+                )
+            else:
+                assert_in(
+                    'FAILED.  2 tests / 2 cases: 1 passed, 1 failed.  (Total test time',
+                    client.output
+                )
