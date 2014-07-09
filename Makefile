@@ -36,6 +36,6 @@ clean:
 	find . -name "._*" -delete
 
 test:
-	PYTHONPATH=. $(PYTHON) ./bin/testify -x fake --verbose --summary test
+	tox
 
 .PHONY: test
