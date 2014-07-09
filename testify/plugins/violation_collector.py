@@ -1,4 +1,3 @@
-import fcntl
 import itertools
 import json
 import logging
@@ -20,6 +19,11 @@ try:
 except ImportError:
     pass
 import yaml
+
+try:
+    import fcntl
+except ImportError:
+    fnctl = None
 
 from testify import test_reporter
 from testify import test_logger
@@ -202,7 +206,8 @@ class ViolationStore(object):
         """
         self.test_id_read_fd, self.test_id_write_fd = os.pipe()
 
-        fcntl.fcntl(self.test_id_read_fd, fcntl.F_SETFL, os.O_NONBLOCK)
+        if fcntl:
+            fcntl.fcntl(self.test_id_read_fd, fcntl.F_SETFL, os.O_NONBLOCK)
         self.epoll = select.epoll()
         self.epoll.register(self.test_id_read_fd, select.EPOLLIN | select.EPOLLET)
 
