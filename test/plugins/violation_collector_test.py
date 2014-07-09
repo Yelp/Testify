@@ -21,7 +21,6 @@ import mock
 import testify as T
 
 from testify.plugins.violation_collector import ctx
-
 from testify.plugins.violation_collector import cleandict
 from testify.plugins.violation_collector import collect
 from testify.plugins.violation_collector import get_db_url
@@ -29,10 +28,8 @@ from testify.plugins.violation_collector import is_sqlite_filepath
 from testify.plugins.violation_collector import run_in_catbox
 from testify.plugins.violation_collector import sqlite_dbpath
 from testify.plugins.violation_collector import writeln
-
 from testify.plugins.violation_collector import ViolationReporter
 from testify.plugins.violation_collector import ViolationStore
-
 from testify.plugins.violation_collector import TEST_METHOD_TYPE
 
 
@@ -66,15 +63,16 @@ def mocked_store():
 
 @contextlib.contextmanager
 def sqlite_store():
-    test_violations_file = "test_violations.sqlite"
-    mock_options = mock.Mock()
-    mock_options.violation_dburl = "sqlite:///%s" % test_violations_file
-    mock_options.violation_dbconfig = None
-    mock_options.build_info = None
+    test_violations_filename = tempfile.mkstemp(suffix='test_violations.sqlite')[1]
+    try:
+        mock_options = mock.Mock()
+        mock_options.violation_dburl = "sqlite:///%s" % test_violations_filename
+        mock_options.violation_dbconfig = None
+        mock_options.build_info = None
 
-    yield ViolationStore(mock_options)
-
-    os.unlink(test_violations_file)
+        yield ViolationStore(mock_options)
+    finally:
+        os.remove(test_violations_filename)
 
 
 @contextlib.contextmanager
@@ -428,11 +426,11 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
                 violations
             )
             T.assert_in(
-                (u'ViolatingTestCase', u'test_filesystem_violation', u'unlink', 2),
+                (u'ViolatingTestCase', u'test_filesystem_violation', u'unlink', 1),
                 violations
             )
             T.assert_in(
-                (u'ViolatingTestCase', u'test_filesystem_violation', u'open', 2),
+                (u'ViolatingTestCase', u'test_filesystem_violation', u'open', 1),
                 violations
             )
 
@@ -440,23 +438,23 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
         with self.run_testcase_in_catbox(self.ViolatingTestCaseWithSetupAndTeardown) as violations:
             # setup/teardown fixtures will bump the unlink count for test_filesystem_violation by 2
             T.assert_in(
-                (u'ViolatingTestCaseWithSetupAndTeardown', u'test_filesystem_violation', u'unlink', 4),
+                (u'ViolatingTestCaseWithSetupAndTeardown', u'test_filesystem_violation', u'unlink', 3),
                 violations
             )
             # setup/teardown fixtures will bump the open count for test_filesystem_violation by 2
             T.assert_in(
-                (u'ViolatingTestCaseWithSetupAndTeardown', u'test_filesystem_violation', u'open', 4),
+                (u'ViolatingTestCaseWithSetupAndTeardown', u'test_filesystem_violation', u'open', 3),
                 violations
             )
 
     def test_violation_collector_pipeline_with_class_level_fixtures(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCaseWithClassSetupAndTeardown) as violations:
             T.assert_in(
-                (u'ViolatingTestCaseWithClassSetupAndTeardown', u'__class_setup', u'open', 2),
+                (u'ViolatingTestCaseWithClassSetupAndTeardown', u'__class_setup', u'open', 1),
                 violations
             )
             T.assert_in(
-                (u'ViolatingTestCaseWithClassSetupAndTeardown', u'__class_setup', u'unlink', 2),
+                (u'ViolatingTestCaseWithClassSetupAndTeardown', u'__class_setup', u'unlink', 1),
                 violations
             )
             T.assert_in(
