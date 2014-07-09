@@ -155,7 +155,6 @@ class TestRunnerServer(TestRunner):
             else:
                 if self.pair_queue.empty():
                     # Put the test back in the queue, and queue ourselves to pick up the next test queued.
-                    #assert False, 'can has??'
                     self.pair_queue.add_test(priority, test_dict)
                     self.pair_queue.worker_queue.put((+1, callback))
                 else:
