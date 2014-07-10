@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import tempfile
 from os.path import join, exists
@@ -129,25 +130,28 @@ class TestClientServerReturnCode(TestCase):
 class TestClientScheduling(TestCase):
     @setup_teardown
     def create_temporary_directory(self):
-        from shutil import rmtree
         self.tempdir = tempfile.mkdtemp()
+        shutil.copy(
+            join('test', 'failing_test_after_signal.py'), self.tempdir,
+        )
         try:
             yield
         finally:
-            rmtree(self.tempdir)
+            shutil.rmtree(self.tempdir)
 
     def test_client_returns_nonzero_on_failure(self):
         tempdir = self.tempdir
         server_process = subprocess.Popen(
             [
                 'python', '-m', 'testify.test_program',
-                'test.failing_test_after_signal',
+                'failing_test_after_signal',
                 '--serve', '9001',
                 '--server-timeout', '10',
                 '-v',
             ],
             stdout=open(os.devnull, 'w'),
             stderr=open(os.devnull, 'w'),
+            cwd=tempdir,
         )
 
         # Read from both of the processes until we get some output
