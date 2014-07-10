@@ -38,23 +38,21 @@ def add_command_line_options(parser):
 
 def prepare_test_runner(options, runner):
     """Add data structure to runner for future use"""
-    runner.unittests = {}
-    db = Database(options)
     try:
+        db = Database(options)
         runner.unittests = db.build_dict()
 
     except SA.exc.OperationalError:
-        logging.error('TESTIFY ERROR: db could not be accessed')
-        logging.info('the database may not be running or incorrect config information was given')
-
+        # Couldn't connect to db
+        pass
+    
 
 def add_testcase_info(test_case, runner):
     """Uses the runner's data structure to add information about tests"""
     test_case.unittests = []
 
     if not hasattr(runner, 'unittests'):
-        # In some acceptance tests, the plugin will be run without being properly prepared
-        # This will occur for partial runs
+        # If no db, we'll have to return
         return
 
 
