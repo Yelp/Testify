@@ -1,18 +1,17 @@
-import sys
+import os
+import os.path
 import time
 import testify as T
 
 
 def wait():
     # We need this test to wait until we have two clients connected.
-    # We accomplish this by sleeping until sigint is sent
-    try:
-        sys.stdout.write('ready!\n')
-        sys.stdout.flush()
-        # Poppies will put them to sleeeep!
-        time.sleep(99999999)
-    except KeyboardInterrupt:
-        pass
+    # We accomplish this by sleeping until we see 'go!'
+    with open(os.environ['client_num'], 'w') as f:
+        f.write('ready!')
+
+    while not os.path.exists('go!'):
+        time.sleep(.001)
 
 
 @T.suite('fake')

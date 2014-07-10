@@ -1,7 +1,7 @@
 import os
-import signal
 import subprocess
 import tempfile
+from os.path import join, exists
 
 import mock
 from testify import setup_teardown, TestCase, test_program
@@ -128,16 +128,16 @@ class TestClientServerReturnCode(TestCase):
 
 class TestClientScheduling(TestCase):
     @setup_teardown
-    def create_temporary_files(self):
-        self.tempfile1 = tempfile.mkstemp()[1]
-        self.tempfile2 = tempfile.mkstemp()[1]
+    def create_temporary_directory(self):
+        from shutil import rmtree
+        self.tempdir = tempfile.mkdtemp()
         try:
             yield
         finally:
-            os.remove(self.tempfile1)
-            os.remove(self.tempfile2)
+            rmtree(self.tempdir)
 
     def test_client_returns_nonzero_on_failure(self):
+        tempdir = self.tempdir
         server_process = subprocess.Popen(
             [
                 'python', '-m', 'testify.test_program',
@@ -158,7 +158,8 @@ class TestClientScheduling(TestCase):
         # the same client
 
         class Client(object):
-            def __init__(self, filename):
+            def __init__(self, number):
+                filename = join(tempdir, str(number) + '.stdout')
                 self.proc = subprocess.Popen(
                     [
                         'python', '-m', 'testify.test_program',
@@ -166,61 +167,51 @@ class TestClientScheduling(TestCase):
                         '--runner-timeout', '5',
                         '-v',
                     ],
-                    stdout=open(filename, 'w'),
+                    stdout=open(filename , 'w'),
                     stderr=open(os.devnull, 'w'),
+                    env=dict(os.environ, client_num=str(number)),
+                    cwd=tempdir,
                 )
-                self.output = ''
-                self.ready = 0
-                self.filename = filename
-                self.exit = None
+                self.number = number
+                self.ready = False
+                self.outfile = filename
 
-        clients = [Client(self.tempfile1), Client(self.tempfile2)]
+        clients = [Client(1), Client(2)]
         while True:
             for client in clients:
-                client.output = open(client.filename).read()
-                client.ready = client.output.count('ready!\n')
+                client.ready = exists(join(tempdir, str(client.number)))
 
             if all(client.ready for client in clients):
                 # all ready!
                 break
 
-        # All of our tests are ready, send them SIGINT so they continue
-        for client in clients:
-            os.kill(client.proc.pid, signal.SIGINT)
+        # All of our tests are ready, send them 'go!' so they continue
+        with open(join(tempdir, 'go!'), 'w'):
+            pass
 
-        while True:
-            for client in clients:
-                if client.exit is not None:
-                    continue
-
-                client.exit = client.proc.poll()
-                client.output = open(client.filename).read()
-                ready = client.output.count('ready!\n')
-                if ready > client.ready:
-                    os.kill(client.proc.pid, signal.SIGINT)
-                    client.ready = ready
-
-            if all(client.exit is not None for client in clients):
-                break
-
-        assert_equal(clients[0].proc.returncode, 1)
-        assert_equal(clients[1].proc.returncode, 1)
+        assert_equal(clients[0].proc.wait(), 1)
+        assert_equal(clients[1].proc.wait(), 1)
         assert_equal(server_process.wait(), 1)
 
-        # Our test should have been run on both clients
+        # The failing test should have been run on both clients
         for client in clients:
-            assert_in('Intentional failure!', clients[0].output)
+            client.output = open(client.outfile).read()
+            assert_in('Intentional failure!', client.output)
 
-        assert_equal(set([1, 2]), set([client.ready for client in clients]))
+        # The passing test should have been run on just one clients
+        assert_equal(set([True, False]), set([
+            'test_pass' in client.output
+            for client in clients
+        ]))
 
         for client in clients:
-            if client.ready == 1:
+            if 'test_pass' in client.output:
                 assert_in(
-                    'FAILED.  1 test / 1 case: 0 passed, 1 failed.  (Total test time',
-                    client.output,
+                    'FAILED.  2 tests / 2 cases: 1 passed, 1 failed.',
+                    client.output
                 )
             else:
                 assert_in(
-                    'FAILED.  2 tests / 2 cases: 1 passed, 1 failed.  (Total test time',
-                    client.output
+                    'FAILED.  1 test / 1 case: 0 passed, 1 failed.',
+                    client.output,
                 )
