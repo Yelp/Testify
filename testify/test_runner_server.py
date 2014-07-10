@@ -60,33 +60,22 @@ class AsyncDelayedQueue(object):
         the vast majority of the time, the first worker will match
         the first test).
         """
-
         worker = None
         runner = None
         test = None
 
         skipped_workers = []
         while worker is None:
-
             try:
                 w_priority, worker, runner = self.worker_queue.get_nowait()
             except Queue.Empty:
                 break
 
-            skipped_tests = []
             while test is None:
                 try:
                     t_priority, test = self.test_queue.get_nowait()
                 except Queue.Empty:
                     break
-
-                if runner is not None and test.get('last_runner') == runner:
-                    skipped_tests.append((t_priority, test))
-                    test = None
-                    continue
-
-            for skipped in skipped_tests:
-                self.test_queue.put(skipped)
 
             if test is None:
                 skipped_workers.append((w_priority, worker, runner))
@@ -97,7 +86,7 @@ class AsyncDelayedQueue(object):
             self.worker_queue.put(skipped)
 
         if worker is not None:
-            worker(t_priority, test)
+            worker(w_priority, test)
             tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def empty(self):
@@ -145,23 +134,24 @@ class TestRunnerServer(TestRunner):
 
         self.runners.add(runner_id)
 
-        def callback(priority, test_dict):
+        def callback(w_priority, test_dict):
             if not test_dict:
                 return on_empty_callback()
 
-            if test_dict.get('last_runner', None) != runner_id or (self.pair_queue.empty() and len(self.runners) <= 1):
+            # if there's just one worker run the test even if it's failed there before
+            if (
+                    test_dict.get('last_runner', None) != runner_id or 
+                    (
+                        self.pair_queue.empty() and
+                        len(self.runners) <= 1
+                    )
+            ):
                 self.check_out_class(runner_id, test_dict)
                 on_test_callback(test_dict)
             else:
-                if self.pair_queue.empty():
-                    # Put the test back in the queue, and queue ourselves to pick up the next test queued.
-                    #assert False, 'can has??'
-                    self.pair_queue.add_test(priority, test_dict)
-                    self.pair_queue.worker_queue.put((+1, callback))
-                else:
-                    # Get the next test, process it, then place the old test back in the queue.
-                    self.pair_queue.add_worker(0, callback, runner=runner_id)
-                    self.pair_queue.add_test(priority, test_dict)
+                # Put the test back in the queue, but give the worker a lower priority.
+                self.pair_queue.add_test(0, test_dict)
+                self.pair_queue.add_worker(w_priority + 1, callback, runner=runner_id)
 
         self.pair_queue.add_worker(0, callback, runner=runner_id)
 
