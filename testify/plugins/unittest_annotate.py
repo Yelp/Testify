@@ -18,7 +18,6 @@ from sqlalchemy import Enum
 from sqlalchemy import ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from testify import suite
-import logging
 import yaml
 
 Base = declarative_base()
