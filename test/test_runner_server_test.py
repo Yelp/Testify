@@ -304,11 +304,11 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
          - The server has more than one test in its queue
          - All the tests in the server's queue were last run by the runner asking for tests.
         """
-        self.server.test_queue = test_runner_server.AsyncDelayedQueue()
+        self.server.pair_queue = test_runner_server.AsyncDelayedQueue()
 
-        self.server.test_queue.put(0, {'last_runner': 'foo', 'class_path': '1', 'methods': ['blah'], 'fixture_methods': []})
-        self.server.test_queue.put(0, {'last_runner': 'foo', 'class_path': '2', 'methods': ['blah'], 'fixture_methods': []})
-        self.server.test_queue.put(0, {'last_runner': 'foo', 'class_path': '3', 'methods': ['blah'], 'fixture_methods': []})
+        self.server.pair_queue.add_test(0, {'last_runner': 'foo', 'class_path': '1', 'methods': ['blah'], 'fixture_methods': []})
+        self.server.pair_queue.add_test(0, {'last_runner': 'foo', 'class_path': '2', 'methods': ['blah'], 'fixture_methods': []})
+        self.server.pair_queue.add_test(0, {'last_runner': 'foo', 'class_path': '3', 'methods': ['blah'], 'fixture_methods': []})
 
         failures = []
 
@@ -430,7 +430,7 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
 
         # Verify the failed test case is re-queued for running.
-        assert_equal(self.server.test_queue.empty(), False)
+        assert_equal(self.server.pair_queue.empty(), False)
         requeued_test_case = get_test(self.server, 'runner2')
         assert_in(self.dummy_test_case.__name__, requeued_test_case['class_path'])
 
@@ -451,7 +451,7 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         assert_equal(expected_methods.symmetric_difference(seen_methods), set())
 
         # Verify no more test cases have been re-queued for running.
-        assert_equal(self.server.test_queue.empty(), True)
+        assert_equal(self.server.pair_queue.empty(), True)
 
 class TestRunnerServerExceptionInClassSetupTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
     def build_test_case(self):
@@ -498,7 +498,7 @@ class TestRunnerServerExceptionInTeardownPhaseBaseTestCase(TestRunnerServerBaseT
 
         # Verify the failed class_teardown method is not re-queued for running
         # -- it doesn't make sense to re-run a "flaky" class_teardown.
-        assert_equal(self.server.test_queue.empty(), True)
+        assert_equal(self.server.pair_queue.empty(), True)
 
 
 class TestRunnerServerExceptionInClassTeardownTestCase(TestRunnerServerExceptionInTeardownPhaseBaseTestCase):

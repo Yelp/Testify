@@ -31,91 +31,91 @@ import time
 
 class AsyncDelayedQueue(object):
     def __init__(self):
-        self.data_queue = Queue.PriorityQueue()
-        self.callback_queue = Queue.PriorityQueue()
+        self.test_queue = Queue.PriorityQueue()
+        self.worker_queue = Queue.PriorityQueue()
         self.finalized = False
 
-    def get(self, c_priority, callback, runner=None):
-        """Queue up a callback to receive a test."""
+    def add_worker(self, w_priority, worker, runner=None):
+        """Queue up a worker to receive a test."""
         if self.finalized:
-            callback(None, None)
+            worker(None, None)
             return
 
-        self.callback_queue.put((c_priority, callback, runner))
+        self.worker_queue.put((w_priority, worker, runner))
         tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
-    def put(self, d_priority, data):
-        """Queue up a test to get given to a callback."""
-        self.data_queue.put((d_priority, data))
+    def add_test(self, t_priority, test):
+        """Queue up a test to get given to a worker."""
+        self.test_queue.put((t_priority, test))
         tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def match(self):
-        """Try to pair a test to a callback.
+        """Try to pair a test to a worker.
 
-        This loops over each queued callback (and each queued test)
+        This loops over each queued worker (and each queued test)
         trying to find a match. It breaks out of the loop as soon as
-        it finds a valid callback-test match, re-queueing anything it
+        it finds a valid worker-test match, re-queueing anything it
         skipped. (In the worst case, this is O(n^2), but most of the
         time no loop iterations beyond the first will be necessary -
-        the vast majority of the time, the first callback will match
+        the vast majority of the time, the first worker will match
         the first test).
         """
 
-        callback = None
+        worker = None
         runner = None
-        data = None
+        test = None
 
-        skipped_callbacks = []
-        while callback is None:
+        skipped_workers = []
+        while worker is None:
 
             try:
-                c_priority, callback, runner = self.callback_queue.get_nowait()
+                w_priority, worker, runner = self.worker_queue.get_nowait()
             except Queue.Empty:
                 break
 
             skipped_tests = []
-            while data is None:
+            while test is None:
                 try:
-                    d_priority, data = self.data_queue.get_nowait()
+                    t_priority, test = self.test_queue.get_nowait()
                 except Queue.Empty:
                     break
 
-                if runner is not None and data.get('last_runner') == runner:
-                    skipped_tests.append((d_priority, data))
-                    data = None
+                if runner is not None and test.get('last_runner') == runner:
+                    skipped_tests.append((t_priority, test))
+                    test = None
                     continue
 
             for skipped in skipped_tests:
-                self.data_queue.put(skipped)
+                self.test_queue.put(skipped)
 
-            if data is None:
-                skipped_callbacks.append((c_priority, callback, runner))
-                callback = None
+            if test is None:
+                skipped_workers.append((w_priority, worker, runner))
+                worker = None
                 continue
 
-        for skipped in skipped_callbacks:
-            self.callback_queue.put(skipped)
+        for skipped in skipped_workers:
+            self.worker_queue.put(skipped)
 
-        if callback is not None:
-            callback(d_priority, data)
+        if worker is not None:
+            worker(t_priority, test)
             tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def empty(self):
         """Returns whether or not we have any pending tests."""
-        return self.data_queue.empty()
+        return self.test_queue.empty()
 
     def waiting(self):
-        """Returns whether or not we have any pending callbacks."""
-        return self.callback_queue.empty()
+        """Returns whether or not we have any pending workers."""
+        return self.worker_queue.empty()
 
     def finalize(self):
-        """Immediately call any pending callbacks with None,None
+        """Immediately call any pending workers with None, None
         and ensure that any future get() calls do the same."""
         self.finalized = True
         try:
             while True:
-                _, callback, _ = self.callback_queue.get_nowait()
-                callback(None, None)
+                _, worker, _ = self.worker_queue.get_nowait()
+                worker(None, None)
         except Queue.Empty:
             pass
 
@@ -129,7 +129,7 @@ class TestRunnerServer(TestRunner):
         self.shutdown_delay_for_outstanding_runners = kwargs['options'].shutdown_delay_for_outstanding_runners
         self.disable_requeueing = kwargs['options'].disable_requeueing
 
-        self.test_queue = AsyncDelayedQueue()
+        self.pair_queue = AsyncDelayedQueue()
         self.checked_out = {} # Keyed on class path (module class).
         self.failed_rerun_methods = set() # Set of (class_path, method) who have failed.
         self.timeout_rerun_methods = set() # Set of (class_path, method) who were sent to a client but results never came.
@@ -149,20 +149,21 @@ class TestRunnerServer(TestRunner):
             if not test_dict:
                 return on_empty_callback()
 
-            if test_dict.get('last_runner', None) != runner_id or (self.test_queue.empty() and len(self.runners) <= 1):
+            if test_dict.get('last_runner', None) != runner_id or (self.pair_queue.empty() and len(self.runners) <= 1):
                 self.check_out_class(runner_id, test_dict)
                 on_test_callback(test_dict)
             else:
-                if self.test_queue.empty():
+                if self.pair_queue.empty():
                     # Put the test back in the queue, and queue ourselves to pick up the next test queued.
-                    self.test_queue.put(priority, test_dict)
-                    self.test_queue.callback_queue.put((-1, callback))
+                    #assert False, 'can has??'
+                    self.pair_queue.add_test(priority, test_dict)
+                    self.pair_queue.worker_queue.put((+1, callback))
                 else:
                     # Get the next test, process it, then place the old test back in the queue.
-                    self.test_queue.get(0, callback, runner=runner_id)
-                    self.test_queue.put(priority, test_dict)
+                    self.pair_queue.add_worker(0, callback, runner=runner_id)
+                    self.pair_queue.add_test(priority, test_dict)
 
-        self.test_queue.get(0, callback, runner=runner_id)
+        self.pair_queue.add_worker(0, callback, runner=runner_id)
 
     def report_result(self, runner_id, result):
         class_path = '%s %s' % (result['method']['module'], result['method']['class'])
@@ -281,7 +282,7 @@ class TestRunnerServer(TestRunner):
                     # name 'run'. Add this result to the list we expect to get
                     # back from the client.
                     test_dict['methods'].append('run')
-                    self.test_queue.put(0, test_dict)
+                    self.pair_queue.add_test(0, test_dict)
 
             # Start an HTTP server.
             application = tornado.web.Application([
@@ -415,9 +416,9 @@ class TestRunnerServer(TestRunner):
                         reporter.test_complete(result_dict)
 
         if requeue_dict['methods']:
-            self.test_queue.put(-1, requeue_dict)
+            self.pair_queue.add_test(-1, requeue_dict)
 
-        if self.test_queue.empty() and len(self.checked_out) == 0:
+        if self.pair_queue.empty() and len(self.checked_out) == 0:
             self.shutdown()
 
     def _fake_result(self, class_path, method, runner):
@@ -477,7 +478,7 @@ class TestRunnerServer(TestRunner):
             return
 
         self.shutting_down = True
-        self.test_queue.finalize()
+        self.pair_queue.finalize()
         iol = tornado.ioloop.IOLoop.instance()
         # Can't immediately call stop, otherwise the runner currently POSTing its results will get a Connection Refused when it tries to ask for the next test.
 
