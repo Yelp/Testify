@@ -65,9 +65,9 @@ class SQLReporter(test_reporter.TestReporter):
             'pool_recycle' : 3600,
         })
 
-        self.retry_period = kwargs.pop('retry_period', 1)
-        self.retry_limit = kwargs.pop('retry_limit', 300)
-        self.retry_backoff = kwargs.pop('retry_backoff', 1)
+        self.retry_limit = options.retry_limit
+        self.retry_interval = options.retry_interval
+        self.retry_backoff = options.retry_backoff
 
         self.init_database()
         self.engine = SA.create_engine(dburl, **create_engine_opts)
@@ -98,7 +98,7 @@ class SQLReporter(test_reporter.TestReporter):
         """Return an SA connection, based on self.engine.
         The connection will be retried a limited number of times if necessary.
         """
-        wait = self.retry_period
+        wait = self.retry_interval
         limit = self.retry_limit
 
         while True:
@@ -108,7 +108,7 @@ class SQLReporter(test_reporter.TestReporter):
                 if limit <= 0:
                     raise
                 else:
-                    print 'SQL connection failed, retrying in %g seconds (giving up in %g seconds)...' % (wait, limit)
+                    logging.warning('SQL connection failed, retrying in %g seconds (giving up in %g seconds)...', wait, limit)
                     time.sleep(min(wait, limit))
                     limit -= wait
                     wait += self.retry_backoff

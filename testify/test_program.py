@@ -96,8 +96,8 @@ def load_plugins():
     return plugin_modules
 
 
-def parse_test_runner_command_line_args(plugin_modules, args):
-    """Parse command line args for the TestRunner to determine verbosity and other stuff"""
+def default_parser():
+    """create the top-level parser, before adding plugins"""
     parser = OptionParser(
             usage="%prog <test path> [options]",
             version="%%prog %s" % testify.__version__,
@@ -132,9 +132,10 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--serve', action="store", dest="serve_port", type="int", default=None, help="Run in server mode, listening on this port for testify clients.")
     parser.add_option('--connect', action="store", dest="connect_addr", type="string", default=None, metavar="HOST:PORT", help="Connect to a testify server (testify --serve) at this HOST:PORT")
     parser.add_option('--revision', action="store", dest="revision", type="string", default=None, help="With --serve, refuses clients that identify with a different or no revision. In client mode, sends the revision number to the server for verification.")
-    parser.add_option('--retry-limit', action="store", dest="retry_limit", type="int", default=60, help="Number of times to try connecting to the server before exiting.")
-    parser.add_option('--retry-interval', action="store", dest="retry_interval", type="int", default=2, help="Interval, in seconds, between trying to connect to the server.")
-    parser.add_option('--reconnect-retry-limit', action="store", dest="reconnect_retry_limit", type="int", default=5, help="Number of times to try reconnecting to the server before exiting if we have previously connected.")
+    parser.add_option('--retry-limit', action="store", dest="retry_limit", type="float", default=300, help="Number of seconds to try connecting to the server before giving.")
+    parser.add_option('--retry-interval', action="store", dest="retry_interval", type="float", default=.1, help="Number of seconds to wait between trying to connect to the server.")
+    parser.add_option('--retry-backoff', action="store", dest="retry_backoff", type="float", default=.1, help="Number of seconds to add to the wait period between retries.")
+    parser.add_option('--reconnect-retry-limit', action="store", dest="reconnect_retry_limit", type="int", default=10, help="Number of seconds to try reconnecting to the server before exiting if we have previously connected.")
     parser.add_option('--disable-requeueing', action="store_true", dest="disable_requeueing", help="Disable re-queueing/re-running failed tests on a different builder.")
 
     parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None, help="Quit after this many test failures.")
@@ -150,6 +151,13 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     parser.add_option('--replay-json-inline', action="append", dest="replay_json_inline", type="string", metavar="JSON_OBJECT", help="Similar to --replay-json, but allows result objects to be passed on the command line. May be passed multiple times. If combined with --replay-json, inline results get reported first.")
 
     parser.add_option('--rerun-test-file', action="store", dest="rerun_test_file", type="string", default=None, help="Rerun tests listed in FILE in order. One test per line, in the format 'path.to.class ClassName.test_method_name'. Consecutive tests in the same class will be run on the same test class instance.")
+
+    return parser
+
+
+def parse_test_runner_command_line_args(plugin_modules, args):
+    """Parse command line args for the TestRunner to determine verbosity and other stuff"""
+    parser = default_parser()
 
     # Add in any additional options
     for plugin in plugin_modules:

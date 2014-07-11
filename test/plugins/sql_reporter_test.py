@@ -1,6 +1,5 @@
 from mock import patch
 import time
-from optparse import OptionParser
 
 try:
     import simplejson as json
@@ -20,6 +19,7 @@ from test.test_logger_test import ExceptionInClassFixtureSampleTests
 from test.test_case_test import RegexMatcher
 from testify import TestCase, assert_equal, assert_gt, assert_in,  assert_in_range, assert_raises, setup_teardown
 from testify.plugins.sql_reporter import add_command_line_options, SQLReporter
+from testify.test_program import default_parser
 from testify.test_result import TestResult
 from testify.test_runner import TestRunner
 
@@ -47,7 +47,7 @@ class SQLReporterBaseTestCase(TestCase):
             msg = 'SQL Reporter plugin requires sqlalchemy and you do not have it installed in your PYTHONPATH.\n'
             raise ImportError, msg
 
-        parser = OptionParser()
+        parser = default_parser()
         add_command_line_options(parser)
         self.fake_buildbot_run_id = 'A' * 36
         (options, args) = parser.parse_args([
@@ -244,7 +244,7 @@ class RetryTestCase(SQLReporterBaseTestCase):
                 else:
                     return self.connect(*args, **kwargs)
 
-        self.reporter.retry_period = .001
+        self.reporter.retry_interval = .001
         self.reporter.retry_backoff = .001
         with patch.object(
             self.reporter.engine,
