@@ -25,7 +25,8 @@ except ImportError:
 import yaml
 import time
 import threading
-import Queue
+import Queue as queue
+from Queue import Queue
 
 SA = None
 try:
@@ -37,6 +38,21 @@ from testify import test_reporter
 
 def md5(s):
     return hashlib.md5(s.encode('utf8') if isinstance(s, unicode) else s).hexdigest()
+
+
+class TaskQueue(Queue):
+    def __init__(self, maxsize=0, worker_function=lambda: None):
+        self._func = worker_function
+        self._thread = None
+        # Queue is apparently an old-style class.
+        Queue.__init__(self, maxsize)
+
+    def put(self, item, block=True, timeout=None):
+        if self._thread is None:
+            self._thread = threading.Thread(target=self._func)
+            self._thread.daemon = True
+            self._thread.start()
+        Queue.put(self, item, block, timeout)
 
 
 class SQLReporter(test_reporter.TestReporter):
@@ -71,16 +87,11 @@ class SQLReporter(test_reporter.TestReporter):
                 for row in self.conn.execute(self.Tests.select())
             )
 
-        self.result_queue = Queue.Queue()
+        self.result_queue = TaskQueue(worker_function=self.report_results)
         self.ok = True
 
         self.reporting_frequency = options.sql_reporting_frequency
         self.batch_size = options.sql_batch_size
-
-        self.reporting_thread = threading.Thread(target=self.report_results)
-        self.reporting_thread.daemon = True
-        self.reporting_thread.start()
-
         super(SQLReporter, self).__init__(options, *args, **kwargs)
 
     def _connect(self):
@@ -305,7 +316,7 @@ class SQLReporter(test_reporter.TestReporter):
             try:
                 while True:
                     results.append(self.result_queue.get_nowait())
-            except Queue.Empty:
+            except queue.Empty:
                 pass
 
             # Insert any previous runs, if necessary.
