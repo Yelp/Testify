@@ -24,6 +24,7 @@ class TestRunnerClient(TestRunner):
 
         self.retry_limit = kwargs['options'].retry_limit
         self.retry_interval = kwargs['options'].retry_interval
+        self.retry_backoff = kwargs['options'].retry_backoff
         self.reconnect_retry_limit = kwargs['options'].reconnect_retry_limit
 
         super(TestRunnerClient, self).__init__(*args, **kwargs)
@@ -43,7 +44,7 @@ class TestRunnerClient(TestRunner):
                 klass = test_discovery.import_test_class(module_path, class_name)
                 yield klass(name_overrides=methods)
 
-    def get_next_tests(self, retry_interval=2, retry_limit=0):
+    def get_next_tests(self, retry_interval, retry_limit):
         try:
             if self.revision:
                 url = 'http://%s/tests?runner=%s&revision=%s' % (self.connect_addr, self.runner_id, self.revision)
@@ -57,8 +58,8 @@ class TestRunnerClient(TestRunner):
             return None, None, True
         except urllib2.URLError, e:
             if retry_limit > 0:
-                logging.warning("Got error %r when requesting tests, retrying %d more times." % (e, retry_limit))
-                time.sleep(retry_interval)
-                return self.get_next_tests(retry_limit=retry_limit-1, retry_interval=retry_interval)
+                logging.warning("Got error %r when requesting tests, retrying in %g seconds (giving up in %g seconds)...", e, retry_interval, retry_limit)
+                time.sleep(min(retry_interval, retry_limit))
+                return self.get_next_tests(retry_limit=retry_limit-retry_interval, retry_interval=retry_interval+self.retry_backoff)
             else:
                 return None, None, True # Stop trying if we can't connect to the server.
