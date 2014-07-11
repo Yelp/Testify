@@ -244,8 +244,8 @@ class RetryTestCase(SQLReporterBaseTestCase):
                 else:
                     return self.connect(*args, **kwargs)
 
-        self.reporter.retry_period = .01
-        self.reporter.retry_backoff = .01
+        self.reporter.retry_period = .001
+        self.reporter.retry_backoff = .001
         with patch.object(
             self.reporter.engine,
             'connect',
@@ -254,7 +254,7 @@ class RetryTestCase(SQLReporterBaseTestCase):
             yield
 
     def test_can_succeed(self):
-        self.reporter.retry_limit = .45
+        self.reporter.retry_limit = .046
 
         assert self.bad_connector.failures == 0
         conn = self.reporter._connect()
@@ -264,7 +264,7 @@ class RetryTestCase(SQLReporterBaseTestCase):
         assert type(conn) is SA.engine.base.Connection
 
     def test_can_fail(self):
-        self.reporter.retry_limit = .44
+        self.reporter.retry_limit = .045
 
         assert self.bad_connector.failures == 0
         with assert_raises(SA.exc.OperationalError):
