@@ -37,5 +37,6 @@ clean:
 
 test:
 	PYTHONPATH=. $(PYTHON) ./bin/testify -x fake --verbose --summary test
+	find testify -name '__init__.py' -o -name '*.py' -print | xargs pyflakes
 
 .PHONY: test
