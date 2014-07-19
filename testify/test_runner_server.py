@@ -141,10 +141,7 @@ class TestRunnerServer(TestRunner):
             # if there's just one worker run the test even if it's failed there before
             if (
                     test_dict.get('last_runner', None) != runner_id or 
-                    (
-                        self.pair_queue.empty() and
-                        len(self.runners) <= 1
-                    )
+                    len(self.runners) <= 1
             ):
                 self.check_out_class(runner_id, test_dict)
                 on_test_callback(test_dict)
