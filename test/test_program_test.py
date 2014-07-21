@@ -222,14 +222,13 @@ class TestClientScheduling(TestCase):
 
 
 class Test240Regression(TestCase):
-    def test_single_client_with_failure_does_not_hang_forever(self):
+    def _test(self, testname):
         """Regression test for #240."""
         server_process = subprocess.Popen(
             [
                 'python', '-m', 'testify.test_program',
-                'test.failing_test',
+                testname,
                 '--serve', '9001',
-                '--server-timeout', '5',
                 '-v',
             ],
             stdout=open(os.devnull, 'w'),
@@ -239,7 +238,6 @@ class Test240Regression(TestCase):
             [
                 'python', '-m', 'testify.test_program',
                 '--connect', 'localhost:9001',
-                '--runner-timeout', '5',
                 '-v',
             ],
             stdout=open(os.devnull, 'w'),
@@ -247,3 +245,10 @@ class Test240Regression(TestCase):
         )
         assert_equal(client_1.wait(), 1)
         assert_equal(server_process.wait(), 1)
+
+    def test_one_test_one_fail(self):
+        self._test('test.failing_test')
+
+    def test_lots_of_fails(self):
+        """Not sure why three fails triggers this behaviour as well..."""
+        self._test('test.lots_of_fail')
