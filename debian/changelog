@@ -1,3 +1,19 @@
+python-testify (0.5.5) lucid; urgency=low
+
+  * Fix failure reporting with only one slave in client/server model
+    (asottile, #240, #264, #274)
+  * Dynamically annotate unittests using catbox data (astephen2, #241)
+  * Fix regressions for windows (jareyes409, #245)
+  * Enable retries in sql reporter for SQL connection (bukzor, #249)
+  * Fix (run, test) ordering check in test_runner_server_test (asottile, #255)
+  * Fix flakey tests that depended on order (asottile, #257)
+  * Fix timing out test (asottile, #262)
+  * Standardize retry options (bukzor, #266)
+  * Fix flakey test with sql reporter (bukzor, #267)
+  * Use flake8 (astephen2, #271)
+
+ -- milki <milki@yelp.com>  Tue, 08 Jul 2014 14:47:36 -0700
+
 python-testify (0.5.4) lucid; urgency=low
 
   * Regression for runnig files directly (dnephin, #233)
