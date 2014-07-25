@@ -18,6 +18,7 @@ from sqlalchemy import Enum
 from sqlalchemy import ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from testify import suite
+import logging
 import yaml
 
 Base = declarative_base()
@@ -27,7 +28,6 @@ def add_command_line_options(parser):
     """Command line options for unittest annotation"""
     parser.add_option("--unittest-db-url", action="store",
     	dest="unittest_db_url", type="string",
-        default='sqlite:///unittest.db',
         help="Path to the violations db for unittest id")
 
     parser.add_option("--unittest-db-config", action="store",
@@ -37,14 +37,10 @@ def add_command_line_options(parser):
 
 def prepare_test_runner(options, runner):
     """Add data structure to runner for future use"""
-    try:
+    if options.unittest_db_url or options.unittest_db_config:
         db = Database(options)
         runner.unittests = db.build_dict()
 
-    except SA.exc.OperationalError:
-        # Couldn't connect to db
-        pass
-    
 
 def add_testcase_info(test_case, runner):
     """Uses the runner's data structure to add information about tests"""
