@@ -25,18 +25,17 @@ Base = declarative_base()
 
 def add_command_line_options(parser):
     """Command line options for unittest annotation"""
-    parser.add_option("--unittest-db-url", action="store",
-    	dest="unittest_db_url", type="string",
-        help="Path to the violations db for unittest id")
-
-    parser.add_option("--unittest-db-config", action="store",
-    	dest="unittest_db_config", type="string",
-        help="Path to a config file for violations db info")
+    parser.add_option(
+        '--annotate-unittests',
+        action='store_true',
+        dest='annotate_unittests',
+        help='Enable unittest annotation using the violations database.'
+    )
 
 
 def prepare_test_runner(options, runner):
     """Add data structure to runner for future use"""
-    if options.unittest_db_url or options.unittest_db_config:
+    if options.annotate_unittests and options.catbox_violations:
         db = Database(options)
         runner.unittests = db.build_dict()
 
@@ -49,7 +48,6 @@ def add_testcase_info(test_case, runner):
         # If no db, we'll have to return
         return
 
-
     for test_method in test_case.runnable_test_methods():
         # Check if method is runnable
         test_name = runner.get_test_method_name(test_method)
@@ -57,39 +55,27 @@ def add_testcase_info(test_case, runner):
         try:
             if runner.unittests[test_name]:
                 test_method = suite('unittest')(test_method.__func__)
-
-
         except KeyError:
             # This test has never been in nightly - don't know if unit
             pass
 
 
-def find_db_url(options):
-    if options.unittest_db_config:
-        # Read in the yaml file
-        with open(options.unittest_db_config) as db_config_file:
-            return SA.engine.url.URL(**yaml.safe_load(db_config_file))
+def get_db_url(options):
+    '''If a configuration file is given, returns the database URL from
+    the configuration file. Otherwise returns violation-db-url option.
 
-    elif options.violation_dbconfig:
-        # Read in the yaml file
+    Violations DB options are provided by violation collector plugin.
+    '''
+    if options.violation_dbconfig:
         with open(options.violation_dbconfig) as db_config_file:
             return SA.engine.url.URL(**yaml.safe_load(db_config_file))
-
-    elif options.violation_dburl:
-        return options.violation_dburl
-
-    elif options.unittest_db_url:
-        return options.unittest_db_url
-
     else:
-        raise ValueError('No database was found for unittest annotation')
+        return options.violation_dburl
 
 
 class Database(object):
-
     def __init__(self, options):
-        url = find_db_url(options)
-
+        url = get_db_url(options)
         self.engine = SA.create_engine(url)
 
         Session = SA.orm.sessionmaker()
@@ -100,33 +86,39 @@ class Database(object):
 
     def last_time_of_catbox_run(self):
         """Grabs timestamp of last nightly build from catbox"""
-        return self.session.query(SA.func.max(Denormalized.start_time)) \
-                           .scalar()
+        return self.session.query(
+            SA.func.max(Denormalized.start_time)
+        ).scalar()
 
     def buildbot_run_id(self, last_time):
         """Finds run id from timestamp"""
-        return self.session.query(Denormalized) \
-                           .filter(Denormalized.start_time == last_time) \
-                           .first().buildbot_run_id
+        return self.session.query(
+            Denormalized
+        ).filter(
+            Denormalized.start_time == last_time
+        ).first().buildbot_run_id
 
     def all_tests(self, buildbot_run):
         """Returns all tests in run"""
-        return self.session.query(Methods) \
-                           .filter(Methods.buildbot_run_id == buildbot_run) \
-                           .all()
+        return self.session.query(
+            Methods
+        ).filter(
+            Methods.buildbot_run_id == buildbot_run
+        ).all()
 
     def all_violating_tests(self, buildbot_run):
         """Returns all non-unit tests (not setup, teardown)"""
-        return self.session.query(Methods) \
-                           .filter(Methods.method_type == 'test') \
-                           .join(Violations).all()
+        return self.session.query(
+            Methods
+        ).filter(
+            Methods.method_type == 'test'
+        ).join(Violations).all()
 
     def build_dict(self):
         """ Builds a data structure to help find unit tests from violations info
 
         Structure format: self.unittest[test_name] -> is test_name a unit test? (boolean)
         """
-
         last_time = self.last_time_of_catbox_run()
         bb_runid = self.buildbot_run_id(last_time)
 
@@ -134,17 +126,13 @@ class Database(object):
         all_violates = self.all_violating_tests(bb_runid)
 
         for test in all_tests:
-            #Unit until proven not
-            test_name = "%s %s.%s" % (test.module,
-            	test.class_name, test.method_name)
-
+            # Unit until proven not
+            test_name = "%s %s.%s" % (test.module, test.class_name, test.method_name)
             self.unittest[test_name] = True
 
         for test in all_violates:
             # Methods that are not unit tests
-            test_name = "%s %s.%s" % (test.module,
-            	test.class_name, test.method_name)
-
+            test_name = "%s %s.%s" % (test.module, test.class_name, test.method_name)
             self.unittest[test_name] = False
 
         return self.unittest
@@ -171,9 +159,10 @@ class Methods(Base):
     module = Column(Text, nullable=False)
     class_name = Column(Text, nullable=False)
     method_name = Column(Text, nullable=False)
-    method_type = Column(Enum('undefined', 'test', 'setup',
-                              'teardown', 'class_setup', 'class_teardown'),
-                         nullable=False)
+    method_type = Column(
+        Enum('undefined', 'test', 'setup', 'teardown', 'class_setup', 'class_teardown'),
+        nullable=False
+    )
 
 
 class Violations(Base):
