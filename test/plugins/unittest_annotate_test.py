@@ -6,7 +6,7 @@ from testify.plugins.unittest_annotate import Database
 from testify.plugins.unittest_annotate import Denormalized
 from testify.plugins.unittest_annotate import Methods
 from testify.plugins.unittest_annotate import Violations
-from testify.plugins.unittest_annotate import find_db_url
+from testify.plugins.unittest_annotate import get_db_url
 from testify.plugins.unittest_annotate import add_testcase_info
 from testify.test_case import TestCase
 from testify.test_runner import TestRunner
@@ -38,11 +38,6 @@ class DatabaseTestCase(testify.TestCase):
         Session = sqlalchemy.orm.sessionmaker(bind=self.engine)
 
         self.session = Session()
-        self.options_db = DummyClass()
-        self.options_db.unittest_db_url = self.url
-        self.options_db.unittest_db_config = None
-        self.options_db.violation_dburl = None
-        self.options_db.violation_dbconfig = None
 
         if not self.engine.has_table(Denormalized.__tablename__):
             Denormalized.__table__.create(self.engine)
@@ -52,6 +47,13 @@ class DatabaseTestCase(testify.TestCase):
 
         if not self.engine.has_table(Violations.__tablename__):
             Violations.__table__.create(self.engine)
+
+    @testify.setup
+    def db_options(self):
+        self.options_db = DummyClass()
+        self.options_db.annotate_unittests = True
+        self.options_db.violation_dburl = self.url
+        self.options_db.violation_dbconfig = None
 
     @testify.setup
     def fixtures(self):
@@ -71,7 +73,7 @@ class DatabaseTestCase(testify.TestCase):
         times = xrange(1, 10)
         methods_with_test_attribute = (2, 3)
         violations_with_tests = (1,2,3)
-         
+
         for time in times:
             bb_runid = str(time)
             build = Denormalized(buildbot_run_id=bb_runid,
@@ -121,11 +123,6 @@ class DatabaseTestCase(testify.TestCase):
 
         self.session.query(Violations).delete()
         self.session.commit()
-
-        self.options_db.unittest_db_url = self.url
-        self.options_db.unittest_db_config = None
-        self.options_db.violation_dburl = None
-        self.options_db.violation_dbconfig = None
 
     @testify.class_teardown
     def close(self):
@@ -178,19 +175,10 @@ class DatabaseTestCase(testify.TestCase):
         unittest = db_class.build_dict()
         self.assertEqual(unittest, proper_response)
 
-    def test_find_db_url(self):
-        # Check for unittest_db_url
+    def test_get_db_url(self):
         db_url = 'test/test'
-        self.options_db.unittest_db_url = db_url
-
-        self.assertEqual(db_url, find_db_url(self.options_db))
-
-    def test_find_violation_url(self):
-        # Check for violation_db_url
-        db_url = 'sqlite:///test2.db'
         self.options_db.violation_dburl = db_url
-
-        self.assertEqual(db_url, find_db_url(self.options_db))
+        self.assertEqual(db_url, get_db_url(self.options_db))
 
     @mock.patch.object(sqlalchemy.engine.url, 'URL')
     @mock.patch('testify.plugins.unittest_annotate.open', create=True)
@@ -203,7 +191,7 @@ class DatabaseTestCase(testify.TestCase):
         mocked_open.__exit__ = mock.Mock()
         mock_openfile.return_value = mocked_open
 
-        testify.assert_not_equal(find_db_url(self.options_db),
+        testify.assert_not_equal(get_db_url(self.options_db),
                                  self.options_db.violation_dburl)
         mocked_open.read.assert_called
         mocked_sa_url.URL.assert_called
@@ -219,7 +207,7 @@ class DatabaseTestCase(testify.TestCase):
         mocked_open.__exit__ = mock.Mock()
         mock_openfile.return_value = mocked_open
 
-        testify.assert_not_equal(find_db_url(self.options_db),
+        testify.assert_not_equal(get_db_url(self.options_db),
                                  self.options_db.unittest_db_url)
         mocked_open.read.assert_called
         mocked_sa_url.URL.assert_called
