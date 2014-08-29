@@ -1,8 +1,8 @@
 # Testify Unit TestAnnotation Plugin
 # Requires: sqlalchemy, violations_collector plugin,
-#           a fully formed database previously filled with data 
+#           a fully formed database previously filled with data
 #           from the violations collector plugin
-# 
+#
 # This plugin will find all test methods that do not make any system
 # calls according to the information collected from the violations collector
 # plugin. All test methods that do not make any system calls will then
@@ -18,7 +18,6 @@ from sqlalchemy import Enum
 from sqlalchemy import ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from testify import suite
-import logging
 import yaml
 
 Base = declarative_base()
