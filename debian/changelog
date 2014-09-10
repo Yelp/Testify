@@ -1,3 +1,10 @@
+python-testify (0.5.6) lucid; urgency=low
+
+  * Unittest Annotation controlled by a cli flag
+    (astephen2, baris, #263, #272, #287)
+
+ -- milki <milki@yelp.com>  Fri, 05 Sep 2014 14:23:34 -0700
+
 python-testify (0.5.5) lucid; urgency=low
 
   * Fix failure reporting with only one slave in client/server model
