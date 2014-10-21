@@ -8,8 +8,8 @@ from testify import assert_between
 from testify import assert_dict_subset
 from testify import assert_equal
 from testify import assert_not_reached
-from testify import assert_true
-from testify import assert_false
+from testify import assert_truthy
+from testify import assert_falsey
 from testify.contrib.doctestcase import DocTestCase
 
 
@@ -137,21 +137,46 @@ class AssertEqualTestCase(TestCase):
         ):
             assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
 
-    def test_assert_true(self):
-        assert_true(1)
-        assert_true('False')
-        assert_true([0])
-        assert_true([''])
-        assert_true({'a': 0})
+    def test_assert_truthy(self):
+        assert_truthy(1)
+        assert_truthy('False')
+        assert_truthy([0])
+        assert_truthy([''])
+        assert_truthy(('',))
+        assert_truthy({'a': 0})
 
-    def test_assert_false(self):
-        assert_false(None)
-        assert_false(0)
-        assert_false(0.0)
-        assert_false('')
-        assert_false(())
-        assert_false([])
-        assert_false({})
+    def test_assert_truthy_two_args_raises(self):
+        with assertions.assert_raises(TypeError):
+            assert_truthy('foo', 'bar')
+
+    def test_assert_truthy_garbage_kwarg_raises(self):
+        with assertions.assert_raises(TypeError):
+            assert_truthy('foo', bar='baz')
+
+    def test_assert_truthy_with_msg(self):
+        with assertions.assert_raises_exactly(AssertionError, 'my_msg'):
+            assert_truthy(0, message='my_msg')
+
+    def test_assert_falsey(self):
+        assert_falsey(None)
+        assert_falsey(0)
+        assert_falsey(0.0)
+        assert_falsey('')
+        assert_falsey(())
+        assert_falsey([])
+        assert_falsey({})
+
+    def test_assert_falsey_two_args_raises(self):
+        with assertions.assert_raises(TypeError):
+            assert_falsey('foo', 'bar')
+
+    def test_assert_falsey_garbage_kwarg_raises(self):
+        with assertions.assert_raises(TypeError):
+            assert_falsey('foo', bar='baz')
+
+    def test_assert_falsey_with_msg(self):
+        with assertions.assert_raises_exactly(AssertionError, 'my_msg'):
+            assert_falsey(1, message='my_msg')
 
 
 class AssertInTestCase(TestCase):
