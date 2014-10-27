@@ -471,7 +471,8 @@ class TestRunnerServer(TestRunner):
 
         # Without this check, we could end up queueing a stop() call on a
         # tornado server we spin up later, causing it to hang mysteriously.
-        if iol.running():
+        # XXX: accessing private for tornado2+3 compatibility
+        if iol._running:
             if self.runners_outstanding:
                 # Stop in 5 seconds if all the runners_outstanding don't come back by then.
                 iol.add_timeout(time.time()+self.shutdown_delay_for_outstanding_runners, iol.stop)
