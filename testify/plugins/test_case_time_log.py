@@ -22,6 +22,7 @@ except ImportError:
 
 from testify import test_reporter
 
+
 class TestCaseJSONReporter(test_reporter.TestReporter):
     def __init__(self, *args, **kwargs):
         super(TestCaseJSONReporter, self).__init__(*args, **kwargs)
@@ -51,9 +52,9 @@ class TestCaseJSONReporter(test_reporter.TestReporter):
 
 
 # Hooks for plugin system
-
 def add_command_line_options(parser):
     parser.add_option("--test-case-results", action="store", dest="test_case_json_results", type="string", default=None, help="Store test results in json format")
+
 
 def build_test_reporters(options):
     if options.test_case_json_results:
