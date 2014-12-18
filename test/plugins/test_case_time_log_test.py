@@ -32,22 +32,24 @@ def mock_conf_files():
     with mock.patch('__builtin__.open', _mock_conf_file_open):
         yield
 
+start_time = datetime.datetime(2014, 12, 17, 12, 38, 37, 0)
+end_time = datetime.datetime(2014, 12, 17, 15, 38, 37, 0)
 output_str = (
     """{"normalized_run_time": "10800.00s", """
-   """"complete": true, "start_time": 1418848717.0, """
-   """"runner_id": null, "failure": null, "run_time": 10800.0, """
-   """"previous_run": null, "success": null, "exception_info": null, """
-   """"interrupted": null, """
-   """"method": {"full_name": "testify.test_case TestCase.run", """
-              """"fixture_type": null, "class": "TestCase", """
-              """"module": "testify.test_case", "name": "run"}, """
-   """"exception_info_pretty": null, "end_time": 1418859517.0, "error": null, """
-   """"exception_only": ""}\n""")
+    """"complete": true, "start_time": %s, """
+    """"runner_id": null, "failure": null, "run_time": %s, """
+    """"previous_run": null, "success": null, "exception_info": null, """
+    """"interrupted": null, """
+    """"method": {"full_name": "testify.test_case TestCase.run", """
+               """"fixture_type": null, "class": "TestCase", """
+               """"module": "testify.test_case", "name": "run"}, """
+    """"exception_info_pretty": null, "end_time": %s, "error": null, """
+    """"exception_only": ""}\n""" % (time.mktime(start_time.timetuple()),
+        str(time.mktime(end_time.timetuple()) - time.mktime(start_time.timetuple())),
+        time.mktime(end_time.timetuple())))
 
 
 OUTPUT = StringIO(output_str)
-start_time = datetime.datetime(2014, 12, 17, 12, 38, 37, 872046)
-end_time = datetime.datetime(2014, 12, 17, 15, 38, 37, 872046)
 
 
 class TestCaseJSONReporterTestCase(TestCase):
