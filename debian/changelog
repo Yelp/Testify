@@ -1,3 +1,10 @@
+python-testify (0.5.7) lucid; urgency=low
+
+  * Test Case Time Reporting Plugin (osarood, #295)
+  * Use newer Tornado (asottile, #283, #294)
+
+ -- milki <milki@yelp.com>  Thu, 18 Dec 2014 16:19:21 -0800
+
 python-testify (0.5.6) lucid; urgency=low
 
   * Unittest Annotation controlled by a cli flag
