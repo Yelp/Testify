@@ -1,9 +1,13 @@
 import sys
-
 from doctest import DocTestFinder, DocTestRunner, REPORT_NDIFF
 from StringIO import StringIO
-from testify import MetaTestCase, TestCase
 from types import MethodType
+
+import mock
+
+from testify import MetaTestCase, TestCase, setup_teardown
+from testify.compat import builtins
+
 
 class DocMetaTestCase(MetaTestCase):
     """See DocTestCase for documentation."""
@@ -65,3 +69,9 @@ class DocTestCase(TestCase):
     """
     __metaclass__ = DocMetaTestCase
     __test__ = False
+
+    @setup_teardown
+    def patch_builtins(self):
+        # XXX: doctest lets things spew into builtins._
+        with mock.patch.dict(builtins.__dict__):
+            yield
