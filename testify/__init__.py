@@ -35,19 +35,19 @@ from .assertions import *
 from .errors import TestifyError
 
 from .test_case import (
-                        MetaTestCase,
-                        TestCase,
+    MetaTestCase,
+    TestCase,
 )
 
 from .test_fixtures import (
-                        class_setup,
-                        setup,
-                        teardown,
-                        class_teardown,
-                        setup_teardown,
-                        class_setup_teardown,
-                        suite,
-                        let,
+    class_setup,
+    setup,
+    teardown,
+    class_teardown,
+    setup_teardown,
+    class_setup_teardown,
+    suite,
+    let,
 )
 
 from .utils import turtle

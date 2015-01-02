@@ -55,6 +55,7 @@ two copies: one in parent (collecting syscall violations) and one in
 the traced child process (running tests).'''
 ctx = _Context()
 
+
 def get_db_url(options):
     '''If a configuration file is given, returns the database URL from
     the configuration file. Otherwise returns violation-db-url option.
@@ -64,6 +65,7 @@ def get_db_url(options):
             return SA.engine.url.URL(**yaml.safe_load(db_config_file))
     else:
         return options.violation_dburl
+
 
 def is_sqlite_filepath(dburl):
     '''Check if dburl is an sqlite file path.'''
@@ -111,7 +113,7 @@ def run_in_catbox(method, logger, paths):
 def writeln(msg, verbosity=None):
     '''Write msg to the output stream appending a new line'''
     global ctx
-    verbosity =  verbosity or ctx.output_verbosity
+    verbosity = verbosity or ctx.output_verbosity
     if ctx.output_stream and (verbosity <= ctx.output_verbosity):
         msg = msg.encode('utf8') if isinstance(msg, unicode) else msg
         ctx.output_stream.write(msg + '\n')
@@ -389,7 +391,6 @@ class ViolationReporter(test_reporter.TestReporter):
         writeln(violations_line, test_logger.VERBOSITY_SILENT)
 
 
-
 def add_command_line_options(parser):
     parser.add_option(
         '-V',
@@ -436,9 +437,10 @@ def prepare_test_program(options, program):
             msg = 'Violation collection requires sqlalchemy and you do not have it installed in your PYTHONPATH.\n'
             raise ImportError, msg
 
-        ctx.output_stream = sys.stderr # TODO: Use logger?
+        ctx.output_stream = sys.stderr  # TODO: Use logger?
         ctx.output_verbosity = options.verbosity
         ctx.store = ViolationStore(options)
+
         def _run():
             return run_in_catbox(
                 program.__original_run__,

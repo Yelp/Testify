@@ -10,6 +10,7 @@ try:
 except ImportError:
     import json
 
+
 class TestResultIsSerializableTestCase(test_case.TestCase):
     class NullTestCase(test_case.TestCase):
         def test_method(self):
@@ -44,8 +45,6 @@ class TestResultIsSerializableTestCase(test_case.TestCase):
             result.to_dict(),
             json.loads(json.dumps(result.to_dict()))
         )
-
-
 
 
 if __name__ == '__main__':

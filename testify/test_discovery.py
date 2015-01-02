@@ -26,7 +26,10 @@ from errors import TestifyError
 
 _log = logging.getLogger('testify')
 
-class DiscoveryError(TestifyError): pass
+
+class DiscoveryError(TestifyError):
+    pass
+
 
 def gather_test_paths(testing_dir):
     """Given a directory path, yield up paths for all py files inside of it"""
@@ -39,7 +42,8 @@ def gather_test_paths(testing_dir):
             if subfile.endswith('.py') and not (subfile.startswith('__init__.') or subfile.startswith('.')):
                 relative_path = os.path.realpath(adir)[len(os.getcwd()) + 1:]
                 fs_path = os.path.join(relative_path, subfile)
-                yield fs_path[:-3].replace('/','.')
+                yield fs_path[:-3].replace('/', '.')
+
 
 def discover(what):
     """Given a string module path, drill into it for its TestCases.
@@ -60,15 +64,15 @@ def discover(what):
             except (ValueError, ImportError), e:
                 import_error = e
                 _log.info('discover_inner: Failed to import %s: %s' % (locator, e))
-                if os.path.isfile(locator) or os.path.isfile(locator+'.py'):
+                if os.path.isfile(locator) or os.path.isfile(locator + '.py'):
                     here = os.path.abspath(os.path.curdir) + os.path.sep
                     new_loc = os.path.abspath(locator)
                     if not new_loc.startswith(here):
                         raise DiscoveryError('Can only load modules by path within the current directory')
 
                     new_loc = new_loc[len(here):]
-                    new_loc = new_loc.rsplit('.py',1)[0] #allows for .pyc and .pyo as well
-                    new_loc = new_loc.replace(os.sep,'.')
+                    new_loc = new_loc.rsplit('.py', 1)[0]  # allows for .pyc and .pyo as well
+                    new_loc = new_loc.replace(os.sep, '.')
                     try:
                         test_module = __import__(new_loc)
                         locator = new_loc
@@ -139,16 +143,16 @@ def discover(what):
 
         # it's not a list, it's not a bare module - let's see if it's an honest-to-god TestCaseBase
         elif isinstance(test_module, MetaTestCase) and (not '__test__' in test_module.__dict__ or bool(test_module.__test__)):
-                if test_module not in discover_set:
-                    _log.debug("discover: discovered %s" % test_module)
-                    if suites:
-                        if not hasattr(test_module, '_suites'):
-                            setattr(test_module, '_suites', set())
-                        elif not isinstance(test_module._suites, set):
-                            test_module._suites = set(test_module._suites)
-                        test_module._suites = test_module._suites | set(suites)
-                    discover_set.add(test_module)
-                    yield test_module
+            if test_module not in discover_set:
+                _log.debug("discover: discovered %s" % test_module)
+                if suites:
+                    if not hasattr(test_module, '_suites'):
+                        setattr(test_module, '_suites', set())
+                    elif not isinstance(test_module._suites, set):
+                        test_module._suites = set(test_module._suites)
+                    test_module._suites = test_module._suites | set(suites)
+                discover_set.add(test_module)
+                yield test_module
 
         # detect unittest test cases
         elif issubclass(test_module, unittest.TestCase) and (not '__test__' in test_module.__dict__ or bool(test_module.__test__)):
@@ -164,6 +168,7 @@ def discover(what):
 
     time_end = time.time()
     _log.debug("discover: discovered %d test cases in %s" % (len(discover_set), time_end - time_start))
+
 
 def import_test_class(module_path, class_name):
     for klass in discover(module_path):

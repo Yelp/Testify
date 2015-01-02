@@ -72,8 +72,8 @@ class TestifyRunAcceptanceTestCase(TestCase):
 
     def test_run_testify_as_module_list_tests(self):
         output = test_call([
-                'python', '-m', 'testify.test_program',
-                '--list-tests', 'testing_suite'])
+            'python', '-m', 'testify.test_program',
+            '--list-tests', 'testing_suite'])
         assert_equal(output, self.expected_list)
 
     def test_run_testify_from_bin(self):
@@ -90,21 +90,21 @@ class TestifyRunAcceptanceTestCase(TestCase):
 
     def test_run_testify_test_file_class(self):
         output = test_call([
-                'python', 'testing_suite/example_test.py', '-v',
-                'ExampleTestCase'])
+            'python', 'testing_suite/example_test.py', '-v',
+            'ExampleTestCase'])
         assert_in('PASSED.  2 tests', output)
 
     def test_run_testify_test_file_class_and_method(self):
         output = test_call([
-                'python', 'testing_suite/example_test.py', '-v',
-                'ExampleTestCase.test_one'])
+            'python', 'testing_suite/example_test.py', '-v',
+            'ExampleTestCase.test_one'])
         assert_in('PASSED.  1 test', output)
 
     def test_run_testify_with_failure(self):
         assert_raises(
-                subprocess.CalledProcessError,
-                test_call,
-                ['python', 'testing_suite/example_test.py', 'DoesNotExist'])
+            subprocess.CalledProcessError,
+            test_call,
+            ['python', 'testing_suite/example_test.py', 'DoesNotExist'])
 
 
 class TestClientServerReturnCode(TestCase):
@@ -171,7 +171,7 @@ class TestClientScheduling(TestCase):
                         '--runner-timeout', '5',
                         '-v',
                     ],
-                    stdout=open(filename , 'w'),
+                    stdout=open(filename, 'w'),
                     stderr=open(os.devnull, 'w'),
                     env=dict(os.environ, client_num=str(number)),
                     cwd=tempdir,

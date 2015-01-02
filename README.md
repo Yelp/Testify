@@ -161,4 +161,3 @@ guarantees about how your fixtures are run:
 
  * Fixtures of the same type (and defined at the same level in the class
    heirarchy) will be run in the order they are defined on the class.
-

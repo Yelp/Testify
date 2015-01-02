@@ -72,9 +72,9 @@ def highlight_regions(string, regions):
 
     for beginning, end in sorted(regions or []):
         string.insert(offset + beginning, LEFT_HIGHLIGHT_CHARACTER)
-        offset +=1
+        offset += 1
         string.insert(offset + end, RIGHT_HIGHLIGHT_CHARACTER)
-        offset +=1
+        offset += 1
 
     return ''.join(string)
 

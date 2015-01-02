@@ -18,6 +18,7 @@ class TestReporter(object):
 
     A TestReporter is configured as a callback for each test case by test_runner.
     """
+
     def __init__(self, options):
         """Constructor
 

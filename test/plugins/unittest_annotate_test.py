@@ -72,7 +72,7 @@ class DatabaseTestCase(testify.TestCase):
         # Build denormalized table - 10 entries
         times = xrange(1, 10)
         methods_with_test_attribute = (2, 3)
-        violations_with_tests = (1,2,3)
+        violations_with_tests = (1, 2, 3)
 
         for time in times:
             bb_runid = str(time)
@@ -91,13 +91,13 @@ class DatabaseTestCase(testify.TestCase):
                 # These methods will be labeled as tests, not undefined
                 method_type = 'test'
             method = Methods(buildbot_run_id=bb_runid,
-                branch=u"test",
-                revision=u"test",
-                start_time=0,
-                module=u'test',
-                class_name=u'test' + unicode(time),
-                method_name=u'test' + unicode(time),
-                method_type=method_type)
+                             branch=u"test",
+                             revision=u"test",
+                             start_time=0,
+                             module=u'test',
+                             class_name=u'test' + unicode(time),
+                             method_name=u'test' + unicode(time),
+                             method_type=method_type)
             self.session.add(method)
             self.session.commit()
 
@@ -107,9 +107,9 @@ class DatabaseTestCase(testify.TestCase):
                 # These violations will be associated with a particular test
                 testid = time
             violation = Violations(test_id=testid,
-                syscall='test',
-                syscall_args='test',
-                start_time=123)
+                                   syscall='test',
+                                   syscall_args='test',
+                                   start_time=123)
             self.session.add(violation)
             self.session.commit()
 

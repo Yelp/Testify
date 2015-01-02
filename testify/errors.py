@@ -1,1 +1,2 @@
-class TestifyError(Exception): pass
+class TestifyError(Exception):
+    pass

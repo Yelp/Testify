@@ -13,8 +13,10 @@
 # limitations under the License.
 import random
 
+
 def add_command_line_options(parser):
     parser.add_option("--seed", action="store", dest="seed", type='int', default=None, help="Seed random for each test using this value + hash of the testclass' name. This allows tests to have random yet reproducible numbers.")
+
 
 def run_test_case(options, test_case, runnable):
     # If random seed is set, seed with seed value plus hash(testclass name). This makes random tests at least be reproducible,
@@ -22,4 +24,3 @@ def run_test_case(options, test_case, runnable):
     if options.seed:
         random.seed(options.seed + hash(test_case.__class__.__name__))
     return runnable()
-

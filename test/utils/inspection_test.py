@@ -3,6 +3,7 @@ from testify import setup
 from testify import turtle
 from testify.utils import inspection
 
+
 class DummyTestCase(TestCase):
 
     @setup
@@ -48,6 +49,3 @@ class CallableSetattrTest(TestCase):
     def test_set_method_attr(self):
         inspection.callable_setattr(DummyTestCase.fixture, 'foo', True)
         assert DummyTestCase.fixture.foo
-
-
-

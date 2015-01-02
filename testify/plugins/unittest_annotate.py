@@ -152,7 +152,7 @@ class Methods(Base):
     __tablename__ = 'catbox_methods'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    buildbot_run_id = Column(String, index=True,  nullable=True)
+    buildbot_run_id = Column(String, index=True, nullable=True)
     branch = Column(Text)
     revision = Column(Text)
     start_time = Column(Integer)

@@ -36,6 +36,7 @@ except ImportError:
 
 from testify import test_reporter
 
+
 def md5(s):
     return hashlib.md5(s.encode('utf8') if isinstance(s, unicode) else s).hexdigest()
 
@@ -61,8 +62,8 @@ class SQLReporter(test_reporter.TestReporter):
         dburl = options.reporting_db_url or SA.engine.url.URL(**yaml.safe_load(open(options.reporting_db_config)))
 
         create_engine_opts = kwargs.pop('create_engine_opts', {
-            'poolclass' : kwargs.pop('poolclass', SA.pool.NullPool),
-            'pool_recycle' : 3600,
+            'poolclass': kwargs.pop('poolclass', SA.pool.NullPool),
+            'pool_recycle': 3600,
         })
 
         self.retry_limit = options.retry_limit
@@ -76,16 +77,16 @@ class SQLReporter(test_reporter.TestReporter):
 
         if not options.build_info:
             raise ValueError("Build info must be specified when reporting to a database.")
-        
+
         build_info_dict = json.loads(options.build_info)
         self.build_id = self.create_build_row(build_info_dict)
         self.start_time = time.time()
 
         # Cache of (module,class_name,method_name) => test id
         self.test_id_cache = dict(
-                ((row[self.Tests.c.module], row[self.Tests.c.class_name], row[self.Tests.c.method_name]), row[self.Tests.c.id])
-                for row in self.conn.execute(self.Tests.select())
-            )
+            ((row[self.Tests.c.module], row[self.Tests.c.class_name], row[self.Tests.c.method_name]), row[self.Tests.c.id])
+            for row in self.conn.execute(self.Tests.select())
+        )
 
         self.result_queue = TaskQueue(worker_function=self.report_results)
         self.ok = True
@@ -117,69 +118,68 @@ class SQLReporter(test_reporter.TestReporter):
         self.metadata = SA.MetaData()
 
         self.Tests = SA.Table('tests', self.metadata,
-            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-            SA.Column('module', SA.String(255)),
-            SA.Column('class_name', SA.String(255)),
-            SA.Column('method_name', SA.String(255)),
-        )
+                              SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+                              SA.Column('module', SA.String(255)),
+                              SA.Column('class_name', SA.String(255)),
+                              SA.Column('method_name', SA.String(255)),
+                              )
         SA.Index('ix_individual_test', self.Tests.c.module, self.Tests.c.class_name, self.Tests.c.method_name, unique=True)
 
         self.Failures = SA.Table('failures', self.metadata,
-            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-            SA.Column('error', SA.Text, nullable=False),
-            SA.Column('traceback', SA.Text, nullable=False),
-            SA.Column('hash', SA.String(40), unique=True, nullable=False),
-        )
+                                 SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+                                 SA.Column('error', SA.Text, nullable=False),
+                                 SA.Column('traceback', SA.Text, nullable=False),
+                                 SA.Column('hash', SA.String(40), unique=True, nullable=False),
+                                 )
 
         self.Builds = SA.Table('builds', self.metadata,
-            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-            SA.Column('buildbot_run_id', SA.String(36), index=True, nullable=True),
-            SA.Column('buildbot', SA.Integer, nullable=False),
-            SA.Column('buildnumber', SA.Integer, nullable=False),
-            SA.Column('buildname', SA.String(40), nullable=False),
-            SA.Column('branch', SA.String(255), index=True, nullable=False),
-            SA.Column('revision', SA.String(40), index=True, nullable=False),
-            SA.Column('end_time', SA.Integer, index=True, nullable=True),
-            SA.Column('run_time', SA.Float, nullable=True),
-            SA.Column('method_count', SA.Integer, nullable=True),
-            SA.Column('submit_time', SA.Integer, index=True, nullable=True),
-            SA.Column('discovery_failure', SA.Boolean, default=False, nullable=True),
-        )
+                               SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+                               SA.Column('buildbot_run_id', SA.String(36), index=True, nullable=True),
+                               SA.Column('buildbot', SA.Integer, nullable=False),
+                               SA.Column('buildnumber', SA.Integer, nullable=False),
+                               SA.Column('buildname', SA.String(40), nullable=False),
+                               SA.Column('branch', SA.String(255), index=True, nullable=False),
+                               SA.Column('revision', SA.String(40), index=True, nullable=False),
+                               SA.Column('end_time', SA.Integer, index=True, nullable=True),
+                               SA.Column('run_time', SA.Float, nullable=True),
+                               SA.Column('method_count', SA.Integer, nullable=True),
+                               SA.Column('submit_time', SA.Integer, index=True, nullable=True),
+                               SA.Column('discovery_failure', SA.Boolean, default=False, nullable=True),
+                               )
         SA.Index('ix_individual_run', self.Builds.c.buildbot, self.Builds.c.buildname, self.Builds.c.buildnumber, self.Builds.c.revision, unique=True)
 
         self.TestResults = SA.Table('test_results', self.metadata,
-            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-            SA.Column('test', SA.Integer, index=True, nullable=False),
-            SA.Column('failure', SA.Integer, index=True),
-            SA.Column('build', SA.Integer, index=True, nullable=False),
-            SA.Column('end_time', SA.Integer, index=True, nullable=False),
-            SA.Column('run_time', SA.Float, index=True, nullable=False),
-            SA.Column('runner_id', SA.String(255), index=True, nullable=True),
-            SA.Column('previous_run', SA.Integer, index=False, nullable=True),
-        )
+                                    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+                                    SA.Column('test', SA.Integer, index=True, nullable=False),
+                                    SA.Column('failure', SA.Integer, index=True),
+                                    SA.Column('build', SA.Integer, index=True, nullable=False),
+                                    SA.Column('end_time', SA.Integer, index=True, nullable=False),
+                                    SA.Column('run_time', SA.Float, index=True, nullable=False),
+                                    SA.Column('runner_id', SA.String(255), index=True, nullable=True),
+                                    SA.Column('previous_run', SA.Integer, index=False, nullable=True),
+                                    )
         SA.Index('ix_build_test_failure', self.TestResults.c.build, self.TestResults.c.test, self.TestResults.c.failure)
-
 
     def create_build_row(self, info_dict):
         results = self.conn.execute(self.Builds.insert({
-            'buildbot_run_id' : info_dict['buildbot_run_id'],
-            'buildbot' : info_dict['buildbot'],
-            'buildnumber' : info_dict['buildnumber'],
-            'branch' : info_dict['branch'],
-            'revision' : info_dict['revision'],
-            'submit_time' : info_dict.get('submitstamp'),
-            'buildname' : info_dict['buildname'],
+            'buildbot_run_id': info_dict['buildbot_run_id'],
+            'buildbot': info_dict['buildbot'],
+            'buildnumber': info_dict['buildnumber'],
+            'branch': info_dict['branch'],
+            'revision': info_dict['revision'],
+            'submit_time': info_dict.get('submitstamp'),
+            'buildname': info_dict['buildname'],
         }))
         return results.lastrowid
 
     def test_counts(self, test_case_count, test_method_count):
         """Store the number of tests so we can determine progress."""
         self.conn.execute(SA.update(self.Builds,
-            whereclause=(self.Builds.c.id == self.build_id),
-            values={
-                'method_count' : test_method_count,
-            }
-        ))
+                                    whereclause=(self.Builds.c.id == self.build_id),
+                                    values={
+                                        'method_count': test_method_count,
+                                    }
+                                    ))
 
     def class_teardown_complete(self, result):
         """If there was an error during class_teardown, insert the result
@@ -197,12 +197,12 @@ class SQLReporter(test_reporter.TestReporter):
     def test_discovery_failure(self, exc):
         """Set the discovery_failure flag to True and method_count to 0."""
         self.conn.execute(SA.update(self.Builds,
-            whereclause=(self.Builds.c.id == self.build_id),
-            values={
-                'discovery_failure' : True,
-                'method_count' : 0,
-            }
-        ))
+                                    whereclause=(self.Builds.c.id == self.build_id),
+                                    values={
+                                        'discovery_failure': True,
+                                        'method_count': 0,
+                                    }
+                                    ))
 
     def _canonicalize_exception(self, traceback, error):
         error = error.strip()
@@ -218,13 +218,13 @@ class SQLReporter(test_reporter.TestReporter):
 
     def _create_row_to_insert(self, conn, result, previous_run_id=None):
         return {
-            'test' : self._get_test_id(conn, result['method']['module'], result['method']['class'], result['method']['name']),
-            'failure' : self._get_failure_id(conn, result['exception_info'], result['exception_only']),
-            'build' : self.build_id,
-            'end_time' : result['end_time'],
-            'run_time' : result['run_time'],
-            'runner_id' : result['runner_id'],
-            'previous_run' : previous_run_id,
+            'test': self._get_test_id(conn, result['method']['module'], result['method']['class'], result['method']['name']),
+            'failure': self._get_failure_id(conn, result['exception_info'], result['exception_only']),
+            'build': self.build_id,
+            'end_time': result['end_time'],
+            'run_time': result['run_time'],
+            'runner_id': result['runner_id'],
+            'previous_run': previous_run_id,
         }
 
     def _get_test_id(self, conn, module, class_name, method_name):
@@ -250,9 +250,9 @@ class SQLReporter(test_reporter.TestReporter):
         else:
             # Not there (this test hasn't been run before); create it
             results = conn.execute(self.Tests.insert({
-                'module' : module,
-                'class_name' : class_name,
-                'method_name' : method_name,
+                'module': module,
+                'class_name': class_name,
+                'method_name': method_name,
             }))
             # and then return it.
             return results.lastrowid
@@ -277,8 +277,8 @@ class SQLReporter(test_reporter.TestReporter):
         else:
             # We haven't inserted this row yet; insert it and re-query.
             results = conn.execute(self.Failures.insert({
-                'hash' : exc_hash,
-                'error' : error,
+                'hash': exc_hash,
+                'error': error,
                 'traceback': traceback,
             }))
             return results.lastrowid
@@ -292,8 +292,8 @@ class SQLReporter(test_reporter.TestReporter):
     def _report_results_by_chunk(self, conn, chunk):
         try:
             conn.execute(self.TestResults.insert(),
-                [self._create_row_to_insert(conn, result, result.get('previous_run_id', None)) for result in chunk]
-            )
+                         [self._create_row_to_insert(conn, result, result.get('previous_run_id', None)) for result in chunk]
+                         )
         except Exception, e:
             logging.exception("Exception while reporting results: " + repr(e))
             self.ok = False
@@ -327,7 +327,7 @@ class SQLReporter(test_reporter.TestReporter):
                     logging.exception("Exception while reporting results: " + repr(e))
                     self.ok = False
 
-            chunks = (results[i:i+self.batch_size] for i in xrange(0, len(results), self.batch_size))
+            chunks = (results[i:i + self.batch_size] for i in xrange(0, len(results), self.batch_size))
 
             for chunk in chunks:
                 self._report_results_by_chunk(conn, chunk)
@@ -336,12 +336,12 @@ class SQLReporter(test_reporter.TestReporter):
         self.end_time = time.time()
         self.result_queue.join()
         query = SA.update(self.Builds,
-            whereclause=(self.Builds.c.id == self.build_id),
-            values={
-                'end_time' : self.end_time,
-                'run_time' : self.end_time - self.start_time,
-            }
-        )
+                          whereclause=(self.Builds.c.id == self.build_id),
+                          values={
+                              'end_time': self.end_time,
+                              'run_time': self.end_time - self.start_time,
+                          }
+                          )
         self.conn.execute(query)
         return self.ok
 
@@ -354,6 +354,7 @@ def add_command_line_options(parser):
     parser.add_option("--sql-reporting-frequency", action="store", dest="sql_reporting_frequency", type="float", default=1.0, help="How long to wait between SQL inserts, at a minimum")
     parser.add_option("--sql-batch-size", action="store", dest="sql_batch_size", type="int", default="500", help="Maximum number of rows to insert at any one time")
     parser.add_option("--sql-traceback-size", action="store", dest="sql_traceback_size", type="int", default="65536", help="Maximum length of traceback to store. Tracebacks longer than this will be truncated.")
+
 
 def build_test_reporters(options):
     if options.reporting_db_config or options.reporting_db_url:

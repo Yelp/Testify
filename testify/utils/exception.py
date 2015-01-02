@@ -1,10 +1,11 @@
 """Helper methods for formatting and manipulating tracebacks"""
 import traceback
 
+
 def format_exception_info(exception_info_tuple, formatter=None):
     if formatter is None:
         formatter = traceback.format_exception
-        
+
     exctype, value, tb = exception_info_tuple
     # Skip test runner traceback levels
     while tb and is_relevant_tb_level(tb):
@@ -19,8 +20,10 @@ def format_exception_info(exception_info_tuple, formatter=None):
 
     return formatter(exctype, value, tb)
 
+
 def is_relevant_tb_level(tb):
     return tb.tb_frame.f_globals.has_key('__testify')
+
 
 def count_relevant_tb_levels(tb):
     length = 0

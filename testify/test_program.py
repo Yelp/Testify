@@ -37,6 +37,7 @@ DEFAULT_PLUGIN_PATH = os.path.join(os.path.split(__file__)[0], 'plugins')
 
 log = logging.getLogger('testify')
 
+
 def get_bucket_overrides(filename):
     """Returns a map from test class name to test bucket.
 
@@ -54,6 +55,7 @@ def get_bucket_overrides(filename):
         overrides[test_module_and_class] = int(bucket)
     ofile.close()
     return overrides
+
 
 def load_plugins():
     """Load any plugin modules
@@ -99,9 +101,9 @@ def load_plugins():
 def default_parser():
     """create the top-level parser, before adding plugins"""
     parser = OptionParser(
-            usage="%prog <test path> [options]",
-            version="%%prog %s" % testify.__version__,
-            prog='testify')
+        usage="%prog <test path> [options]",
+        version="%%prog %s" % testify.__version__,
+        prog='testify')
 
     parser.set_defaults(verbosity=test_logger.VERBOSITY_NORMAL)
     parser.add_option("-s", "--silent", action="store_const", const=test_logger.VERBOSITY_SILENT, dest="verbosity")
@@ -183,19 +185,19 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     else:
         runner_action = ACTION_RUN_TESTS
 
-
     test_runner_args = {
         'debugger': options.debugger,
         'suites_include': options.suites_include,
         'suites_exclude': options.suites_exclude,
         'suites_require': options.suites_require,
-        'failure_limit' : options.failure_limit,
+        'failure_limit': options.failure_limit,
         'module_method_overrides': module_method_overrides,
         'options': options,
         'plugin_modules': plugin_modules
     }
 
     return runner_action, test_path, test_runner_args, options
+
 
 def _parse_test_runner_command_line_module_method_overrides(args):
     """Parse a set of positional args (returned from an OptionParser probably)
@@ -276,7 +278,7 @@ class TestProgram(object):
         else:
             test_runner_class = TestRunner
 
-        # initialize reporters 
+        # initialize reporters
         self.test_runner_args['test_reporters'] = self.get_reporters(
             self.other_opts, self.test_runner_args['plugin_modules']
         )
@@ -302,7 +304,7 @@ class TestProgram(object):
             if self.other_opts.label:
                 label_text = " " + self.other_opts.label
             if self.other_opts.bucket_count:
-                salt_info =  (' [salt: %s]' % self.other_opts.bucket_salt) if self.other_opts.bucket_salt else ''
+                salt_info = (' [salt: %s]' % self.other_opts.bucket_salt) if self.other_opts.bucket_salt else ''
                 bucket_text = " (bucket %d of %d%s)" % (self.other_opts.bucket, self.other_opts.bucket_count, salt_info)
             log.info("starting test run%s%s", label_text, bucket_text)
 

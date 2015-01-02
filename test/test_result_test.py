@@ -30,7 +30,7 @@ class TestResultTestCase(TestCase):
     @mock.patch('traceback.format_exception', wraps=fake_format_exception)
     def test_frame_stripping(self, mock_format_exception):
         """On assertion error, testify strips head and tail frame which originate from testify."""
-        test_result = TestResult(lambda:'wat', runner_id='foo!')
+        test_result = TestResult(lambda: 'wat', runner_id='foo!')
         test_result.start()
 
         root_tb = tb = mock.Mock()
@@ -80,25 +80,28 @@ class TestResultTestCase(TestCase):
 
     @mock.patch('traceback.format_exception', wraps=fake_format_exception)
     def test_format_exception_info_multiple(self, mock_format_exception):
-        class Error1(Exception): pass
-        class Error2(Exception): pass
+        class Error1(Exception):
+            pass
+
+        class Error2(Exception):
+            pass
 
         value1, tb1 = self._append_exc_info(Error1)
         value2, tb2 = self._append_exc_info(Error2)
         formatted = self.test_result.format_exception_info()
         mock_format_exception.assert_has_calls([
-                mock.call(Error1, value1, tb1, None),
-                mock.call(Error2, value2, tb2, None),
+            mock.call(Error1, value1, tb1, None),
+            mock.call(Error2, value2, tb2, None),
         ])
         assert_equal(
-                formatted,
-                (
-                    'Traceback: Error1\n'
-                    '\n'
-                    'During handling of the above exception, another exception occurred:\n'
-                    '\n'
-                    'Traceback: Error2\n'
-                )
+            formatted,
+            (
+                'Traceback: Error1\n'
+                '\n'
+                'During handling of the above exception, another exception occurred:\n'
+                '\n'
+                'Traceback: Error2\n'
+            )
         )
 
 

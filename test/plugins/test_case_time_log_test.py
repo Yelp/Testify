@@ -19,13 +19,16 @@ except ImportError:
 
 
 class MyStringIO(StringIO):
-   def close(self):
-       pass
-   def _close():
-       super(MyStringIO).close()
+    def close(self):
+        pass
+
+    def _close():
+        super(MyStringIO).close()
+
 
 def _mock_conf_file_open(fname, mode='w'):
     return MyStringIO()
+
 
 @contextlib.contextmanager
 def mock_conf_files():
@@ -41,12 +44,12 @@ output_str = (
     """"previous_run": null, "success": null, "exception_info": null, """
     """"interrupted": null, """
     """"method": {"full_name": "testify.test_case TestCase.run", """
-               """"fixture_type": null, "class": "TestCase", """
-               """"module": "testify.test_case", "name": "run"}, """
+    """"fixture_type": null, "class": "TestCase", """
+    """"module": "testify.test_case", "name": "run"}, """
     """"exception_info_pretty": null, "end_time": %s, "error": null, """
     """"exception_only": ""}\n""" % (time.mktime(start_time.timetuple()),
-        str(time.mktime(end_time.timetuple()) - time.mktime(start_time.timetuple())),
-        time.mktime(end_time.timetuple())))
+                                     str(time.mktime(end_time.timetuple()) - time.mktime(start_time.timetuple())),
+                                     time.mktime(end_time.timetuple())))
 
 
 OUTPUT = StringIO(output_str)
@@ -75,4 +78,4 @@ class TestCaseJSONReporterTestCase(TestCase):
                 fake_test_result._complete()
             self.reporter.test_case_complete(fake_test_result.to_dict())
             assert_equal(json.loads(self.reporter.log_file.getvalue()),
-                json.loads(OUTPUT.getvalue()))
+                         json.loads(OUTPUT.getvalue()))

@@ -14,7 +14,7 @@ class ExampleTestCase(TestCase):
 class SecondTestCase(TestCase):
 
     def test_one(self):
-      pass
+        pass
 
 
 if __name__ == "__main__":

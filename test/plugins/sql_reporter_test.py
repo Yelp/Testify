@@ -17,14 +17,16 @@ except ImportError:
 from test.discovery_failure_test import BrokenImportTestCase
 from test.test_logger_test import ExceptionInClassFixtureSampleTests
 from test.test_case_test import RegexMatcher
-from testify import TestCase, assert_equal, assert_gt, assert_in,  assert_in_range, assert_raises, setup_teardown
+from testify import TestCase, assert_equal, assert_gt, assert_in, assert_in_range, assert_raises, setup_teardown
 from testify.plugins.sql_reporter import add_command_line_options, SQLReporter
 from testify.test_program import default_parser
 from testify.test_result import TestResult
 from testify.test_runner import TestRunner
 
+
 class DummyTestCase(TestCase):
     __test__ = False
+
     def test_pass(self):
         pass
 
@@ -36,6 +38,7 @@ class DummyTestCase(TestCase):
     1
         2
             3""")
+
 
 class SQLReporterBaseTestCase(TestCase):
     __test__ = False
@@ -54,17 +57,17 @@ class SQLReporterBaseTestCase(TestCase):
             '--reporting-db-url', 'sqlite://',
             '--sql-reporting-frequency', '0.05',
             '--build-info', json.dumps({
-                'buildbot' : 1,
-                'buildnumber' : 1,
+                'buildbot': 1,
+                'buildnumber': 1,
                 'buildbot_run_id': self.fake_buildbot_run_id,
-                'branch' : 'a_branch_name',
-                'revision' : 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
-                'buildname' : 'a_build_name'
+                'branch': 'a_branch_name',
+                'revision': 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+                'buildname': 'a_build_name'
             })
         ])
         create_engine_opts = {
-            'poolclass' : SA.pool.StaticPool,
-            'connect_args' : {'check_same_thread' : False}
+            'poolclass': SA.pool.StaticPool,
+            'connect_args': {'check_same_thread': False}
         }
 
         self.reporter = SQLReporter(options, create_engine_opts=create_engine_opts)
@@ -144,7 +147,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
             RegexMatcher('  File "(\./)?test/plugins/sql_reporter_test\.py", line \d+, in test_fail'),
             '    assert False',
             'AssertionError',
-            '' # ends with newline
+            ''  # ends with newline
         ])
         assert_equal(failed_test.error, 'AssertionError')
 
@@ -157,11 +160,9 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
             '    1',
             '        2',
             '            3',
-            '' # ends with newline
+            ''  # ends with newline
         ])
         assert_equal(failed_test_2.error, 'Exception: I love lines:\n    1\n        2\n            3')
-
-
 
     def test_update_counts(self):
         """Tell our SQLReporter to update its counts, and check that it does."""
@@ -195,7 +196,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
 
         self.reporter.test_complete(results[-1].to_dict())
 
-        assert self.reporter.report() # Make sure all results are inserted.
+        assert self.reporter.report()  # Make sure all results are inserted.
 
         test_results = self._get_test_results(conn)
         assert_equal(len(test_results), 3)
@@ -305,7 +306,6 @@ class SQLReporterExceptionInClassFixtureTestCase(SQLReporterBaseTestCase):
         failures = conn.execute(self.reporter.Failures.select()).fetchall()
         for failure in failures:
             assert_in('in class_setup_raises_exception', failure.traceback)
-
 
     def test_teardown(self):
         runner = TestRunner(ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, test_reporters=[self.reporter])

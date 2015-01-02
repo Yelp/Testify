@@ -15,16 +15,17 @@
 
 import logging
 
+
 class ClassLogger(object):
     """Descriptor that returns a logger for a class named module.class
-        
+
     Expected Usage:
         class MyClass(object):
             ...
-            log = ClassLogger() 
+            log = ClassLogger()
 
             def my_method(self):
-                self.log.debug('some debug message') 
+                self.log.debug('some debug message')
                 # should log something like: mymodule.MyClass 'some debug message'
     """
 

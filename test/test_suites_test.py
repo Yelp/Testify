@@ -14,6 +14,7 @@ class TestSuitesTestCase(TestCase):
         Checking https://github.com/Yelp/Testify/issues/53"""
         class SuperTestCase(TestCase):
             _suites = ['super']
+
             def test_thing(self):
                 pass
 
@@ -70,13 +71,16 @@ class ListSuitesMixin(object):
         setattr(self, 'test_foo', test)
 
     @suite('disabled', 'crazy', conditions=True)
-    def test_disabled(self): True
+    def test_disabled(self):
+        True
 
     @suite('disabled', reason='blah')
-    def test_also_disabled(self): True
+    def test_also_disabled(self):
+        True
 
     @suite('not-applied', conditions=False)
-    def test_not_disabled(self): True
+    def test_not_disabled(self):
+        True
 
     def test_list_suites(self):
         # for suites affecting all of this class's tests

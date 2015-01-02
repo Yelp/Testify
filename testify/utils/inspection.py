@@ -31,15 +31,18 @@ def callable_hasattr(callable_, attr_name):
     function = get_function(callable_)
     return hasattr(function, attr_name)
 
+
 def callable_setattr(callable_, attr_name, attr_value):
     function = get_function(callable_)
     setattr(function, attr_name, attr_value)
+
 
 def get_function(callable_):
     """If given a method, returns its function object; otherwise a no-op."""
     if isinstance(callable_, types.MethodType):
         return callable_.im_func
     return callable_
+
 
 def is_fixture_method(callable_):
     """Whether Testify has decorated this callable as a test fixture."""
@@ -49,4 +52,3 @@ def is_fixture_method(callable_):
 
     # _fixture_id indicates this method was tagged by us as a fixture
     return callable_hasattr(callable_, '_fixture_type')
-

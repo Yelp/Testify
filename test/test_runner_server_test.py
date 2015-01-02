@@ -28,7 +28,7 @@ _log = logging.getLogger('testify')
 def get_test(server, runner_id):
     """A blocking function to request a test from a TestRunnerServer."""
     sem = threading.Semaphore(0)
-    tests_received = [] # Python closures aren't as cool as JS closures, so we have to use something already on the heap in order to pass data from an inner func to an outer func.
+    tests_received = []  # Python closures aren't as cool as JS closures, so we have to use something already on the heap in order to pass data from an inner func to an outer func.
 
     def inner(test_dict):
         tests_received.append(test_dict)
@@ -62,6 +62,7 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
             def __init__(self_, *args, **kwargs):
                 super(DummyTestCase, self_).__init__(*args, **kwargs)
                 self_.should_pass = kwargs.pop('should_pass', True)
+
             def test(self_):
                 assert self_.should_pass
 
@@ -108,7 +109,7 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
             test_reporters=test_reporters,
             plugin_modules=[],
             failure_limit=failure_limit,
-        );
+        )
 
         def catch_exceptions_in_thread():
             try:
@@ -267,7 +268,6 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         third_test = get_test(self.server, 'runner3')
         self.timeout_class('runner3', third_test)
 
-
         assert_equal(first_test['class_path'], second_test['class_path'])
         assert_equal(set(first_test['methods']), set(second_test['methods']))
 
@@ -338,6 +338,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         """
 
         test = get_test(self.server, 'runner1')
+
         def make_fake_result(method):
             result = test_result.TestResult(getattr(self.dummy_test_case, method))
             result.start()
@@ -368,7 +369,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         real_result = test_result.TestResult(self.dummy_test_case.test, runner_id='foo!')
         real_result.start()
         try:
-            print 1/0
+            print 1 / 0
         except:
             import sys
             real_result.end_in_failure(sys.exc_info())
@@ -452,6 +453,7 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
 
         # Verify no more test cases have been re-queued for running.
         assert_equal(self.server.pair_queue.empty(), True)
+
 
 class TestRunnerServerExceptionInClassSetupTestCase(TestRunnerServerExceptionInSetupPhaseBaseTestCase):
     def build_test_case(self):
@@ -698,6 +700,7 @@ class TestRunnerServerFailureLimitClassTeardownErrorTestCase(TestRunnerServerFai
 
     def build_test_case(self):
         self.dummy_test_case = FailureLimitTestCaseMixin.FailureLimitClassTeardownErrorTestCase
+
 
 def _replace_values_with_types(obj):
     # This makes it simple to compare the format of two dictionaries.

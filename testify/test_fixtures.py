@@ -1,4 +1,4 @@
-__testify =1
+__testify = 1
 import contextlib
 import inspect
 import sys
@@ -211,7 +211,7 @@ class TestFixtures(object):
             for the expected order.
             """
             fixture_order = {
-                'class_setup' : 0,
+                'class_setup': 0,
                 'class_teardown': 1,
                 'class_setup_teardown': 2,
 
@@ -279,9 +279,9 @@ class TestFixtures(object):
                 # where in our MRO this fixture was defined
                 defining_class_depth = reverse_mro_list.index(defining_class)
                 inspection.callable_setattr(
-                        unbound_method,
-                        '_defining_class_depth',
-                        defining_class_depth,
+                    unbound_method,
+                    '_defining_class_depth',
+                    defining_class_depth,
                 )
 
                 # we grabbed this from the class and need to bind it to the
@@ -325,6 +325,7 @@ def suite(*args, **kwargs):
 
 # unique id for fixtures
 _fixture_id = [0]
+
 
 def __fixture_decorator_factory(fixture_type):
     """Decorator generator for the fixture decorators.
@@ -410,8 +411,8 @@ class let(object):
 
     def _register_reset_after_test_completion(self, test_case):
         test_case.register_callback(
-                test_case.EVENT_ON_COMPLETE_TEST_METHOD,
-                lambda _: self._reset_value(),
+            test_case.EVENT_ON_COMPLETE_TEST_METHOD,
+            lambda _: self._reset_value(),
         )
 
     def _reset_value(self):

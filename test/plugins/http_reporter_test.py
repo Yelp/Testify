@@ -19,6 +19,7 @@ except ImportError:
 
 class DummyTestCase(TestCase):
     __test__ = False
+
     def test(self):
         pass
 
@@ -40,7 +41,7 @@ class HTTPReporterTestCase(TestCase):
                 except Queue.Empty:
                     handler.finish("kthx")
 
-            def get_error_html(handler, status, **kwargs    ):
+            def get_error_html(handler, status, **kwargs):
                 return "error"
 
         app = tornado.web.Application([(r"/results", ResultsHandler)])
@@ -50,7 +51,7 @@ class HTTPReporterTestCase(TestCase):
 
         iol = tornado.ioloop.IOLoop.instance()
         thread = threading.Thread(target=iol.start)
-        thread.daemon = True # If for some reason this thread gets blocked, don't prevent quitting.
+        thread.daemon = True  # If for some reason this thread gets blocked, don't prevent quitting.
         thread.start()
 
         self.connect_addr = "localhost:%d" % portnum
@@ -61,9 +62,9 @@ class HTTPReporterTestCase(TestCase):
         thread.join()
 
     def get_port_number(self, server):
-        if hasattr(server, "_sockets"): # tornado > 2.0
+        if hasattr(server, "_sockets"):  # tornado > 2.0
             _socket = server._sockets.values()[0]
-        else: # tornado 1.2 or earlier
+        else:  # tornado 1.2 or earlier
             _socket = server._socket
         return _socket.getsockname()[1]
 

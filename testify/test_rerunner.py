@@ -4,6 +4,7 @@ import sys
 import test_discovery
 from test_runner import TestRunner
 
+
 class TestRerunner(TestRunner):
     def __init__(self, *args, **kwargs):
         filename = kwargs.pop('rerun_test_file')

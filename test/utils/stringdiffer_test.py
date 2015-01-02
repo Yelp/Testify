@@ -11,7 +11,7 @@ class HighlightStringRegionsTestCase(TestCase):
     def test_it_highlights_string_regions(self):
         expected = '<Thi>s is <a> string.'
         actual = stringdiffer.highlight_regions('This is a string.',
-                                                 [(0, 3), (8, 9)])
+                                                [(0, 3), (8, 9)])
         assert_equal(expected, actual)
 
 

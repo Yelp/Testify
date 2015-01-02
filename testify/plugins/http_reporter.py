@@ -13,6 +13,7 @@ try:
 except ImportError:
     import json
 
+
 class HTTPReporter(test_reporter.TestReporter):
     def report_results(self):
         while True:
@@ -31,7 +32,6 @@ class HTTPReporter(test_reporter.TestReporter):
                 logging.error('Skipping returning results for test %s because of unknown error: %s' % (result['method']['full_name'], e))
 
             self.result_queue.task_done()
-
 
     def __init__(self, options, connect_addr, runner_id, *args, **kwargs):
         self.connect_addr = connect_addr

@@ -24,9 +24,10 @@ import sys
 
 from testify import test_reporter
 
-VERBOSITY_SILENT    = 0  # Don't say anything, just exit with a status code
-VERBOSITY_NORMAL    = 1  # Output dots for each test method run
-VERBOSITY_VERBOSE   = 2  # Output method names and timing information
+VERBOSITY_SILENT = 0  # Don't say anything, just exit with a status code
+VERBOSITY_NORMAL = 1  # Output dots for each test method run
+VERBOSITY_VERBOSE = 2  # Output method names and timing information
+
 
 class TestLoggerBase(test_reporter.TestReporter):
 
@@ -107,6 +108,7 @@ class TestLoggerBase(test_reporter.TestReporter):
         else:
             return "%s.%s" % (test_method['class'], test_method['name'])
 
+
 class TextTestLogger(TestLoggerBase):
     def __init__(self, options, stream=sys.stdout):
         super(TextTestLogger, self).__init__(options, stream)
@@ -137,7 +139,7 @@ class TextTestLogger(TestLoggerBase):
 
     BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(30, 38)
 
-    def _colorize(self, message, color = CYAN):
+    def _colorize(self, message, color=CYAN):
         if not color or not self.use_color:
             return message
         else:
@@ -171,12 +173,12 @@ class TextTestLogger(TestLoggerBase):
                 status = "unknown"
 
             status_description, status_letter, color = {
-                "success" : ('ok', '.', self.GREEN),
-                "flaky" : ('flaky', '!', self.YELLOW),
-                "fail" : ('FAIL', 'F', self.RED),
-                "error" : ('ERROR', 'E', self.RED),
-                "interrupted" : ('INTERRUPTED', '-', self.YELLOW),
-                "unknown" : ('UNKNOWN', '?', None),
+                "success": ('ok', '.', self.GREEN),
+                "flaky": ('flaky', '!', self.YELLOW),
+                "fail": ('FAIL', 'F', self.RED),
+                "error": ('ERROR', 'E', self.RED),
+                "interrupted": ('INTERRUPTED', '-', self.YELLOW),
+                "unknown": ('UNKNOWN', '?', None),
             }[status]
 
             if status in ('fail', 'error'):
@@ -243,9 +245,9 @@ class TextTestLogger(TestLoggerBase):
 
         total_test_time = reduce(
             operator.add,
-            (result['run_time'] for result in (successful+failed+interrupted)),
+            (result['run_time'] for result in (successful + failed + interrupted)),
             0,
-            )
+        )
         self.writeln("(Total test time %.2fs)" % total_test_time)
 
 
@@ -256,6 +258,7 @@ class ColorlessTextTestLogger(TextTestLogger):
 
 class TestResultGrabberHandler(logging.Handler):
     """Logging handler to store log message during a test run"""
+
     def emit(self, record):
         raise Exception(repr(record))
 

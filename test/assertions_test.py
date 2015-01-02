@@ -70,6 +70,7 @@ class AssertEqualTestCase(TestCase):
     def test_unicode_diff(self):
         ascii_string = 'abc'
         unicode_string = u'ü and some more'
+
         def assert_with_unicode_msg():
             assert_equal(unicode_string, ascii_string)
         assertions.assert_raises_and_contains(AssertionError, 'abc', assert_with_unicode_msg)
@@ -78,6 +79,7 @@ class AssertEqualTestCase(TestCase):
     def test_unicode_diff2(self):
         unicode_string = u'Thę quıćk brōwń fōx jumpęd ōvęr thę łąźy dōğ.'
         utf8_string = u'Thę quıćk brōwń fōx jumpęd ōvęr thę łąży dōğ.'
+
         def assert_with_unicode_msg():
             assertions.assert_equal(unicode_string, utf8_string)
         assertions.assert_raises_and_contains(AssertionError, 'łą<ź>y', assert_with_unicode_msg)
@@ -86,6 +88,7 @@ class AssertEqualTestCase(TestCase):
     def test_unicode_diff3(self):
         unicode_string = u'münchen'
         utf8_string = unicode_string.encode('utf8')
+
         def assert_with_unicode_msg():
             assert_equal(unicode_string, utf8_string)
         assertions.assert_raises_and_contains(AssertionError, r"l: u'm\xfcnchen'", assert_with_unicode_msg)
@@ -96,6 +99,7 @@ class AssertEqualTestCase(TestCase):
     def test_bytes_diff(self):
         byte_string1 = 'm\xeenchen'
         byte_string2 = 'm\xaanchen'
+
         def assert_with_unicode_msg():
             assert_equal(byte_string1, byte_string2)
         assertions.assert_raises_and_contains(AssertionError, r"l: 'm\xeenchen'", assert_with_unicode_msg)
@@ -106,6 +110,7 @@ class AssertEqualTestCase(TestCase):
     def test_utf8_diff(self):
         utf8_string1 = u'münchen'.encode('utf8')
         utf8_string2 = u'mënchen'.encode('utf8')
+
         def assert_with_unicode_msg():
             assert_equal(utf8_string1, utf8_string2)
         for content in (
@@ -432,8 +437,10 @@ class AssertRaisesAsCallableTestCase(TestCase):
             assert_not_reached('ValueError should have been raised')
 
     def test_callable_is_called_with_all_arguments(self):
-        class GoodArguments(Exception): pass
+        class GoodArguments(Exception):
+            pass
         arg1, arg2, kwarg = object(), object(), object()
+
         def check_arguments(*args, **kwargs):
             assert_equal((arg1, arg2), args)
             assert_equal({'kwarg': kwarg}, kwargs)
@@ -479,8 +486,11 @@ class AssertRaisesSuchThatTestCase(TestCase):
         """Tests that the callable form works properly, with all arguments
         passed through."""
         message_is_foo = lambda e: assert_equal(str(e), 'foo')
-        class GoodArguments(Exception): pass
+
+        class GoodArguments(Exception):
+            pass
         arg1, arg2, kwarg = object(), object(), object()
+
         def check_arguments(*args, **kwargs):
             assert_equal((arg1, arg2), args)
             assert_equal({'kwarg': kwarg}, kwargs)
@@ -489,7 +499,8 @@ class AssertRaisesSuchThatTestCase(TestCase):
 
 
 class AssertRaisesExactlyTestCase(TestCase):
-    class MyException(ValueError): pass
+    class MyException(ValueError):
+        pass
 
     def test_passes_when_correct_exception_is_raised(self):
         with assertions.assert_raises_exactly(self.MyException, "first", "second"):
@@ -501,7 +512,8 @@ class AssertRaisesExactlyTestCase(TestCase):
                 raise self.MyException("red", "blue")
 
     def test_fails_with_different_class(self):
-        class SpecialException(self.MyException): pass
+        class SpecialException(self.MyException):
+            pass
 
         with assertions.assert_raises(AssertionError):
             with assertions.assert_raises_exactly(self.MyException, "first", "second"):
@@ -513,7 +525,8 @@ class AssertRaisesExactlyTestCase(TestCase):
                 raise self.MyException("first", "second")
 
     def test_unexpected_exception_passes_through(self):
-        class DifferentException(Exception): pass
+        class DifferentException(Exception):
+            pass
 
         with assertions.assert_raises(DifferentException):
             with assertions.assert_raises_exactly(self.MyException, "first", "second"):
@@ -542,8 +555,10 @@ class AssertRaisesAndContainsTestCase(TestCase):
             assert_not_reached('ValueError should have been raised')
 
     def test_callable_is_called_with_all_arguments(self):
-        class GoodArguments(Exception): pass
+        class GoodArguments(Exception):
+            pass
         arg1, arg2, kwarg = object(), object(), object()
+
         def check_arguments(*args, **kwargs):
             assert_equal((arg1, arg2), args)
             assert_equal({'kwarg': kwarg}, kwargs)
@@ -608,7 +623,7 @@ class AssertDictSubsetTestCase(TestCase):
 
     def test_message_on_fail(self):
         superset = {'one': 1, 'two': 2, 'three': 3}
-        subset = {'one': 2, 'two':2}
+        subset = {'one': 2, 'two': 2}
         expected = "expected [subset has:{'one': 2}, superset has:{'one': 1}]"
 
         try:
@@ -676,14 +691,14 @@ class AssertEmptyTestCase(TestCase):
         elements = [1, 2, 3, 4, 5]
         iterable = (i for i in elements)
         expected_message = "iterable %s was unexpectedly non-empty. elements: %s" \
-                         % (iterable, elements)
+            % (iterable, elements)
 
         def message_has_whole_iterable_sample(exception):
             assertions.assert_equal(str(exception), expected_message)
 
         with assertions.assert_raises_such_that(
                 AssertionError, message_has_whole_iterable_sample):
-            assertions.assert_empty(iterable, max_elements_to_print=len(elements)+1)
+            assertions.assert_empty(iterable, max_elements_to_print=len(elements) + 1)
 
     def test_max_elements_to_print_eq_len_means_whole_iterable_sample_message(self):
         """
@@ -693,7 +708,7 @@ class AssertEmptyTestCase(TestCase):
         elements = [1, 2, 3, 4, 5]
         iterable = (i for i in elements)
         expected_message = "iterable %s was unexpectedly non-empty. elements: %s" \
-                         % (iterable, elements)
+            % (iterable, elements)
 
         def message_has_whole_iterable_sample(exception):
             assertions.assert_equal(str(exception), expected_message)
@@ -711,7 +726,7 @@ class AssertEmptyTestCase(TestCase):
         iterable = (i for i in elements)
         max_elements_to_print = len(elements) - 1
         expected_message = "iterable %s was unexpectedly non-empty. first %i elements: %s" \
-                         % (iterable, max_elements_to_print, elements[:max_elements_to_print])
+            % (iterable, max_elements_to_print, elements[:max_elements_to_print])
 
         def message_has_whole_iterable_sample(exception):
             assertions.assert_equal(str(exception), expected_message)

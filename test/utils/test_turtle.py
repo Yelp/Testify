@@ -16,6 +16,7 @@
 from testify import *
 from testify.contrib.doctestcase import DocTestCase
 
+
 class TurtleTestCase(TestCase):
     @setup
     def build_turtle(self):
@@ -40,12 +41,12 @@ class TurtleTestCase(TestCase):
         assert_call(self.leonardo, 0, 1, 2, 3, quatro=4)
         self.leonardo(5, six=6)
         assert_call(self.leonardo, 1, 5, six=6)
-    
+
     def test_attribute_setting(self):
         """Check that we can set attributes and pull them back out"""
         self.leonardo.color = "blue"
         assert_equal(self.leonardo.color, "blue")
-    
+
     def test_attribute_persistence(self):
         """When an attribute is built, it should be persisted"""
         weapon = self.leonardo.weapon

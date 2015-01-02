@@ -132,7 +132,7 @@ class TestCase(object):
         self.__suites_require = kwargs.get('suites_require', set())
         self.__name_overrides = kwargs.get('name_overrides', None)
 
-        TestResult.debug = kwargs.get('debugger') # sorry :(
+        TestResult.debug = kwargs.get('debugger')  # sorry :(
 
         # callbacks for various stages of execution, used for stuff like logging
         self.__callbacks = defaultdict(list)
@@ -348,11 +348,20 @@ class TestCase(object):
         for callback in self.__callbacks[event]:
             callback(result.to_dict())
 
-    def classSetUp(self): pass
-    def setUp(self): pass
-    def tearDown(self): pass
-    def classTearDown(self): pass
-    def runTest(self): pass
+    def classSetUp(self):
+        pass
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def classTearDown(self):
+        pass
+
+    def runTest(self):
+        pass
 
 
 class TestifiedUnitTest(TestCase, unittest.TestCase):

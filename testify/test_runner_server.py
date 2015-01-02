@@ -29,6 +29,7 @@ import logging
 import Queue
 import time
 
+
 class AsyncDelayedQueue(object):
     def __init__(self):
         self.test_queue = Queue.PriorityQueue()
@@ -108,6 +109,7 @@ class AsyncDelayedQueue(object):
         except Queue.Empty:
             pass
 
+
 class TestRunnerServer(TestRunner):
     def __init__(self, *args, **kwargs):
         self.serve_port = kwargs.pop('serve_port')
@@ -119,13 +121,13 @@ class TestRunnerServer(TestRunner):
         self.disable_requeueing = kwargs['options'].disable_requeueing
 
         self.pair_queue = AsyncDelayedQueue()
-        self.checked_out = {} # Keyed on class path (module class).
-        self.failed_rerun_methods = set() # Set of (class_path, method) who have failed.
-        self.timeout_rerun_methods = set() # Set of (class_path, method) who were sent to a client but results never came.
-        self.previous_run_results = {} # Keyed on (class_path, method), values are result dictionaries.
-        self.runners = set() # The set of runner_ids who have asked for tests.
-        self.runners_outstanding = set() # The set of runners who have posted results but haven't asked for the next test yet.
-        self.shutting_down = False # Whether shutdown() has been called.
+        self.checked_out = {}  # Keyed on class path (module class).
+        self.failed_rerun_methods = set()  # Set of (class_path, method) who have failed.
+        self.timeout_rerun_methods = set()  # Set of (class_path, method) who were sent to a client but results never came.
+        self.previous_run_results = {}  # Keyed on (class_path, method), values are result dictionaries.
+        self.runners = set()  # The set of runner_ids who have asked for tests.
+        self.runners_outstanding = set()  # The set of runners who have posted results but haven't asked for the next test yet.
+        self.shutting_down = False  # Whether shutdown() has been called.
 
         super(TestRunnerServer, self).__init__(*args, **kwargs)
 
@@ -140,7 +142,7 @@ class TestRunnerServer(TestRunner):
 
             # if there's just one worker run the test even if it's failed there before
             if (
-                    test_dict.get('last_runner', None) != runner_id or 
+                    test_dict.get('last_runner', None) != runner_id or
                     len(self.runners) <= 1
             ):
                 self.check_out_class(runner_id, test_dict)
@@ -259,8 +261,8 @@ class TestRunnerServer(TestRunner):
                 raise
             for test_instance in discovered_tests:
                 test_dict = {
-                    'class_path' : '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
-                    'methods' : [test.__name__ for test in test_instance.runnable_test_methods()],
+                    'class_path': '%s %s' % (test_instance.__module__, test_instance.__class__.__name__),
+                    'methods': [test.__name__ for test in test_instance.runnable_test_methods()],
                 }
 
                 if test_dict['methods']:
@@ -287,7 +289,7 @@ class TestRunnerServer(TestRunner):
                 else:
                     tornado.ioloop.IOLoop.instance().add_timeout(self.last_activity_time + self.server_timeout, timeout_server)
             self.activity()
-            timeout_server() # Set the first callback.
+            timeout_server()  # Set the first callback.
 
             tornado.ioloop.IOLoop.instance().start()
 
@@ -296,7 +298,6 @@ class TestRunnerServer(TestRunner):
             report = [reporter.report() for reporter in self.test_reporters]
             return all(report)
 
-
     def activity(self):
         self.last_activity_time = time.time()
 
@@ -304,13 +305,13 @@ class TestRunnerServer(TestRunner):
         self.activity()
 
         self.checked_out[test_dict['class_path']] = {
-            'runner' : runner,
-            'class_path' : test_dict['class_path'],
-            'methods' : set(test_dict['methods']),
-            'failed_methods' : {},
-            'passed_methods' : {},
-            'start_time' : time.time(),
-            'timeout_time' : time.time() + self.runner_timeout,
+            'runner': runner,
+            'class_path': test_dict['class_path'],
+            'methods': set(test_dict['methods']),
+            'failed_methods': {},
+            'passed_methods': {},
+            'start_time': time.time(),
+            'timeout_time': time.time() + self.runner_timeout,
         }
 
         self.timeout_class(runner, test_dict['class_path'])
@@ -364,9 +365,9 @@ class TestRunnerServer(TestRunner):
 
         # Requeue failed tests
         requeue_dict = {
-            'last_runner' : runner,
-            'class_path' : d['class_path'],
-            'methods' : [],
+            'last_runner': runner,
+            'class_path': d['class_path'],
+            'methods': [],
         }
 
         for method, result_dict in requeue_methods:
@@ -413,26 +414,26 @@ class TestRunnerServer(TestRunner):
         module, _, classname = class_path.partition(' ')
 
         return {
-            'previous_run' : self.previous_run_results.get((class_path, method), None),
-            'start_time' : time.time()-self.runner_timeout,
-            'end_time' : time.time(),
-            'run_time' : float(self.runner_timeout),
-            'normalized_run_time' : "%.2fs" % (self.runner_timeout),
-            'complete': True, # We've tried running the test.
-            'success' : False,
-            'failure' : None,
-            'error' : True,
-            'interrupted' : None,
-            'exception_info' : error_message,
-            'exception_info_pretty' : error_message,
-            'exception_only' : error_message,
-            'runner_id' : runner,
-            'method' : {
-                'module' : module,
-                'class' : classname,
-                'name' : method,
-                'full_name' : "%s.%s" % (class_path, method),
-                'fixture_type' : None,
+            'previous_run': self.previous_run_results.get((class_path, method), None),
+            'start_time': time.time() - self.runner_timeout,
+            'end_time': time.time(),
+            'run_time': float(self.runner_timeout),
+            'normalized_run_time': "%.2fs" % (self.runner_timeout),
+            'complete': True,  # We've tried running the test.
+            'success': False,
+            'failure': None,
+            'error': True,
+            'interrupted': None,
+            'exception_info': error_message,
+            'exception_info_pretty': error_message,
+            'exception_only': error_message,
+            'runner_id': runner,
+            'method': {
+                'module': module,
+                'class': classname,
+                'name': method,
+                'full_name': "%s.%s" % (class_path, method),
+                'fixture_type': None,
             }
         }
 
@@ -475,13 +476,13 @@ class TestRunnerServer(TestRunner):
         if iol._running:
             if self.runners_outstanding:
                 # Stop in 5 seconds if all the runners_outstanding don't come back by then.
-                iol.add_timeout(time.time()+self.shutdown_delay_for_outstanding_runners, iol.stop)
+                iol.add_timeout(time.time() + self.shutdown_delay_for_outstanding_runners, iol.stop)
             else:
                 # Give tornado enough time to finish writing to all the clients, then shut down.
-                iol.add_timeout(time.time()+self.shutdown_delay_for_connection_close, iol.stop)
+                iol.add_timeout(time.time() + self.shutdown_delay_for_connection_close, iol.stop)
         else:
             _log.error("TestRunnerServer on port %s has been asked to shutdown but its IOLoop is not running."
-                " Perhaps it died an early death due to discovery failure." % self.serve_port
-            )
+                       " Perhaps it died an early death due to discovery failure." % self.serve_port
+                       )
 
 # vim: set ts=4 sts=4 sw=4 et:
