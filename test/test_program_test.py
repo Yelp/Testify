@@ -123,6 +123,13 @@ class TestifyRunAcceptanceTestCase(TestCase):
             test_call,
             ['python', 'testing_suite/example_test.py', 'DoesNotExist'])
 
+    def test_failure_on_interrupt(self):
+        with assert_raises(subprocess.CalledProcessError):
+            test_call([
+                'python', '-m', 'testify.test_program',
+                'test.failing_test_interrupt'
+            ])
+
 
 class TestClientServerReturnCode(TestCase):
     def test_client_returns_zero_on_success(self):

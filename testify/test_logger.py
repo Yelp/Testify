@@ -75,7 +75,13 @@ class TestLoggerBase(test_reporter.TestReporter):
         if len(self.results) == 0:
             return False
         else:
-            return bool((len(results_by_status['failed']) + len(results_by_status['unknown'])) == 0)
+            return (
+                (
+                    len(results_by_status['failed']) +
+                    len(results_by_status['interrupted']) +
+                    len(results_by_status['unknown'])
+                ) == 0
+            )
 
     def report_test_name(self, test_method):
         pass
