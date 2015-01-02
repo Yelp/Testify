@@ -24,8 +24,8 @@ def add_command_line_options(parser):
         help=(
             "Seed random for each test using this value + hash of the "
             "testclass' name. This allows tests to have random yet "
-            "reproducible numbers.",
-        )
+            "reproducible numbers."
+        ),
     )
 
 

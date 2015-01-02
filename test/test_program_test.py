@@ -83,6 +83,10 @@ class TestifyRunAcceptanceTestCase(TestCase):
 
     expected_tests = 'PASSED.  3 tests'
 
+    def test_help(self):
+        output = test_call(['python', '-m', 'testify.test_program', '--help'])
+        assert_in('Usage:', output)
+
     def test_run_testify_from_bin_list_tests(self):
         output = test_call(['bin/testify', '--list-tests', 'testing_suite'])
         assert_equal(output, self.expected_list)
