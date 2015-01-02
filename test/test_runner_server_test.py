@@ -1,3 +1,4 @@
+from __future__ import print_function
 import contextlib
 import logging
 import threading
@@ -118,7 +119,7 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
         def catch_exceptions_in_thread():
             try:
                 self.server.run()
-            except (Exception, SystemExit), exc:
+            except (Exception, SystemExit) as exc:
                 _log.error("Thread threw exception: %r" % exc)
                 raise
 
@@ -381,7 +382,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         real_result = test_result.TestResult(self.dummy_test_case.test, runner_id='foo!')
         real_result.start()
         try:
-            print 1 / 0
+            print(1 / 0)
         except:
             import sys
             real_result.end_in_failure(sys.exc_info())

@@ -94,7 +94,7 @@ class HelperFunctionsTestCase(T.TestCase):
         options.violation_dburl = 'sqlite:///fake/database'
         options.violation_dbconfig = '/fake/path/to/db/'
 
-        mocked_open = mock.Mock(spec=file)
+        mocked_open = mock.Mock()
         mocked_open.__enter__ = mock.Mock()
         mocked_open.__exit__ = mock.Mock()
         with mock.patch(

@@ -136,7 +136,7 @@ def collect(syscall, path, resolved_path):
             'syscall_args': resolved_path,
             'start_time': time.time()
         })
-    except Exception, e:
+    except Exception as e:
         # No way to recover in here, just report error and violation
         sys.stderr.write('Error collecting violation data. Error %r. Violation: %r\n' % (e, (syscall, resolved_path)))
 
@@ -283,7 +283,7 @@ class ViolationStore(object):
             testinfo.update(self.info)
             result = self.conn.execute(self.Methods.insert(), testinfo)
             self._set_last_test_id(result.lastrowid)
-        except Exception, e:
+        except Exception as e:
             logging.error('Exception inserting testinfo: %r' % e)
 
     def add_violation(self, violation):
@@ -299,7 +299,7 @@ class ViolationStore(object):
             test_id = self.get_last_test_id()
             violation.update({'test_id': test_id})
             self.conn.execute(self.Violations.insert(), violation)
-        except Exception, e:
+        except Exception as e:
             logging.error('Exception inserting violations: %r' % e)
 
     def violation_counts(self):

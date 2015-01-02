@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """This module contains the TestResult class, each instance of which holds status information for a single test method."""
-__testify = 1
+from __future__ import print_function
 import datetime
 import sys
 import time
 import traceback
 
 from testify.utils import inspection
+
+__testify = 1
 
 # If IPython is available, use it for fancy color traceback formatting
 try:
@@ -80,7 +81,7 @@ class TestResult(object):
             function()
         except (KeyboardInterrupt, SystemExit):
             raise
-        except Exception, exception:
+        except Exception as exception:
             # some code may want to use an alternative exc_info for an exception
             # (for instance, in an event loop). You can signal an alternative
             # stack to use by adding a _testify_exc_tb attribute to the
@@ -100,8 +101,8 @@ class TestResult(object):
 
     def _postmortem(self, exc_info):
         _, _, traceback = exc_info
-        print "\nDEBUGGER"
-        print self.format_exception_info()
+        print("\nDEBUGGER")
+        print(self.format_exception_info())
         try:
             import ipdb
             detected_postmortem_tool = ipdb.post_mortem

@@ -143,7 +143,7 @@ class TestRunner(object):
                 discovered_tests = discover_tests_by_buckets()
             else:
                 discovered_tests = discover_tests()
-        except test_discovery.DiscoveryError, exc:
+        except test_discovery.DiscoveryError as exc:
             for reporter in self.test_reporters:
                 reporter.test_discovery_failure(exc)
             sys.exit(1)
