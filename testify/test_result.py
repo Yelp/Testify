@@ -26,9 +26,7 @@ from testify.utils import inspection
 try:
     try:
         # IPython >= 0.11
-        from IPython.core.ultratb import ListTB
-        _hush_pyflakes = [ListTB]
-        del _hush_pyflakes
+        from IPython.core.ultratb import ListTB  # noqa
     except ImportError:
         # IPython < 0.11
         from IPython.ultraTB import ListTB

@@ -11,9 +11,7 @@ from testify.test_runner import TestRunner
 from testify.plugins.test_case_time_log import add_command_line_options, TestCaseJSONReporter
 
 try:
-    import simplejson as json
-    _hush_pyflakes = [json]
-    del _hush_pyflakes
+    import simplejson as json  # noqa
 except ImportError:
     import json
 

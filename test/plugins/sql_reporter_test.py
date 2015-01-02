@@ -2,9 +2,7 @@ from mock import patch
 import time
 
 try:
-    import simplejson as json
-    _hush_pyflakes = [json]
-    del _hush_pyflakes
+    import simplejson as json  # noqa
 except ImportError:
     import json
 

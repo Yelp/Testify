@@ -30,9 +30,7 @@ class FakeCoverage:
         pass
 
 try:
-    import coverage
-    _hush_pyflakes = [coverage]
-    del _hush_pyflakes
+    import coverage  # noqa
 except (ImportError, NameError), ex:
     coverage = None
 

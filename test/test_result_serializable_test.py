@@ -4,9 +4,7 @@ from testify import test_result
 from testify import assert_equal
 
 try:
-    import simplejson as json
-    _hush_pyflakes = [json]
-    del _hush_pyflakes
+    import simplejson as json  # noqa
 except ImportError:
     import json
 
