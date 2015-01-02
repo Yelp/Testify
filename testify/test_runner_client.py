@@ -51,10 +51,10 @@ class TestRunnerClient(TestRunner):
             response = urllib2.urlopen(url)
             d = json.load(response)
             return (d.get('class'), d.get('methods'), d['finished'])
-        except urllib2.HTTPError, e:
+        except urllib2.HTTPError as e:
             logging.warning("Got HTTP status %d when requesting tests -- bailing" % (e.code))
             return None, None, True
-        except urllib2.URLError, e:
+        except urllib2.URLError as e:
             if retry_limit > 0:
                 logging.warning(
                     "Got error %r when requesting tests, retrying in %g seconds (giving up in %g seconds)...",

@@ -34,7 +34,7 @@ After a turtle is used, it can be inspected to find out what happened:
   [((), {'weapon': 'katanas'})]
 
   >>> for args, kwargs in leonardo.attack:
-  ...     print kwargs.get('weapon')
+  ...     print(kwargs.get('weapon'))
   katanas
 
 To control the behavior of a turtle (for example, if you want some function call to return False instead)
@@ -45,7 +45,7 @@ just set the attribute yourself
 
 Then you can call:
   >>> if not raphael.is_shell_shocked():
-  ...     print raphael.color
+  ...     print(raphael.color)
   red
 
 "Turtles all the way down": http://en.wikipedia.org/wiki/Turtles_all_the_way_down

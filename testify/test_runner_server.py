@@ -6,8 +6,6 @@ receive tests to run, and send back their results.
 The server keeps track of the overall status of the run and manages timeouts and retries.
 """
 
-from __future__ import with_statement
-
 import logging
 
 from test_fixtures import FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS
@@ -242,7 +240,7 @@ class TestRunnerServer(TestRunner):
 
                 try:
                     self.report_result(runner_id, result)
-                except ValueError, e:
+                except ValueError as e:
                     return handler.send_error(409, reason=str(e))
 
                 return handler.finish("kthx")
@@ -259,7 +257,7 @@ class TestRunnerServer(TestRunner):
             discovered_tests = []
             try:
                 discovered_tests = self.discover()
-            except Exception, exc:
+            except Exception as exc:
                 _log.debug("Test discovery blew up!: %r" % exc)
                 raise
             for test_instance in discovered_tests:

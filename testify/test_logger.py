@@ -18,7 +18,6 @@ __testify = 1
 
 import collections
 import logging
-import operator
 import subprocess
 import sys
 
@@ -123,7 +122,7 @@ class TextTestLogger(TestLoggerBase):
                 output = subprocess.Popen(["tput", "colors"], stdout=subprocess.PIPE).communicate()[0]
                 if int(output.strip()) >= 8:
                     self.use_color = True
-            except Exception, e:
+            except Exception as e:
                 if self.options.verbosity >= VERBOSITY_VERBOSE:
                     self.writeln("Failed to find color support: %r" % e)
 
@@ -143,8 +142,8 @@ class TextTestLogger(TestLoggerBase):
         if not color or not self.use_color:
             return message
         else:
-            start_color = chr(0033) + '[1;%sm' % color
-            end_color = chr(0033) + '[m'
+            start_color = '\033[1;%sm' % color
+            end_color = '\033[m'
             return start_color + message + end_color
 
     def test_discovery_failure(self, exc):
@@ -245,10 +244,8 @@ class TextTestLogger(TestLoggerBase):
 
         self.write("%s, %s.  " % (passed_string, failed_string))
 
-        total_test_time = reduce(
-            operator.add,
+        total_test_time = sum(
             (result['run_time'] for result in (successful + failed + interrupted)),
-            0,
         )
         self.writeln("(Total test time %.2fs)" % total_test_time)
 

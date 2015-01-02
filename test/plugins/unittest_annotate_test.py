@@ -70,7 +70,7 @@ class DatabaseTestCase(testify.TestCase):
         This method will setup test fixtures for these three tables
         """
         # Build denormalized table - 10 entries
-        times = xrange(1, 10)
+        times = range(1, 10)
         methods_with_test_attribute = (2, 3)
         violations_with_tests = (1, 2, 3)
 
@@ -186,7 +186,7 @@ class DatabaseTestCase(testify.TestCase):
         self.options_db.violation_dburl = 'sqlite:///fake/database'
         self.options_db.violation_dbconfig = '/fake/path/to/db/'
 
-        mocked_open = mock.Mock(spec=file)
+        mocked_open = mock.Mock()
         mocked_open.__enter__ = mock.Mock()
         mocked_open.__exit__ = mock.Mock()
         mock_openfile.return_value = mocked_open
@@ -202,7 +202,7 @@ class DatabaseTestCase(testify.TestCase):
         self.options_db.unittest_db_url = 'sqlite:///fake/database'
         self.options_db.unittest_db_config = '/fake/path/to/db/'
 
-        mocked_open = mock.Mock(spec=file)
+        mocked_open = mock.Mock()
         mocked_open.__enter__ = mock.Mock()
         mocked_open.__exit__ = mock.Mock()
         mock_openfile.return_value = mocked_open

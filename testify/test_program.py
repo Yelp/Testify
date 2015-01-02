@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import with_statement
-
+from __future__ import print_function
 from collections import defaultdict
 from optparse import OptionParser
 import os
@@ -91,9 +90,9 @@ def load_plugins():
                         plugin_modules.append(imp.load_module(mod_name, file, full_file_path, suffix_map.get(suffix)))
                     except TypeError:
                         continue
-                    except ImportError, e:
-                        print >>sys.stderr, "Failed to import plugin %s: %r" % (full_file_path, e)
-                    except Exception, e:
+                    except ImportError as e:
+                        print("Failed to import plugin %s: %r" % (full_file_path, e), file=sys.stderr)
+                    except Exception as e:
                         raise Exception('whaa?: %r' % e)
     return plugin_modules
 

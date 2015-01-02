@@ -303,12 +303,12 @@ class SQLReporter(test_reporter.TestReporter):
             conn.execute(self.TestResults.insert(),
                          [self._create_row_to_insert(conn, result, result.get('previous_run_id', None)) for result in chunk]
                          )
-        except Exception, e:
+        except Exception as e:
             logging.exception("Exception while reporting results: " + repr(e))
             self.ok = False
         finally:
             # Do this in finally so we don't hang at report() time if we get errors.
-            for _ in xrange(len(chunk)):
+            for _ in range(len(chunk)):
                 self.result_queue.task_done()
 
     def report_results(self):
@@ -332,11 +332,11 @@ class SQLReporter(test_reporter.TestReporter):
             for result in filter(lambda x: x['previous_run'], results):
                 try:
                     result['previous_run_id'] = self._insert_single_run(conn, result['previous_run'])
-                except Exception, e:
+                except Exception as e:
                     logging.exception("Exception while reporting results: " + repr(e))
                     self.ok = False
 
-            chunks = (results[i:i + self.batch_size] for i in xrange(0, len(results), self.batch_size))
+            chunks = (results[i:i + self.batch_size] for i in range(0, len(results), self.batch_size))
 
             for chunk in chunks:
                 self._report_results_by_chunk(conn, chunk)

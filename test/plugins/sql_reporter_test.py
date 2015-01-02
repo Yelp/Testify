@@ -180,7 +180,7 @@ class SQLReporterTestCase(SQLReporterBaseTestCase):
         conn = self.reporter.conn
 
         test_case = DummyTestCase()
-        results = [TestResult(test_case.test_pass) for _ in xrange(3)]
+        results = [TestResult(test_case.test_pass) for _ in range(3)]
 
         previous_run = None
         for result in results:
