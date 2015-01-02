@@ -9,6 +9,7 @@ from testify.test_discovery import DiscoveryError
 
 _log = logging.getLogger('testify')
 
+
 class BrokenImportTestCase(TestCase):
     __test__ = False
 

@@ -13,8 +13,10 @@
 # limitations under the License.
 import cProfile
 
+
 def add_command_line_options(parser):
     parser.add_option("-p", "--profile", action="store_true", dest="profile")
+
 
 def run_test_case(options, test_case, runnable):
     if options.profile:
@@ -22,4 +24,3 @@ def run_test_case(options, test_case, runnable):
         return cProfile.runctx('runnable()', globals(), locals(), cprofile_filename)
     else:
         return runnable()
-    

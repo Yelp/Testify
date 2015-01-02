@@ -15,10 +15,12 @@ from testify import test_discovery
 
 HERE = dirname(abspath(__file__))
 
+
 class DiscoveryTestCase(TestCase):
     def discover(self, path):
         # Exhaust the generator to catch exceptions
         return [mod for mod in test_discovery.discover(path)]
+
 
 def relative(func):
     'decorator for tests that rely on relative paths'
@@ -33,10 +35,12 @@ def relative(func):
             chdir(cwd)
     return wrapped
 
+
 class TestDiscoverDottedPath(DiscoveryTestCase):
     @relative
     def test_dotted_path(self):
         assert self.discover('test_suite_subdir.define_testcase')
+
 
 class TestDiscoverFilePath(DiscoveryTestCase):
     @relative
@@ -58,7 +62,6 @@ class TestDiscoverFilePath(DiscoveryTestCase):
 class TestDiscoverIgnoreImportedThings(DiscoveryTestCase):
     @relative
     def test_imported_things_are_ignored(self):
-        #TODO CHANGE MY NAME
         discovered_imported = list(test_discovery.discover('test_suite_subdir.import_testcase'))
         discovered_actually_defined_in_module = list(test_discovery.discover('test_suite_subdir.define_testcase'))
 

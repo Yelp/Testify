@@ -147,6 +147,7 @@ class UnitTestUntested(UnitTest):
 
 class UnitTestTestYoDawg(TestCase):
     """Make sure we actually detect and run all steps in unittest.TestCases."""
+
     def test_unit_test_status(self):
         runner = test_runner.TestRunner(UnitTest)
         assert runner.run()
@@ -157,6 +158,7 @@ class UnitTestTestYoDawg(TestCase):
         assert UnitTestUntested.status == [False] * 6, UnitTestUntested.status
 
 # The following cases test unittest.TestCase inheritance, fixtures and mixins
+
 
 class BaseUnitTest(unittest.TestCase):
     done = False
@@ -183,11 +185,11 @@ class DoNothingMixin(object):
 class DerivedUnitTestMixinWithFixture(BaseUnitTest):
     @setup
     def set_bar(self):
-        assert self.foo # setUp runs first
+        assert self.foo  # setUp runs first
         self.bar = True
 
     @teardown
-    def not_done(self): # tearDown runs last
+    def not_done(self):  # tearDown runs last
         assert not self.done
 
     @class_teardown
@@ -252,7 +254,9 @@ class ClobberLetTest(TestCase):
 
 class CallbacksGetCalledTest(TestCase):
     def test_class_fixtures_get_reported(self):
-        """Make a test case, register a bunch of callbacks for class fixtures on it, and make sure the callbacks are all run in the right order."""
+        """Make a test case, register a bunch of callbacks for class fixtures
+        on it, and make sure the callbacks are all run in the right order.
+        """
         class InnerTestCase(TestCase):
             def classSetUp(self):
                 pass
@@ -280,6 +284,7 @@ class CallbacksGetCalledTest(TestCase):
         )
 
         calls_to_callback = []
+
         def make_callback(event):
             def callback(result):
                 calls_to_callback.append((event, result['method']['name'] if result else None))
@@ -365,20 +370,23 @@ class FailingTeardownMethodsTest(TestCase):
                 RegexMatcher('  File "(\./)?test/test_case_test\.py", line \d+, in second_teardown'),
                 '    assert False',
                 'AssertionError',
-                '', # Ends with newline.
+                '',  # Ends with newline.
             ]
         )
+
 
 class RegexMatcher(object):
     def __init__(self, regex):
         import re
         self.__re = re.compile(regex)
+
     def __eq__(self, other):
         return bool(self.__re.match(other))
+
     def __repr__(self):
         return '%s(%r)' % (
-                type(self).__name__,
-                self.__re.pattern,
+            type(self).__name__,
+            self.__re.pattern,
         )
 
 
@@ -435,13 +443,13 @@ class ExceptionDuringClassSetupTest(TestCase):
     def test_parent(self):
         test_case = self.FakeParentTestCase()
         test_case.run()
-        expected = ["parent class_setup", "parent class_teardown",]
+        expected = ["parent class_setup", "parent class_teardown", ]
         assert_equal(expected, test_case.run_methods)
 
     def test_child(self):
         test_case = self.FakeChildTestCase()
         test_case.run()
-        expected = ["parent class_setup", "child class_teardown", "parent class_teardown",]
+        expected = ["parent class_setup", "child class_teardown", "parent class_teardown", ]
         assert_equal(expected, test_case.run_methods)
 
 
@@ -481,14 +489,14 @@ class ExceptionDuringSetupTest(TestCase):
     def test_parent(self):
         test_case = self.FakeParentTestCase()
         test_case.run()
-        expected = ["parent setup", "parent teardown",]
+        expected = ["parent setup", "parent teardown", ]
         assert_equal(expected, test_case.run_methods)
 
     def test_child(self):
         test_case = self.FakeChildTestCase()
         test_case.run()
         # FakeChildTestCase has two test methods (test_parent and test_child), so the fixtures are run twice.
-        expected = ["parent setup", "child teardown", "parent teardown",] * 2
+        expected = ["parent setup", "child teardown", "parent teardown", ] * 2
         assert_equal(expected, test_case.run_methods)
 
 
@@ -528,7 +536,7 @@ class ExceptionDuringClassTeardownTest(TestCase):
     def test_parent(self):
         test_case = self.FakeParentTestCase()
         test_case.run()
-        expected = ["parent class_setup", "parent test method", "parent class_teardown",]
+        expected = ["parent class_setup", "parent test method", "parent class_teardown", ]
         assert_equal(expected, test_case.run_methods)
 
     def test_child(self):
@@ -581,7 +589,7 @@ class ExceptionDuringTeardownTest(TestCase):
     def test_parent(self):
         test_case = self.FakeParentTestCase()
         test_case.run()
-        expected = ["parent setup", "parent test method", "parent teardown",]
+        expected = ["parent setup", "parent test method", "parent teardown", ]
         assert_equal(expected, test_case.run_methods)
 
     def test_child(self):
@@ -619,7 +627,7 @@ class NoAttributesNamedTest(TestCase):
         test_case = self.FakeTestCase()
         expected_attributes = sorted([
             "test_result",     # Part of the public API (its name is unfortunate but e.g. Selenium relies on it)
-            "test_your_might", # "Actual" test method in the test case
+            "test_your_might",  # "Actual" test method in the test case
         ])
         actual_attributes = sorted([attribute for attribute in dir(test_case) if attribute.startswith("test")])
         assert_equal(expected_attributes, actual_attributes)

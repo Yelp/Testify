@@ -10,15 +10,14 @@ from testify.test_runner import TestRunner
 from testify.plugins.http_reporter import HTTPReporter
 
 try:
-    import simplejson as json
-    _hush_pyflakes = [json]
-    del _hush_pyflakes
+    import simplejson as json  # noqa
 except ImportError:
     import json
 
 
 class DummyTestCase(TestCase):
     __test__ = False
+
     def test(self):
         pass
 
@@ -40,7 +39,7 @@ class HTTPReporterTestCase(TestCase):
                 except Queue.Empty:
                     handler.finish("kthx")
 
-            def get_error_html(handler, status, **kwargs    ):
+            def get_error_html(handler, status, **kwargs):
                 return "error"
 
         app = tornado.web.Application([(r"/results", ResultsHandler)])
@@ -50,7 +49,7 @@ class HTTPReporterTestCase(TestCase):
 
         iol = tornado.ioloop.IOLoop.instance()
         thread = threading.Thread(target=iol.start)
-        thread.daemon = True # If for some reason this thread gets blocked, don't prevent quitting.
+        thread.daemon = True  # If for some reason this thread gets blocked, don't prevent quitting.
         thread.start()
 
         self.connect_addr = "localhost:%d" % portnum
@@ -61,9 +60,9 @@ class HTTPReporterTestCase(TestCase):
         thread.join()
 
     def get_port_number(self, server):
-        if hasattr(server, "_sockets"): # tornado > 2.0
+        if hasattr(server, "_sockets"):  # tornado > 2.0
             _socket = server._sockets.values()[0]
-        else: # tornado 1.2 or earlier
+        else:  # tornado 1.2 or earlier
             _socket = server._socket
         return _socket.getsockname()[1]
 
@@ -99,7 +98,10 @@ class HTTPReporterTestCase(TestCase):
         assert_equal(test_case_result['method']['name'], 'run')
 
     def test_http_reporter_class_teardown_exception(self):
-        runner = TestRunner(ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, test_reporters=[HTTPReporter(None, self.connect_addr, 'runner1')])
+        runner = TestRunner(
+            ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase,
+            test_reporters=[HTTPReporter(None, self.connect_addr, 'runner1')],
+        )
         runner.run()
 
         (test1_method_result, test2_method_result, class_teardown_result, test_case_result) = self.results_reported

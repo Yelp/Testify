@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 
-__author__="lenza"
-__date__ ="$May 25, 2009"
+__author__ = "lenza"
+__date__ = "$May 25, 2009"
 
 """This is a module for gathing code coverage information.
 Use coverage.start() to begin collecting information, and coverage.stop() to end collection.
@@ -9,6 +9,7 @@ See https://trac.yelpcorp.com/wiki/TestingCoverage for more information
 """
 
 import sys
+
 
 class FakeCoverage:
     warning_printed = False
@@ -21,22 +22,23 @@ class FakeCoverage:
             cls.warning_printed = True
 
     @staticmethod
-    def stop(): pass
+    def stop():
+        pass
 
     @staticmethod
-    def save(): pass
+    def save():
+        pass
 
 try:
-    import coverage
-    _hush_pyflakes = [coverage]
-    del _hush_pyflakes
+    import coverage  # noqa
 except (ImportError, NameError), ex:
     coverage = None
 
 started = False
 coverage_instance = None
 
-def start(testcase_name = None):
+
+def start(testcase_name=None):
     global started
     global coverage_instance
     assert not started
@@ -47,6 +49,7 @@ def start(testcase_name = None):
 
     coverage_instance.start()
     started = True
+
 
 def stop():
     global started
@@ -78,8 +81,10 @@ if __name__ == "__main__":
     if diff_file is None:
         coverage_instance.html_report(morfs=None, directory=directory, ignore_errors=False, omit_prefixes=None)
     else:
-        coverage_instance.svnhtml_report(morfs=None, directory=directory, ignore_errors=False, omit_prefixes=None, filename=diff_file)
-
-    #coverage_result = coverage_entry_point()
-    #sys.exit(coverage_result)
-
+        coverage_instance.svnhtml_report(
+            morfs=None,
+            directory=directory,
+            ignore_errors=False,
+            omit_prefixes=None,
+            filename=diff_file,
+        )

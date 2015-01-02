@@ -9,10 +9,10 @@ class ClientDiscoveryTestCase(testify.TestCase):
     @testify.class_setup
     def init_test_runner_client(self):
         self.client = TestRunnerClient(
-                None,
-                connect_addr=None,
-                runner_id=None,
-                options=testify.turtle.Turtle(),
+            None,
+            connect_addr=None,
+            runner_id=None,
+            options=testify.turtle.Turtle(),
         )
 
     def discover(self, class_path):

@@ -4,11 +4,10 @@ from testify import test_result
 from testify import assert_equal
 
 try:
-    import simplejson as json
-    _hush_pyflakes = [json]
-    del _hush_pyflakes
+    import simplejson as json  # noqa
 except ImportError:
     import json
+
 
 class TestResultIsSerializableTestCase(test_case.TestCase):
     class NullTestCase(test_case.TestCase):
@@ -44,8 +43,6 @@ class TestResultIsSerializableTestCase(test_case.TestCase):
             result.to_dict(),
             json.loads(json.dumps(result.to_dict()))
         )
-
-
 
 
 if __name__ == '__main__':

@@ -261,7 +261,7 @@ def assert_equal(lval, rval, message=None):
     else:
         assert lval == rval, \
             "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
-                (lval, rval, _diff_message(lval, rval))
+            (lval, rval, _diff_message(lval, rval))
 
 
 assert_equals = assert_equal
@@ -270,21 +270,21 @@ assert_equals = assert_equal
 def assert_true(lval, message=None):
     """Assert that lval evaluates to True, not identity."""
     if message:
-        assert bool(lval) == True, message
+        assert bool(lval), message
     else:
-        assert bool(lval) == True, \
+        assert bool(lval), \
             "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
-                (lval, True, _diff_message(lval, True))
+            (lval, True, _diff_message(lval, True))
 
 
 def assert_false(lval, message=None):
     """Assert that lval evaluates to False, not identity."""
     if message:
-        assert bool(lval) == False, message
+        assert not bool(lval), message
     else:
-        assert bool(lval) == False, \
+        assert not bool(lval), \
             "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
-                (lval, False, _diff_message(lval, False))
+            (lval, False, _diff_message(lval, False))
 
 
 def assert_almost_equal(lval, rval, digits, message=None):
@@ -361,7 +361,8 @@ def assert_in(item, sequence, message="assertion failed: expected %(item)r in %(
         warnings.warn("msg is deprecated", DeprecationWarning)
         message = msg
 
-    assert item in sequence, message % {'item':item, 'sequence':sequence}
+    assert item in sequence, message % {'item': item, 'sequence': sequence}
+
 
 def assert_not_in(item, sequence, message="assertion failed: expected %(item)r not in %(sequence)r", msg=None):
     """Assert that the item is not in the sequence."""
@@ -369,7 +370,7 @@ def assert_not_in(item, sequence, message="assertion failed: expected %(item)r n
         warnings.warn("msg is deprecated", DeprecationWarning)
         message = msg
 
-    assert item not in sequence, message % {'item':item, 'sequence':sequence}
+    assert item not in sequence, message % {'item': item, 'sequence': sequence}
 
 
 def assert_all_in(left, right):
@@ -472,8 +473,8 @@ def assert_not_empty(iterable, message=None):
     else:
         # The else clause of a for loop is reached iff you break out of the loop.
         raise AssertionError(message if message else
-            "iterable {0} is unexpectedly empty".format(iterable)
-        )
+                             "iterable {0} is unexpectedly empty".format(iterable)
+                             )
 
 
 def assert_length(sequence, expected, message=None):
@@ -496,7 +497,7 @@ def assert_is(left, right, message="expected %(left)r is %(right)r", msg=None):
         warnings.warn("msg is deprecated", DeprecationWarning)
         message = msg
 
-    assert left is right, message % {'left':left, 'right': right}
+    assert left is right, message % {'left': left, 'right': right}
 
 
 def assert_is_not(left, right, message="expected %(left)r is not %(right)r", msg=None):
@@ -505,7 +506,7 @@ def assert_is_not(left, right, message="expected %(left)r is not %(right)r", msg
         warnings.warn("msg is deprecated", DeprecationWarning)
         message = msg
 
-    assert left is not right, message % {'left':left, 'right':right}
+    assert left is not right, message % {'left': left, 'right': right}
 
 
 def assert_all_match_regex(pattern, values, message="expected %(value)r to match %(pattern)r", msg=None):
@@ -523,7 +524,7 @@ def assert_all_match_regex(pattern, values, message="expected %(value)r to match
         message = msg
 
     for value in values:
-        assert re.match(pattern, value), message % {'value':value, 'pattern':pattern}
+        assert re.match(pattern, value), message % {'value': value, 'pattern': pattern}
 
 
 def assert_match_regex(pattern, value, *args, **kwargs):
@@ -549,7 +550,7 @@ def assert_any_match_regex(pattern, values, message="expected at least one %(val
         if re.match(pattern, value) is not None:
             return
 
-    raise AssertionError(message % {'values':values, 'pattern':pattern})
+    raise AssertionError(message % {'values': values, 'pattern': pattern})
 
 
 def assert_all_not_match_regex(pattern, values, message="expected %(value)r to not match %(pattern)r", msg=None):
@@ -567,10 +568,15 @@ def assert_all_not_match_regex(pattern, values, message="expected %(value)r to n
         message = msg
 
     for value in values:
-        assert not re.match(pattern, value), message % {'value':value, 'pattern':pattern}
+        assert not re.match(pattern, value), message % {'value': value, 'pattern': pattern}
 
 
-def assert_sets_equal(left, right, message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]", msg=None):
+def assert_sets_equal(
+        left,
+        right,
+        message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]",
+        msg=None,
+):
     """Assert that two sets are equal."""
     if msg:
         warnings.warn("msg is deprecated", DeprecationWarning)
@@ -587,7 +593,13 @@ def assert_sets_equal(left, right, message="expected %(left)r == %(right)r [left
         })
 
 
-def assert_dicts_equal(left, right, ignore_keys=None, message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]", msg=None):
+def assert_dicts_equal(
+        left,
+        right,
+        ignore_keys=None,
+        message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]",
+        msg=None,
+):
     """Assert that two dictionarys are equal (optionally ignoring certain keys)."""
     if msg:
         warnings.warn("msg is deprecated", DeprecationWarning)

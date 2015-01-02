@@ -139,7 +139,6 @@ class HelperFunctionsTestCase(T.TestCase):
                 }
                 mock_ctx.store.add_violation.assert_called_with(fake_violation_data)
 
-
     def test_run_in_catbox(self):
         with mock.patch('testify.plugins.violation_collector.catbox') as mock_catbox:
             mock_method = mock.Mock()
@@ -209,10 +208,10 @@ class ViolationReporterTestCase(T.TestCase):
     def setup_reporter(self):
         self.mock_result = mock.MagicMock()
         result_attrs = {
-            'method' : 'mock_method',
-            'class'  : 'mock_class',
-            'name'   : 'mock_name',
-            'module' : 'mock_module',
+            'method': 'mock_method',
+            'class': 'mock_class',
+            'name': 'mock_name',
+            'module': 'mock_module',
         }
         self.mock_result.configure_mocks(**result_attrs)
         store = mock.Mock()
@@ -377,7 +376,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
         if not catbox:
             msg = 'Violation collection pipeline tests require catbox.\n'
             msg_pcre = 'https://github.com/Yelp/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
-            raise ImportError, msg + msg_pcre
+            raise ImportError(msg + msg_pcre)
 
         with sqlite_store() as store:
             with mocked_reporter(store) as reporter:

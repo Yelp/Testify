@@ -23,14 +23,14 @@ class TestResultTestCase(TestCase):
 
     def _append_exc_info(self, exc_type):
         value, tb = mock.Mock(), mock.Mock(tb_next=None)
-        tb.tb_frame.f_globals.has_key.return_value = False
+        tb.tb_frame.f_globals = {}
         self.test_result.exception_infos.append((exc_type, value, tb))
         return value, tb
 
     @mock.patch('traceback.format_exception', wraps=fake_format_exception)
     def test_frame_stripping(self, mock_format_exception):
         """On assertion error, testify strips head and tail frame which originate from testify."""
-        test_result = TestResult(lambda:'wat', runner_id='foo!')
+        test_result = TestResult(lambda: 'wat', runner_id='foo!')
         test_result.start()
 
         root_tb = tb = mock.Mock()
@@ -38,7 +38,8 @@ class TestResultTestCase(TestCase):
         for testify_frame in testify_frames:
             tb.tb_next = mock.Mock()
             tb = tb.tb_next
-            tb.configure_mock(**{'tb_frame.f_globals.has_key.return_value': testify_frame})
+            f_globals = {'__testify': True} if testify_frame else {}
+            tb.configure_mock(**{'tb_frame.f_globals': f_globals})
         tb.tb_next = None
         tb = root_tb.tb_next
 
@@ -80,25 +81,28 @@ class TestResultTestCase(TestCase):
 
     @mock.patch('traceback.format_exception', wraps=fake_format_exception)
     def test_format_exception_info_multiple(self, mock_format_exception):
-        class Error1(Exception): pass
-        class Error2(Exception): pass
+        class Error1(Exception):
+            pass
+
+        class Error2(Exception):
+            pass
 
         value1, tb1 = self._append_exc_info(Error1)
         value2, tb2 = self._append_exc_info(Error2)
         formatted = self.test_result.format_exception_info()
         mock_format_exception.assert_has_calls([
-                mock.call(Error1, value1, tb1, None),
-                mock.call(Error2, value2, tb2, None),
+            mock.call(Error1, value1, tb1, None),
+            mock.call(Error2, value2, tb2, None),
         ])
         assert_equal(
-                formatted,
-                (
-                    'Traceback: Error1\n'
-                    '\n'
-                    'During handling of the above exception, another exception occurred:\n'
-                    '\n'
-                    'Traceback: Error2\n'
-                )
+            formatted,
+            (
+                'Traceback: Error1\n'
+                '\n'
+                'During handling of the above exception, another exception occurred:\n'
+                '\n'
+                'Traceback: Error2\n'
+            )
         )
 
 

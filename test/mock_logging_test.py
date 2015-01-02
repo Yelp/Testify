@@ -53,6 +53,7 @@ class MockHandlerTest(TestCase):
 class MockLoggingTest(TestCase):
     """Test and verify behaviour of mock_logging context manager.
     """
+
     def test_mock_logging(self):
         with mock_logging() as mock_handler:
             logging.info("bananas")

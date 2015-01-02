@@ -14,16 +14,16 @@
 import logging
 
 try:
-    import simplejson as json
-    _hush_pyflakes = [json]
-    del _hush_pyflakes
+    import simplejson as json  # noqa
 except ImportError:
     import json
 
 from testify import test_reporter
 
+
 class ResultLogHandler(logging.Handler):
     """Log Handler to collect log output during a test run"""
+
     def __init__(self, *args, **kwargs):
         logging.Handler.__init__(self, *args, **kwargs)
 
@@ -92,9 +92,29 @@ class JSONReporter(test_reporter.TestReporter):
 # Hooks for plugin system
 
 def add_command_line_options(parser):
-    parser.add_option("--json-results", action="store", dest="json_results", type="string", default=None, help="Store test results in json format")
-    parser.add_option("--json-results-logging", action="store_true", dest="json_results_logging", default=False, help="Store log output for failed test results in json")
-    parser.add_option("--extra-json-info", action="store", dest="extra_json_info", type="string", help="json containing some extra info to be stored")
+    parser.add_option(
+        "--json-results",
+        action="store",
+        dest="json_results",
+        type="string",
+        default=None,
+        help="Store test results in json format",
+    )
+    parser.add_option(
+        "--json-results-logging",
+        action="store_true",
+        dest="json_results_logging",
+        default=False,
+        help="Store log output for failed test results in json",
+    )
+    parser.add_option(
+        "--extra-json-info",
+        action="store",
+        dest="extra_json_info",
+        type="string",
+        help="json containing some extra info to be stored",
+    )
+
 
 def build_test_reporters(options):
     if options.json_results:

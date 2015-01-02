@@ -23,27 +23,44 @@ class ParseTestRunnerCommandLineArgsTest(TestCase):
             yield
 
     def test__parse_test_runner_command_line_module_method_overrides_empty_input(self):
-        """Make sure _parse_test_runner_command_line_module_method_overrides returns something sensible if you pass it an empty list of arguments."""
+        """Make sure _parse_test_runner_command_line_module_method_overrides
+        returns something sensible if you pass it an empty list of arguments.
+        """
         assert_equal(test_program._parse_test_runner_command_line_module_method_overrides([]), (None, {}))
 
     def test_parse_test_runner_command_line_args_rerun_test_file(self):
-        """Make sure that when --rerun-test-file is passed, parse_test_runner_command_line_args doesn't complain about a missing test path."""
+        """Make sure that when --rerun-test-file is passed,
+        parse_test_runner_command_line_args doesn't complain about a missing
+        test path.
+        """
         test_program.parse_test_runner_command_line_args([], ['--rerun-test-file', '-'])
 
     def test_parse_test_runner_command_line_args_connect(self):
-        """Make sure that when --connect is passed, parse_test_runner_command_line_args doesn't complain about a missing test path."""
+        """Make sure that when --connect is passed,
+        parse_test_runner_command_line_args doesn't complain about a missing
+        test path.
+        """
         test_program.parse_test_runner_command_line_args([], ['--connect', 'localhost:65537'])
 
     def test_parse_test_runner_command_line_args_replay_json_inline(self):
-        """Make sure that when --replay-json-inline is passed, parse_test_runner_command_line_args doesn't complain about a missing test path."""
+        """Make sure that when --replay-json-inline is passed,
+        parse_test_runner_command_line_args doesn't complain about a missing
+        test path.
+        """
         test_program.parse_test_runner_command_line_args([], ['--replay-json-inline', '{something that obviously isnt json}'])
 
     def test_parse_test_runner_command_line_args_replay_json(self):
-        """Make sure that when --replay-json-inline is passed, parse_test_runner_command_line_args doesn't complain about a missing test path."""
+        """Make sure that when --replay-json-inline is passed,
+        parse_test_runner_command_line_args doesn't complain about a missing
+        test path.
+        """
         test_program.parse_test_runner_command_line_args([], ['--replay-json', 'somejsonfile.txt'])
 
     def test_parse_test_runner_command_line_args_no_test_path(self):
-        """Make sure that if no options and no arguments are passed, parse_test_runner_command_line_args DOES complain about a missing test path."""
+        """Make sure that if no options and no arguments are passed,
+        parse_test_runner_command_line_args DOES complain about a missing test
+        path.
+        """
         with assert_raises(OptionParserErrorException):
             test_program.parse_test_runner_command_line_args([], [])
 
@@ -72,8 +89,8 @@ class TestifyRunAcceptanceTestCase(TestCase):
 
     def test_run_testify_as_module_list_tests(self):
         output = test_call([
-                'python', '-m', 'testify.test_program',
-                '--list-tests', 'testing_suite'])
+            'python', '-m', 'testify.test_program',
+            '--list-tests', 'testing_suite'])
         assert_equal(output, self.expected_list)
 
     def test_run_testify_from_bin(self):
@@ -90,21 +107,21 @@ class TestifyRunAcceptanceTestCase(TestCase):
 
     def test_run_testify_test_file_class(self):
         output = test_call([
-                'python', 'testing_suite/example_test.py', '-v',
-                'ExampleTestCase'])
+            'python', 'testing_suite/example_test.py', '-v',
+            'ExampleTestCase'])
         assert_in('PASSED.  2 tests', output)
 
     def test_run_testify_test_file_class_and_method(self):
         output = test_call([
-                'python', 'testing_suite/example_test.py', '-v',
-                'ExampleTestCase.test_one'])
+            'python', 'testing_suite/example_test.py', '-v',
+            'ExampleTestCase.test_one'])
         assert_in('PASSED.  1 test', output)
 
     def test_run_testify_with_failure(self):
         assert_raises(
-                subprocess.CalledProcessError,
-                test_call,
-                ['python', 'testing_suite/example_test.py', 'DoesNotExist'])
+            subprocess.CalledProcessError,
+            test_call,
+            ['python', 'testing_suite/example_test.py', 'DoesNotExist'])
 
 
 class TestClientServerReturnCode(TestCase):
@@ -171,7 +188,7 @@ class TestClientScheduling(TestCase):
                         '--runner-timeout', '5',
                         '-v',
                     ],
-                    stdout=open(filename , 'w'),
+                    stdout=open(filename, 'w'),
                     stderr=open(os.devnull, 'w'),
                     env=dict(os.environ, client_num=str(number)),
                     cwd=tempdir,

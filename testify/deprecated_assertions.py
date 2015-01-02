@@ -15,17 +15,23 @@
 
 __testify = 1
 
+
 def fail(self, msg=None):
     """Fail immediately, with the given message."""
-    raise AssertionError, msg
+    raise AssertionError(msg)
+
 
 def failIf(self, expr, msg=None):
     "Fail the test if the expression is true."
-    if expr: raise AssertionError, msg
+    if expr:
+        raise AssertionError(msg)
+
 
 def failUnless(self, expr, msg=None):
     """Fail the test unless the expression is true."""
-    if not expr: raise AssertionError, msg
+    if not expr:
+        raise AssertionError(msg)
+
 
 def failUnlessRaises(self, excClass, callableObj, *args, **kwargs):
     """Fail unless an exception of class excClass is thrown
@@ -40,25 +46,28 @@ def failUnlessRaises(self, excClass, callableObj, *args, **kwargs):
     except excClass:
         return
     else:
-        if hasattr(excClass,'__name__'): excName = excClass.__name__
-        else: excName = str(excClass)
-        raise AssertionError, "%s not raised" % excName
+        if hasattr(excClass, '__name__'):
+            excName = excClass.__name__
+        else:
+            excName = str(excClass)
+        raise AssertionError("%s not raised" % excName)
+
 
 def failUnlessEqual(self, first, second, msg=None):
     """Fail if the two objects are unequal as determined by the '=='
        operator.
     """
     if not first == second:
-        raise AssertionError, \
-              (msg or '%r != %r' % (first, second))
+        raise AssertionError(msg or '%r != %r' % (first, second))
+
 
 def failIfEqual(self, first, second, msg=None):
     """Fail if the two objects are equal as determined by the '=='
        operator.
     """
     if first == second:
-        raise AssertionError, \
-              (msg or '%r == %r' % (first, second))
+        raise AssertionError(msg or '%r == %r' % (first, second))
+
 
 def failUnlessAlmostEqual(self, first, second, places=7, msg=None):
     """Fail if the two objects are unequal as determined by their
@@ -68,9 +77,9 @@ def failUnlessAlmostEqual(self, first, second, places=7, msg=None):
        Note that decimal places (from zero) are usually not the same
        as significant digits (measured from the most signficant digit).
     """
-    if round(second-first, places) != 0:
-        raise AssertionError, \
-              (msg or '%r != %r within %r places' % (first, second, places))
+    if round(second - first, places) != 0:
+        raise AssertionError(msg or '%r != %r within %r places' % (first, second, places))
+
 
 def failIfAlmostEqual(self, first, second, places=7, msg=None):
     """Fail if the two objects are equal as determined by their
@@ -80,9 +89,8 @@ def failIfAlmostEqual(self, first, second, places=7, msg=None):
        Note that decimal places (from zero) are usually not the same
        as significant digits (measured from the most signficant digit).
     """
-    if round(second-first, places) == 0:
-        raise AssertionError, \
-              (msg or '%r == %r within %r places' % (first, second, places))
+    if round(second - first, places) == 0:
+        raise AssertionError(msg or '%r == %r within %r places' % (first, second, places))
 
 # Synonyms for assertion methods
 

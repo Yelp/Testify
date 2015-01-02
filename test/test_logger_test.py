@@ -69,7 +69,7 @@ class ExceptionInClassFixtureSampleTests(TestCase):
         @class_setup_teardown
         def class_setup_teardown_raises_exception_in_setup_phase(self):
             raise FakeClassFixtureException('class_setup_teardown setup phase kaboom')
-            yield # Never reached
+            yield  # Never reached
             # Empty teardown, also never reached
 
         def test1(self):
@@ -77,7 +77,6 @@ class ExceptionInClassFixtureSampleTests(TestCase):
 
         def test2(self):
             pass
-
 
     class FakeTeardownPhaseOfClassSetupTeardownTestCase(TestCase):
         @class_setup_teardown
@@ -132,7 +131,6 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         assert_in('FakeClassSetupTestCase.test2', logger_output)
         assert_in('in class_setup_raises_exception', logger_output)
 
-
     def test_setup_phase_of_class_setup_teardown(self):
         self._run_test_case(ExceptionInClassFixtureSampleTests.FakeSetupPhaseOfClassSetupTeardownTestCase)
 
@@ -157,7 +155,6 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         assert_in('FakeSetupPhaseOfClassSetupTeardownTestCase.test2', logger_output)
         assert_in('in class_setup_teardown_raises_exception_in_setup_phase', logger_output)
 
-
     def test_class_teardown(self):
         self._run_test_case(ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase)
         assert_equal(len(self.logger.results), 3)
@@ -178,7 +175,6 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
         assert_in('error', logger_output)
         assert_in('FakeClassTeardownTestCase.class_teardown_raises_exception', logger_output)
 
-
     def test_teardown_phase_of_class_setup_teardown(self):
         self._run_test_case(ExceptionInClassFixtureSampleTests.FakeTeardownPhaseOfClassSetupTeardownTestCase)
         assert_equal(len(self.logger.results), 3)
@@ -197,8 +193,10 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
 
         logger_output = self.stream.getvalue()
         assert_in('error', logger_output)
-        assert_in('FakeTeardownPhaseOfClassSetupTeardownTestCase.class_setup_teardown_raises_exception_in_teardown_phase', logger_output)
-
+        assert_in(
+            'FakeTeardownPhaseOfClassSetupTeardownTestCase.class_setup_teardown_raises_exception_in_teardown_phase',
+            logger_output,
+        )
 
     def test_class_teardown_raises_after_test_raises(self):
         """Patch our fake test case, replacing test1() with a function that

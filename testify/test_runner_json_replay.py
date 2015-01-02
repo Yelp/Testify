@@ -1,7 +1,5 @@
 try:
-    import simplejson as json
-    _hush_pyflakes = [json]
-    del _hush_pyflakes
+    import simplejson as json  # noqa
 except ImportError:
     import json
 
@@ -10,8 +8,10 @@ import sys
 
 from test_runner import TestRunner
 
+
 class TestRunnerJSONReplay(TestRunner):
     """A fake test runner that loads a one-dict-per-line JSON file and sends each dict to the test reporters."""
+
     def __init__(self, *args, **kwargs):
         self.replay_json = kwargs.pop('replay_json')
         self.replay_json_inline = kwargs.pop('replay_json_inline')

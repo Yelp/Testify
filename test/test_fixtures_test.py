@@ -27,6 +27,7 @@ class FixtureMethodRegistrationOrderTest(TestCase):
      - exit class_setup_teardown in Reverse order of definition
      - class_teardown
     """
+
     def __init__(self, *args, **kwargs):
         super(FixtureMethodRegistrationOrderTest, self).__init__(*args, **kwargs)
         self.counter = 0
@@ -372,7 +373,7 @@ class TestOtherCasesWithSameFixtureMixinsGetRun(TestCase, FixtureMixin):
 class NewerFixtureMixin(object):
     @class_setup
     def set_another_attr(cls):
-        assert cls.foo # this setup should run after FixtureMixin's
+        assert cls.foo  # this setup should run after FixtureMixin's
         cls.bar = True
 
     def test_bar(self):
@@ -394,7 +395,7 @@ class DeprecatedFixtureOrderTestBase(TestCase):
 
     @class_teardown
     def clear_something(self):
-        assert self.something == None
+        assert self.something is None
 
 
 class DeprecatedFixtureOrderTestChild(DeprecatedFixtureOrderTestBase):
@@ -402,20 +403,21 @@ class DeprecatedFixtureOrderTestChild(DeprecatedFixtureOrderTestBase):
 
     def classSetUp(self):
         """Should be called after do_something."""
-        assert self.something == True
+        assert self.something is True
         self.something = False
 
     def test_something(self):
-        assert self.something == False
+        assert self.something is False
 
     def classTearDown(self):
         """Should be called before clear_something"""
-        assert self.something == False
+        assert self.something is False
         self.something = None
 
 
 class FixtureOverloadTestBase(TestCase):
     foo = True
+
     @setup
     def unset_foo(self):
         self.foo = False
@@ -484,7 +486,7 @@ class SuiteDecoratorTest(TestCase):
 
         function_to_decorate = suite('fake_suite_2')(function_to_decorate)
 
-        suites_after_decoration =  function_to_decorate._suites
+        suites_after_decoration = function_to_decorate._suites
 
         assert_not_equal(
             id(suites_before_decoration),

@@ -37,6 +37,7 @@ DEFAULT_PLUGIN_PATH = os.path.join(os.path.split(__file__)[0], 'plugins')
 
 log = logging.getLogger('testify')
 
+
 def get_bucket_overrides(filename):
     """Returns a map from test class name to test bucket.
 
@@ -54,6 +55,7 @@ def get_bucket_overrides(filename):
         overrides[test_module_and_class] = int(bucket)
     ofile.close()
     return overrides
+
 
 def load_plugins():
     """Load any plugin modules
@@ -99,14 +101,19 @@ def load_plugins():
 def default_parser():
     """create the top-level parser, before adding plugins"""
     parser = OptionParser(
-            usage="%prog <test path> [options]",
-            version="%%prog %s" % testify.__version__,
-            prog='testify')
+        usage="%prog <test path> [options]",
+        version="%%prog %s" % testify.__version__,
+        prog='testify')
 
     parser.set_defaults(verbosity=test_logger.VERBOSITY_NORMAL)
     parser.add_option("-s", "--silent", action="store_const", const=test_logger.VERBOSITY_SILENT, dest="verbosity")
     parser.add_option("-v", "--verbose", action="store_const", const=test_logger.VERBOSITY_VERBOSE, dest="verbosity")
-    parser.add_option("-d", "--ipdb", action="store_true", dest="debugger", help="Enter post mortem debugging mode with ipdb in the case of an exception thrown in a test method or fixture method.")
+    parser.add_option(
+        "-d", "--ipdb",
+        action="store_true",
+        dest="debugger",
+        help="Enter post mortem debugging mode with ipdb in the case of an exception thrown in a test method or fixture method.",
+    )
 
     parser.add_option("-i", "--include-suite", action="append", dest="suites_include", type="string", default=[])
     parser.add_option("-x", "--exclude-suite", action="append", dest="suites_exclude", type="string", default=[])
@@ -127,30 +134,176 @@ def default_parser():
 
     parser.add_option("--log-file", action="store", dest="log_file", type="string", default=None)
     parser.add_option("--log-level", action="store", dest="log_level", type="string", default="INFO")
-    parser.add_option('--print-log', action="append", dest="print_loggers", type="string", default=[], help="Direct logging output for these loggers to the console")
+    parser.add_option(
+        '--print-log',
+        action="append",
+        dest="print_loggers",
+        type="string",
+        default=[],
+        help="Direct logging output for these loggers to the console",
+    )
 
-    parser.add_option('--serve', action="store", dest="serve_port", type="int", default=None, help="Run in server mode, listening on this port for testify clients.")
-    parser.add_option('--connect', action="store", dest="connect_addr", type="string", default=None, metavar="HOST:PORT", help="Connect to a testify server (testify --serve) at this HOST:PORT")
-    parser.add_option('--revision', action="store", dest="revision", type="string", default=None, help="With --serve, refuses clients that identify with a different or no revision. In client mode, sends the revision number to the server for verification.")
-    parser.add_option('--retry-limit', action="store", dest="retry_limit", type="float", default=300, help="Number of seconds to try connecting to the server before giving.")
-    parser.add_option('--retry-interval', action="store", dest="retry_interval", type="float", default=.1, help="Number of seconds to wait between trying to connect to the server.")
-    parser.add_option('--retry-backoff', action="store", dest="retry_backoff", type="float", default=.1, help="Number of seconds to add to the wait period between retries.")
-    parser.add_option('--reconnect-retry-limit', action="store", dest="reconnect_retry_limit", type="int", default=10, help="Number of seconds to try reconnecting to the server before exiting if we have previously connected.")
-    parser.add_option('--disable-requeueing', action="store_true", dest="disable_requeueing", help="Disable re-queueing/re-running failed tests on a different builder.")
+    parser.add_option(
+        '--serve',
+        action="store",
+        dest="serve_port",
+        type="int",
+        default=None,
+        help="Run in server mode, listening on this port for testify clients.",
+    )
+    parser.add_option(
+        '--connect',
+        action="store",
+        dest="connect_addr",
+        type="string",
+        default=None,
+        metavar="HOST:PORT",
+        help="Connect to a testify server (testify --serve) at this HOST:PORT",
+    )
+    parser.add_option(
+        '--revision',
+        action="store",
+        dest="revision",
+        type="string",
+        default=None,
+        help=(
+            "With --serve, refuses clients that identify with a different or "
+            "no revision. In client mode, sends the revision number to the "
+            "server for verification."
+        ),
+    )
+    parser.add_option(
+        '--retry-limit',
+        action="store",
+        dest="retry_limit",
+        type="float",
+        default=300,
+        help="Number of seconds to try connecting to the server before giving.",
+    )
+    parser.add_option(
+        '--retry-interval',
+        action="store",
+        dest="retry_interval",
+        type="float",
+        default=.1,
+        help="Number of seconds to wait between trying to connect to the server.",
+    )
+    parser.add_option(
+        '--retry-backoff',
+        action="store",
+        dest="retry_backoff",
+        type="float",
+        default=.1,
+        help="Number of seconds to add to the wait period between retries.",
+    )
+    parser.add_option(
+        '--reconnect-retry-limit',
+        action="store",
+        dest="reconnect_retry_limit",
+        type="int",
+        default=10,
+        help="Number of seconds to try reconnecting to the server before exiting if we have previously connected.",
+    )
+    parser.add_option(
+        '--disable-requeueing',
+        action="store_true",
+        dest="disable_requeueing",
+        help="Disable re-queueing/re-running failed tests on a different builder.",
+    )
 
-    parser.add_option('--failure-limit', action="store", dest="failure_limit", type="int", default=None, help="Quit after this many test failures.")
-    parser.add_option('--runner-timeout', action="store", dest="runner_timeout", type="int", default=300, help="How long to wait to wait for activity from a test runner before requeuing the tests it has checked out.")
-    parser.add_option('--server-timeout', action="store", dest="server_timeout", type="int", default=300, help="How long to wait after the last activity from any test runner before shutting down.")
+    parser.add_option(
+        '--failure-limit',
+        action="store",
+        dest="failure_limit",
+        type="int",
+        default=None,
+        help="Quit after this many test failures.",
+    )
+    parser.add_option(
+        '--runner-timeout',
+        action="store",
+        dest="runner_timeout",
+        type="int",
+        default=300,
+        help="How long to wait to wait for activity from a test runner before requeuing the tests it has checked out.",
+    )
+    parser.add_option(
+        '--server-timeout',
+        action="store",
+        dest="server_timeout",
+        type="int",
+        default=300,
+        help="How long to wait after the last activity from any test runner before shutting down.",
+    )
 
-    parser.add_option('--server-shutdown-delay', action='store', dest='shutdown_delay_for_connection_close', type="float", default=0.01, help="How long to wait (in seconds) for data to finish writing to sockets before shutting down the server.")
-    parser.add_option('--server-shutdown-delay-outstanding-runners', action='store', dest='shutdown_delay_for_outstanding_runners', type='int', default=5, help="How long to wait (in seconds) for all clients to check for new tests before shutting down the server.")
+    parser.add_option(
+        '--server-shutdown-delay',
+        action='store',
+        dest='shutdown_delay_for_connection_close',
+        type="float",
+        default=0.01,
+        help="How long to wait (in seconds) for data to finish writing to sockets before shutting down the server.",
+    )
+    parser.add_option(
+        '--server-shutdown-delay-outstanding-runners',
+        action='store',
+        dest='shutdown_delay_for_outstanding_runners',
+        type='int',
+        default=5,
+        help="How long to wait (in seconds) for all clients to check for new tests before shutting down the server.",
+    )
 
-    parser.add_option('--runner-id', action="store", dest="runner_id", type="string", default="%s-%d" % (socket.gethostname(), os.getpid()), help="With --connect, an identity passed to the server on each request. Passed to the server's test reporters. Defaults to <HOST>-<PID>.")
+    parser.add_option(
+        '--runner-id',
+        action="store",
+        dest="runner_id",
+        type="string",
+        default="%s-%d" % (socket.gethostname(), os.getpid()),
+        help=(
+            "With --connect, an identity passed to the server on each "
+            "request. Passed to the server's test reporters. Defaults to "
+            "<HOST>-<PID>."
+        ),
+    )
 
-    parser.add_option('--replay-json', action="store", dest="replay_json", type="string", default=None, help="Instead of discovering and running tests, read a file with one JSON-encoded test result dictionary per line, and report each line to test reporters as if we had just run that test.")
-    parser.add_option('--replay-json-inline', action="append", dest="replay_json_inline", type="string", metavar="JSON_OBJECT", help="Similar to --replay-json, but allows result objects to be passed on the command line. May be passed multiple times. If combined with --replay-json, inline results get reported first.")
+    parser.add_option(
+        '--replay-json',
+        action="store",
+        dest="replay_json",
+        type="string",
+        default=None,
+        help=(
+            "Instead of discovering and running tests, read a file with one "
+            "JSON-encoded test result dictionary per line, and report each "
+            "line to test reporters as if we had just run that test."
+        ),
+    )
+    parser.add_option(
+        '--replay-json-inline',
+        action="append",
+        dest="replay_json_inline",
+        type="string",
+        metavar="JSON_OBJECT",
+        help=(
+            "Similar to --replay-json, but allows result objects to be passed "
+            "on the command line. May be passed multiple times. If combined "
+            "with --replay-json, inline results get reported first."
+        ),
+    )
 
-    parser.add_option('--rerun-test-file', action="store", dest="rerun_test_file", type="string", default=None, help="Rerun tests listed in FILE in order. One test per line, in the format 'path.to.class ClassName.test_method_name'. Consecutive tests in the same class will be run on the same test class instance.")
+    parser.add_option(
+        '--rerun-test-file',
+        action="store",
+        dest="rerun_test_file",
+        type="string",
+        default=None,
+        help=(
+            "Rerun tests listed in FILE in order. One test per line, in the "
+            "format 'path.to.class ClassName.test_method_name'. Consecutive "
+            "tests in the same class will be run on the same test class "
+            "instance."
+        ),
+    )
 
     return parser
 
@@ -165,7 +318,15 @@ def parse_test_runner_command_line_args(plugin_modules, args):
             plugin.add_command_line_options(parser)
 
     (options, args) = parser.parse_args(args)
-    if len(args) < 1 and not (options.connect_addr or options.rerun_test_file or options.replay_json or options.replay_json_inline):
+    if (
+            len(args) < 1 and
+            not (
+                options.connect_addr or
+                options.rerun_test_file or
+                options.replay_json or
+                options.replay_json_inline
+            )
+    ):
         parser.error("Test path required unless --connect or --rerun-test-file specified.")
 
     if options.connect_addr and options.serve_port:
@@ -183,19 +344,19 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     else:
         runner_action = ACTION_RUN_TESTS
 
-
     test_runner_args = {
         'debugger': options.debugger,
         'suites_include': options.suites_include,
         'suites_exclude': options.suites_exclude,
         'suites_require': options.suites_require,
-        'failure_limit' : options.failure_limit,
+        'failure_limit': options.failure_limit,
         'module_method_overrides': module_method_overrides,
         'options': options,
         'plugin_modules': plugin_modules
     }
 
     return runner_action, test_path, test_runner_args, options
+
 
 def _parse_test_runner_command_line_module_method_overrides(args):
     """Parse a set of positional args (returned from an OptionParser probably)
@@ -276,7 +437,7 @@ class TestProgram(object):
         else:
             test_runner_class = TestRunner
 
-        # initialize reporters 
+        # initialize reporters
         self.test_runner_args['test_reporters'] = self.get_reporters(
             self.other_opts, self.test_runner_args['plugin_modules']
         )
@@ -302,7 +463,7 @@ class TestProgram(object):
             if self.other_opts.label:
                 label_text = " " + self.other_opts.label
             if self.other_opts.bucket_count:
-                salt_info =  (' [salt: %s]' % self.other_opts.bucket_salt) if self.other_opts.bucket_salt else ''
+                salt_info = (' [salt: %s]' % self.other_opts.bucket_salt) if self.other_opts.bucket_salt else ''
                 bucket_text = " (bucket %d of %d%s)" % (self.other_opts.bucket, self.other_opts.bucket_count, salt_info)
             log.info("starting test run%s%s", label_text, bucket_text)
 

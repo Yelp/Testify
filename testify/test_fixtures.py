@@ -1,4 +1,4 @@
-__testify =1
+__testify = 1
 import contextlib
 import inspect
 import sys
@@ -177,7 +177,6 @@ class TestFixtures(object):
         all_failures += exit_failures or []
 
     def run_fixture(self, fixture, function_to_call, enter_callback=None, exit_callback=None):
-
         result = TestResult(fixture)
         try:
             result.start()
@@ -187,8 +186,6 @@ class TestFixtures(object):
                 result.end_in_success()
             else:
                 return result.exception_infos
-            #else:
-             #   self.failure_count += 1
         except (KeyboardInterrupt, SystemExit):
             result.end_in_interruption(sys.exc_info())
             raise
@@ -211,7 +208,7 @@ class TestFixtures(object):
             for the expected order.
             """
             fixture_order = {
-                'class_setup' : 0,
+                'class_setup': 0,
                 'class_teardown': 1,
                 'class_setup_teardown': 2,
 
@@ -221,11 +218,11 @@ class TestFixtures(object):
             }
 
             if fixture._fixture_type in REVERSED_FIXTURE_TYPES:
-                ## class_teardown fixtures should be run in reverse
-                ## definition order (last definition runs
-                ## first). Converting fixture_id to its negative
-                ## value will sort class_teardown fixtures in the
-                ## same class in reversed order.
+                # class_teardown fixtures should be run in reverse
+                # definition order (last definition runs
+                # first). Converting fixture_id to its negative
+                # value will sort class_teardown fixtures in the
+                # same class in reversed order.
                 return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], -fixture._fixture_id)
 
             return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], fixture._fixture_id)
@@ -279,9 +276,9 @@ class TestFixtures(object):
                 # where in our MRO this fixture was defined
                 defining_class_depth = reverse_mro_list.index(defining_class)
                 inspection.callable_setattr(
-                        unbound_method,
-                        '_defining_class_depth',
-                        defining_class_depth,
+                    unbound_method,
+                    '_defining_class_depth',
+                    defining_class_depth,
                 )
 
                 # we grabbed this from the class and need to bind it to the
@@ -325,6 +322,7 @@ def suite(*args, **kwargs):
 
 # unique id for fixtures
 _fixture_id = [0]
+
 
 def __fixture_decorator_factory(fixture_type):
     """Decorator generator for the fixture decorators.
@@ -410,8 +408,8 @@ class let(object):
 
     def _register_reset_after_test_completion(self, test_case):
         test_case.register_callback(
-                test_case.EVENT_ON_COMPLETE_TEST_METHOD,
-                lambda _: self._reset_value(),
+            test_case.EVENT_ON_COMPLETE_TEST_METHOD,
+            lambda _: self._reset_value(),
         )
 
     def _reset_value(self):

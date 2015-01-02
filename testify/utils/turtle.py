@@ -14,7 +14,7 @@
 
 """Mocking and Stubbing framework
 
-This framework is built around the 'Turtle' object. A Turtle object returns another turtle for every 
+This framework is built around the 'Turtle' object. A Turtle object returns another turtle for every
 unknown (not predefined) attributed asked for. It is also callable, returning (of course) a turtle.
 
 After a turtle is used, it can be inspected to find out what happened:
@@ -51,6 +51,7 @@ Then you can call:
 "Turtles all the way down": http://en.wikipedia.org/wiki/Turtles_all_the_way_down
 """
 
+
 class Turtle(object):
     def __init__(self, *args, **kwargs):
         self.__dict__.update(kwargs)
@@ -76,4 +77,3 @@ class Turtle(object):
         new_turtle = type(self)()
         self.returns.append(new_turtle)
         return new_turtle
-

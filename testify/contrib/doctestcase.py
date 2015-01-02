@@ -17,7 +17,7 @@ class DocMetaTestCase(MetaTestCase):
         try:
             module = dct['module']
         except KeyError:
-            if dct.get('__test__', True) == False:
+            if not dct.get('__test__', True):
                 # This is some kind of abstract class. Do nothing.
                 return
             else:
@@ -50,12 +50,14 @@ class DocMetaTestCase(MetaTestCase):
 
         setattr(cls, test.__name__, test)
 
+
 def run_test(doctest):
     summary = StringIO()
     runner = DocTestRunner(optionflags=REPORT_NDIFF)
     runner.run(doctest, out=summary.write)
 
     assert runner.failures == 0, '\n' + summary.getvalue()
+
 
 class DocTestCase(TestCase):
     """
