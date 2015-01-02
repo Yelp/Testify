@@ -18,19 +18,19 @@ __testify = 1
 
 def fail(self, msg=None):
     """Fail immediately, with the given message."""
-    raise AssertionError, msg
+    raise AssertionError(msg)
 
 
 def failIf(self, expr, msg=None):
     "Fail the test if the expression is true."
     if expr:
-        raise AssertionError, msg
+        raise AssertionError(msg)
 
 
 def failUnless(self, expr, msg=None):
     """Fail the test unless the expression is true."""
     if not expr:
-        raise AssertionError, msg
+        raise AssertionError(msg)
 
 
 def failUnlessRaises(self, excClass, callableObj, *args, **kwargs):
@@ -50,7 +50,7 @@ def failUnlessRaises(self, excClass, callableObj, *args, **kwargs):
             excName = excClass.__name__
         else:
             excName = str(excClass)
-        raise AssertionError, "%s not raised" % excName
+        raise AssertionError("%s not raised" % excName)
 
 
 def failUnlessEqual(self, first, second, msg=None):
@@ -58,8 +58,7 @@ def failUnlessEqual(self, first, second, msg=None):
        operator.
     """
     if not first == second:
-        raise AssertionError, \
-            (msg or '%r != %r' % (first, second))
+        raise AssertionError(msg or '%r != %r' % (first, second))
 
 
 def failIfEqual(self, first, second, msg=None):
@@ -67,8 +66,7 @@ def failIfEqual(self, first, second, msg=None):
        operator.
     """
     if first == second:
-        raise AssertionError, \
-            (msg or '%r == %r' % (first, second))
+        raise AssertionError(msg or '%r == %r' % (first, second))
 
 
 def failUnlessAlmostEqual(self, first, second, places=7, msg=None):
@@ -80,8 +78,7 @@ def failUnlessAlmostEqual(self, first, second, places=7, msg=None):
        as significant digits (measured from the most signficant digit).
     """
     if round(second - first, places) != 0:
-        raise AssertionError, \
-            (msg or '%r != %r within %r places' % (first, second, places))
+        raise AssertionError(msg or '%r != %r within %r places' % (first, second, places))
 
 
 def failIfAlmostEqual(self, first, second, places=7, msg=None):
@@ -93,8 +90,7 @@ def failIfAlmostEqual(self, first, second, places=7, msg=None):
        as significant digits (measured from the most signficant digit).
     """
     if round(second - first, places) == 0:
-        raise AssertionError, \
-            (msg or '%r == %r within %r places' % (first, second, places))
+        raise AssertionError(msg or '%r == %r within %r places' % (first, second, places))
 
 # Synonyms for assertion methods
 

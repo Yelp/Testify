@@ -193,7 +193,10 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
 
         logger_output = self.stream.getvalue()
         assert_in('error', logger_output)
-        assert_in('FakeTeardownPhaseOfClassSetupTeardownTestCase.class_setup_teardown_raises_exception_in_teardown_phase', logger_output)
+        assert_in(
+            'FakeTeardownPhaseOfClassSetupTeardownTestCase.class_setup_teardown_raises_exception_in_teardown_phase',
+            logger_output,
+        )
 
     def test_class_teardown_raises_after_test_raises(self):
         """Patch our fake test case, replacing test1() with a function that

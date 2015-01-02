@@ -395,7 +395,7 @@ class DeprecatedFixtureOrderTestBase(TestCase):
 
     @class_teardown
     def clear_something(self):
-        assert self.something == None
+        assert self.something is None
 
 
 class DeprecatedFixtureOrderTestChild(DeprecatedFixtureOrderTestBase):
@@ -403,15 +403,15 @@ class DeprecatedFixtureOrderTestChild(DeprecatedFixtureOrderTestBase):
 
     def classSetUp(self):
         """Should be called after do_something."""
-        assert self.something == True
+        assert self.something is True
         self.something = False
 
     def test_something(self):
-        assert self.something == False
+        assert self.something is False
 
     def classTearDown(self):
         """Should be called before clear_something"""
-        assert self.something == False
+        assert self.something is False
         self.something = None
 
 

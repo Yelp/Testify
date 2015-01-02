@@ -202,7 +202,12 @@ class TestRunnerServer(TestRunner):
                     }))
 
                 if self.revision and self.revision != handler.get_argument('revision'):
-                    return handler.send_error(409, reason="Incorrect revision %s -- server is running revision %s" % (handler.get_argument('revision'), self.revision))
+                    return handler.send_error(
+                        409,
+                        reason="Incorrect revision %s -- server is running revision %s" % (
+                            handler.get_argument('revision'), self.revision
+                        ),
+                    )
 
                 def callback(test_dict):
                     self.runners_outstanding.discard(runner_id)
@@ -334,7 +339,7 @@ class TestRunnerServer(TestRunner):
         requeue_methods = []
 
         for method, result in failed_methods:
-            if self.disable_requeueing == True:
+            if self.disable_requeueing:
                 # If requeueing is disabled we'll report failed methods immediately.
                 tests_to_report.append((method, result))
 
@@ -383,7 +388,12 @@ class TestRunnerServer(TestRunner):
 
         if finished:
             if len(d['methods']) != 0:
-                raise ValueError("check_in_class called with finished=True but this class (%s) still has %d methods without results." % (class_path, len(d['methods'])))
+                raise ValueError(
+                    "check_in_class called with finished=True but this class "
+                    "(%s) still has %d methods without results." % (
+                        class_path, len(d['methods'])
+                    )
+                )
         elif timed_out:
             # Requeue or report timed-out tests.
 
@@ -392,7 +402,7 @@ class TestRunnerServer(TestRunner):
                 module, _, classname = class_path.partition(' ')
                 result_dict = self._fake_result(class_path, method, runner)
 
-                if (class_path, method) not in self.timeout_rerun_methods and self.disable_requeueing != True:
+                if (class_path, method) not in self.timeout_rerun_methods and not self.disable_requeueing:
                     requeue_dict['methods'].append(method)
                     self.timeout_rerun_methods.add((class_path, method))
                     self.previous_run_results[(class_path, method)] = result_dict
@@ -443,7 +453,8 @@ class TestRunnerServer(TestRunner):
             return
 
         if time.time() < d['timeout_time']:
-            # We're being called for the first time, or someone has updated timeout_time since the timeout was set (e.g. results came in)
+            # We're being called for the first time, or someone has updated
+            # timeout_time since the timeout was set (e.g. results came in)
             tornado.ioloop.IOLoop.instance().add_timeout(d['timeout_time'], lambda: self.timeout_class(runner, class_path))
             return
 
@@ -466,7 +477,9 @@ class TestRunnerServer(TestRunner):
         self.shutting_down = True
         self.pair_queue.finalize()
         iol = tornado.ioloop.IOLoop.instance()
-        # Can't immediately call stop, otherwise the runner currently POSTing its results will get a Connection Refused when it tries to ask for the next test.
+        # Can't immediately call stop, otherwise the runner currently POSTing
+        # its results will get a Connection Refused when it tries to ask for
+        # the next test.
 
         # Without this check, we could end up queueing a stop() call on a
         # tornado server we spin up later, causing it to hang mysteriously.

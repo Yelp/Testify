@@ -81,7 +81,10 @@ if __name__ == "__main__":
     if diff_file is None:
         coverage_instance.html_report(morfs=None, directory=directory, ignore_errors=False, omit_prefixes=None)
     else:
-        coverage_instance.svnhtml_report(morfs=None, directory=directory, ignore_errors=False, omit_prefixes=None, filename=diff_file)
-
-    #coverage_result = coverage_entry_point()
-    #sys.exit(coverage_result)
+        coverage_instance.svnhtml_report(
+            morfs=None,
+            directory=directory,
+            ignore_errors=False,
+            omit_prefixes=None,
+            filename=diff_file,
+        )

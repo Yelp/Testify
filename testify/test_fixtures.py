@@ -177,7 +177,6 @@ class TestFixtures(object):
         all_failures += exit_failures or []
 
     def run_fixture(self, fixture, function_to_call, enter_callback=None, exit_callback=None):
-
         result = TestResult(fixture)
         try:
             result.start()
@@ -187,8 +186,6 @@ class TestFixtures(object):
                 result.end_in_success()
             else:
                 return result.exception_infos
-            #else:
-             #   self.failure_count += 1
         except (KeyboardInterrupt, SystemExit):
             result.end_in_interruption(sys.exc_info())
             raise
@@ -221,11 +218,11 @@ class TestFixtures(object):
             }
 
             if fixture._fixture_type in REVERSED_FIXTURE_TYPES:
-                ## class_teardown fixtures should be run in reverse
-                ## definition order (last definition runs
-                ## first). Converting fixture_id to its negative
-                ## value will sort class_teardown fixtures in the
-                ## same class in reversed order.
+                # class_teardown fixtures should be run in reverse
+                # definition order (last definition runs
+                # first). Converting fixture_id to its negative
+                # value will sort class_teardown fixtures in the
+                # same class in reversed order.
                 return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], -fixture._fixture_id)
 
             return (fixture._defining_class_depth, fixture_order[fixture._fixture_type], fixture._fixture_id)

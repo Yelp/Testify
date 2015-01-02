@@ -46,7 +46,7 @@ class SQLReporterBaseTestCase(TestCase):
         """Make self.reporter, a SQLReporter that runs on an empty in-memory SQLite database."""
         if not SA:
             msg = 'SQL Reporter plugin requires sqlalchemy and you do not have it installed in your PYTHONPATH.\n'
-            raise ImportError, msg
+            raise ImportError(msg)
 
         parser = default_parser()
         add_command_line_options(parser)

@@ -254,7 +254,9 @@ class ClobberLetTest(TestCase):
 
 class CallbacksGetCalledTest(TestCase):
     def test_class_fixtures_get_reported(self):
-        """Make a test case, register a bunch of callbacks for class fixtures on it, and make sure the callbacks are all run in the right order."""
+        """Make a test case, register a bunch of callbacks for class fixtures
+        on it, and make sure the callbacks are all run in the right order.
+        """
         class InnerTestCase(TestCase):
             def classSetUp(self):
                 pass

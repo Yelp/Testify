@@ -1,3 +1,3 @@
-from .define_testcase import DummyTestCase
+from .define_testcase import DummyTestCase  # noqa
 
 __suites__ = 'blah'

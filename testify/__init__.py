@@ -24,11 +24,10 @@ The basic components of this system are:
         a class which collects TestCase subclasses based on search criteria and asks them
         to kindly execute themselves.
 """
+# flake8: noqa
 from __future__ import absolute_import
 __testify = 1
 __version__ = "0.5.7"
-
-import sys
 
 from .assertions import *
 

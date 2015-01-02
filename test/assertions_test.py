@@ -330,7 +330,7 @@ class AssertDictsEqualTestCase(TestCase):
             assertions.assert_equal(len(w), 0)
 
 
-class AssertDictSubsetTestCase(TestCase):
+class AssertDictSubsetTestCase_1(TestCase):
 
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:

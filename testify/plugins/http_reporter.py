@@ -25,9 +25,17 @@ class HTTPReporter(test_reporter.TestReporter):
                     # Retry once.
                     urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result))
             except urllib2.HTTPError, e:
-                logging.error('Skipping returning results for test %s because of error: %s' % (result['method']['full_name'], e.read()))
+                logging.error(
+                    'Skipping returning results for test %s because of error: %s' % (
+                        result['method']['full_name'], e.read(),
+                    )
+                )
             except Exception, e:
-                logging.error('Skipping returning results for test %s because of unknown error: %s' % (result['method']['full_name'], e))
+                logging.error(
+                    'Skipping returning results for test %s because of unknown error: %s' % (
+                        result['method']['full_name'], e,
+                    )
+                )
 
             self.result_queue.task_done()
 

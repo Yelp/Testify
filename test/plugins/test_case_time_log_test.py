@@ -5,9 +5,8 @@ from optparse import OptionParser
 from StringIO import StringIO
 import time
 
-from testify import assert_equal, assert_is, setup_teardown, TestCase
+from testify import assert_equal, TestCase
 from testify.test_result import TestResult
-from testify.test_runner import TestRunner
 from testify.plugins.test_case_time_log import add_command_line_options, TestCaseJSONReporter
 
 try:

@@ -22,7 +22,7 @@ import traceback
 
 from testify.utils import inspection
 
-#If IPython is available, use it for fancy color traceback formatting
+# If IPython is available, use it for fancy color traceback formatting
 try:
     try:
         # IPython >= 0.11
@@ -61,7 +61,9 @@ class TestResult(object):
 
     @property
     def exception_info(self):
-        raise AttributeError('The exception_info attribute has been replaced with the .exception_infos list. Please update your code.')
+        raise AttributeError(
+            'The exception_info attribute has been replaced with the .exception_infos list. Please update your code.',
+        )
 
     def start(self, previous_run=None):
         self.previous_run = previous_run
@@ -159,7 +161,7 @@ class TestResult(object):
         tb_formatter = fancy_tb_formatter if (pretty and fancy_tb_formatter) else plain_tb_formatter
 
         def is_relevant_tb_level(tb):
-            if tb.tb_frame.f_globals.has_key('__testify'):
+            if '__testify' in tb.tb_frame.f_globals:
                 # nobody *wants* to read testify
                 return False
             else:
@@ -203,8 +205,12 @@ class TestResult(object):
             'previous_run': self.previous_run,
             'start_time': time.mktime(self.start_time.timetuple()) if self.start_time else None,
             'end_time': time.mktime(self.end_time.timetuple()) if self.end_time else None,
-            'run_time': (self.run_time.seconds + float(self.run_time.microseconds) / 1000000) if self.run_time is not None else None,
-            'normalized_run_time': None if not self.run_time else "%.2fs" % (self.run_time.seconds + (self.run_time.microseconds / 1000000.0)),
+            'run_time': (
+                self.run_time.seconds + float(self.run_time.microseconds) / 1000000
+            ) if self.run_time is not None else None,
+            'normalized_run_time': None if not self.run_time else "%.2fs" % (
+                self.run_time.seconds + (self.run_time.microseconds / 1000000.0)
+            ),
             'complete': self.complete,
             'success': self.success,
             'failure': self.failure,
@@ -218,7 +224,11 @@ class TestResult(object):
                 'module': self.test_method.im_class.__module__,
                 'class': self.test_method.im_class.__name__,
                 'name': self.test_method.__name__,
-                'full_name': '%s %s.%s' % (self.test_method.im_class.__module__, self.test_method.im_class.__name__, self.test_method.__name__),
+                'full_name': '%s %s.%s' % (
+                    self.test_method.im_class.__module__,
+                    self.test_method.im_class.__name__,
+                    self.test_method.__name__,
+                ),
                 'fixture_type': None if not inspection.is_fixture_method(self.test_method) else self.test_method._fixture_type,
             }
         }

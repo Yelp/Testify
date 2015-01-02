@@ -56,8 +56,14 @@ class TestRunnerClient(TestRunner):
             return None, None, True
         except urllib2.URLError, e:
             if retry_limit > 0:
-                logging.warning("Got error %r when requesting tests, retrying in %g seconds (giving up in %g seconds)...", e, retry_interval, retry_limit)
+                logging.warning(
+                    "Got error %r when requesting tests, retrying in %g seconds (giving up in %g seconds)...",
+                    e, retry_interval, retry_limit,
+                )
                 time.sleep(min(retry_interval, retry_limit))
-                return self.get_next_tests(retry_limit=retry_limit - retry_interval, retry_interval=retry_interval + self.retry_backoff)
+                return self.get_next_tests(
+                    retry_limit=retry_limit - retry_interval,
+                    retry_interval=retry_interval + self.retry_backoff,
+                )
             else:
                 return None, None, True  # Stop trying if we can't connect to the server.

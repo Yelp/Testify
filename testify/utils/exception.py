@@ -22,7 +22,7 @@ def format_exception_info(exception_info_tuple, formatter=None):
 
 
 def is_relevant_tb_level(tb):
-    return tb.tb_frame.f_globals.has_key('__testify')
+    return '__testify' in tb.tb_frame.f_globals
 
 
 def count_relevant_tb_levels(tb):

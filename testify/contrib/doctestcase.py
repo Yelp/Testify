@@ -17,7 +17,7 @@ class DocMetaTestCase(MetaTestCase):
         try:
             module = dct['module']
         except KeyError:
-            if dct.get('__test__', True) == False:
+            if not dct.get('__test__', True):
                 # This is some kind of abstract class. Do nothing.
                 return
             else:

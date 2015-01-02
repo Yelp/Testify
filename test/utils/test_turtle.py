@@ -13,22 +13,22 @@
 # limitations under the License.
 
 
-from testify import *
+import testify as T
 from testify.contrib.doctestcase import DocTestCase
 
 
-class TurtleTestCase(TestCase):
-    @setup
+class TurtleTestCase(T.TestCase):
+    @T.setup
     def build_turtle(self):
-        self.leonardo = turtle.Turtle()
+        self.leonardo = T.turtle.Turtle()
 
     def test_call(self):
         """Just call a turtle"""
         ret = self.leonardo()
         assert ret
-        assert_length(self.leonardo.returns, 1)
-        assert_call(self.leonardo, 0)
-        assert_equal(ret, self.leonardo.returns[0])
+        T.assert_length(self.leonardo.returns, 1)
+        T.assert_call(self.leonardo, 0)
+        T.assert_equal(ret, self.leonardo.returns[0])
 
     def test_attribute(self):
         """Check our attribute access"""
@@ -37,22 +37,22 @@ class TurtleTestCase(TestCase):
     def test_call_record(self):
         """Check that calls are recorded"""
         self.leonardo(1, 2, 3, quatro=4)
-        assert_length(self.leonardo.calls, 1)
-        assert_call(self.leonardo, 0, 1, 2, 3, quatro=4)
+        T.assert_length(self.leonardo.calls, 1)
+        T.assert_call(self.leonardo, 0, 1, 2, 3, quatro=4)
         self.leonardo(5, six=6)
-        assert_call(self.leonardo, 1, 5, six=6)
+        T.assert_call(self.leonardo, 1, 5, six=6)
 
     def test_attribute_setting(self):
         """Check that we can set attributes and pull them back out"""
         self.leonardo.color = "blue"
-        assert_equal(self.leonardo.color, "blue")
+        T.assert_equal(self.leonardo.color, "blue")
 
     def test_attribute_persistence(self):
         """When an attribute is built, it should be persisted"""
         weapon = self.leonardo.weapon
-        assert_equal(weapon, self.leonardo.weapon)
+        T.assert_equal(weapon, self.leonardo.weapon)
         assert weapon is self.leonardo.weapon
 
 
 class DocTest(DocTestCase):
-    module = turtle
+    module = T.turtle

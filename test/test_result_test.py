@@ -23,7 +23,7 @@ class TestResultTestCase(TestCase):
 
     def _append_exc_info(self, exc_type):
         value, tb = mock.Mock(), mock.Mock(tb_next=None)
-        tb.tb_frame.f_globals.has_key.return_value = False
+        tb.tb_frame.f_globals = {}
         self.test_result.exception_infos.append((exc_type, value, tb))
         return value, tb
 
@@ -38,7 +38,8 @@ class TestResultTestCase(TestCase):
         for testify_frame in testify_frames:
             tb.tb_next = mock.Mock()
             tb = tb.tb_next
-            tb.configure_mock(**{'tb_frame.f_globals.has_key.return_value': testify_frame})
+            f_globals = {'__testify': True} if testify_frame else {}
+            tb.configure_mock(**{'tb_frame.f_globals': f_globals})
         tb.tb_next = None
         tb = root_tb.tb_next
 

@@ -115,47 +115,58 @@ class SQLReporter(test_reporter.TestReporter):
     def init_database(self):
         self.metadata = SA.MetaData()
 
-        self.Tests = SA.Table('tests', self.metadata,
-                              SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-                              SA.Column('module', SA.String(255)),
-                              SA.Column('class_name', SA.String(255)),
-                              SA.Column('method_name', SA.String(255)),
-                              )
+        self.Tests = SA.Table(
+            'tests', self.metadata,
+            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('module', SA.String(255)),
+            SA.Column('class_name', SA.String(255)),
+            SA.Column('method_name', SA.String(255)),
+        )
         SA.Index('ix_individual_test', self.Tests.c.module, self.Tests.c.class_name, self.Tests.c.method_name, unique=True)
 
-        self.Failures = SA.Table('failures', self.metadata,
-                                 SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-                                 SA.Column('error', SA.Text, nullable=False),
-                                 SA.Column('traceback', SA.Text, nullable=False),
-                                 SA.Column('hash', SA.String(40), unique=True, nullable=False),
-                                 )
+        self.Failures = SA.Table(
+            'failures', self.metadata,
+            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('error', SA.Text, nullable=False),
+            SA.Column('traceback', SA.Text, nullable=False),
+            SA.Column('hash', SA.String(40), unique=True, nullable=False),
+        )
 
-        self.Builds = SA.Table('builds', self.metadata,
-                               SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-                               SA.Column('buildbot_run_id', SA.String(36), index=True, nullable=True),
-                               SA.Column('buildbot', SA.Integer, nullable=False),
-                               SA.Column('buildnumber', SA.Integer, nullable=False),
-                               SA.Column('buildname', SA.String(40), nullable=False),
-                               SA.Column('branch', SA.String(255), index=True, nullable=False),
-                               SA.Column('revision', SA.String(40), index=True, nullable=False),
-                               SA.Column('end_time', SA.Integer, index=True, nullable=True),
-                               SA.Column('run_time', SA.Float, nullable=True),
-                               SA.Column('method_count', SA.Integer, nullable=True),
-                               SA.Column('submit_time', SA.Integer, index=True, nullable=True),
-                               SA.Column('discovery_failure', SA.Boolean, default=False, nullable=True),
-                               )
-        SA.Index('ix_individual_run', self.Builds.c.buildbot, self.Builds.c.buildname, self.Builds.c.buildnumber, self.Builds.c.revision, unique=True)
+        self.Builds = SA.Table(
+            'builds', self.metadata,
+            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('buildbot_run_id', SA.String(36), index=True, nullable=True),
+            SA.Column('buildbot', SA.Integer, nullable=False),
+            SA.Column('buildnumber', SA.Integer, nullable=False),
+            SA.Column('buildname', SA.String(40), nullable=False),
+            SA.Column('branch', SA.String(255), index=True, nullable=False),
+            SA.Column('revision', SA.String(40), index=True, nullable=False),
+            SA.Column('end_time', SA.Integer, index=True, nullable=True),
+            SA.Column('run_time', SA.Float, nullable=True),
+            SA.Column('method_count', SA.Integer, nullable=True),
+            SA.Column('submit_time', SA.Integer, index=True, nullable=True),
+            SA.Column('discovery_failure', SA.Boolean, default=False, nullable=True),
+        )
+        SA.Index(
+            'ix_individual_run',
+            self.Builds.c.buildbot,
+            self.Builds.c.buildname,
+            self.Builds.c.buildnumber,
+            self.Builds.c.revision,
+            unique=True,
+        )
 
-        self.TestResults = SA.Table('test_results', self.metadata,
-                                    SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
-                                    SA.Column('test', SA.Integer, index=True, nullable=False),
-                                    SA.Column('failure', SA.Integer, index=True),
-                                    SA.Column('build', SA.Integer, index=True, nullable=False),
-                                    SA.Column('end_time', SA.Integer, index=True, nullable=False),
-                                    SA.Column('run_time', SA.Float, index=True, nullable=False),
-                                    SA.Column('runner_id', SA.String(255), index=True, nullable=True),
-                                    SA.Column('previous_run', SA.Integer, index=False, nullable=True),
-                                    )
+        self.TestResults = SA.Table(
+            'test_results', self.metadata,
+            SA.Column('id', SA.Integer, primary_key=True, autoincrement=True),
+            SA.Column('test', SA.Integer, index=True, nullable=False),
+            SA.Column('failure', SA.Integer, index=True),
+            SA.Column('build', SA.Integer, index=True, nullable=False),
+            SA.Column('end_time', SA.Integer, index=True, nullable=False),
+            SA.Column('run_time', SA.Float, index=True, nullable=False),
+            SA.Column('runner_id', SA.String(255), index=True, nullable=True),
+            SA.Column('previous_run', SA.Integer, index=False, nullable=True),
+        )
         SA.Index('ix_build_test_failure', self.TestResults.c.build, self.TestResults.c.test, self.TestResults.c.failure)
 
     def create_build_row(self, info_dict):
@@ -346,19 +357,61 @@ class SQLReporter(test_reporter.TestReporter):
 
 # Hooks for plugin system
 def add_command_line_options(parser):
-    parser.add_option("--reporting-db-config", action="store", dest="reporting_db_config", type="string", default=None, help="Path to a yaml file describing the SQL database to report into.")
-    parser.add_option('--reporting-db-url', action="store", dest="reporting_db_url", type="string", default=None, help="The URL of a SQL database to report into.")
-    parser.add_option("--build-info", action="store", dest="build_info", type="string", default=None, help="A JSON dictionary of information about this build, to store in the reporting database.")
-    parser.add_option("--sql-reporting-frequency", action="store", dest="sql_reporting_frequency", type="float", default=1.0, help="How long to wait between SQL inserts, at a minimum")
-    parser.add_option("--sql-batch-size", action="store", dest="sql_batch_size", type="int", default="500", help="Maximum number of rows to insert at any one time")
-    parser.add_option("--sql-traceback-size", action="store", dest="sql_traceback_size", type="int", default="65536", help="Maximum length of traceback to store. Tracebacks longer than this will be truncated.")
+    parser.add_option(
+        "--reporting-db-config",
+        action="store",
+        dest="reporting_db_config",
+        type="string",
+        default=None,
+        help="Path to a yaml file describing the SQL database to report into.",
+    )
+    parser.add_option(
+        '--reporting-db-url',
+        action="store",
+        dest="reporting_db_url",
+        type="string",
+        default=None,
+        help="The URL of a SQL database to report into.",
+    )
+    parser.add_option(
+        "--build-info",
+        action="store",
+        dest="build_info",
+        type="string",
+        default=None,
+        help="A JSON dictionary of information about this build, to store in the reporting database.",
+    )
+    parser.add_option(
+        "--sql-reporting-frequency",
+        action="store",
+        dest="sql_reporting_frequency",
+        type="float",
+        default=1.0,
+        help="How long to wait between SQL inserts, at a minimum",
+    )
+    parser.add_option(
+        "--sql-batch-size",
+        action="store",
+        dest="sql_batch_size",
+        type="int",
+        default="500",
+        help="Maximum number of rows to insert at any one time",
+    )
+    parser.add_option(
+        "--sql-traceback-size",
+        action="store",
+        dest="sql_traceback_size",
+        type="int",
+        default="65536",
+        help="Maximum length of traceback to store. Tracebacks longer than this will be truncated.",
+    )
 
 
 def build_test_reporters(options):
     if options.reporting_db_config or options.reporting_db_url:
         if not SA:
             msg = 'SQL Reporter plugin requires sqlalchemy and you do not have it installed in your PYTHONPATH.\n'
-            raise ImportError, msg
+            raise ImportError(msg)
         return [SQLReporter(options)]
     return []
 

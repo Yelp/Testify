@@ -270,9 +270,9 @@ assert_equals = assert_equal
 def assert_true(lval, message=None):
     """Assert that lval evaluates to True, not identity."""
     if message:
-        assert bool(lval) == True, message
+        assert bool(lval), message
     else:
-        assert bool(lval) == True, \
+        assert bool(lval), \
             "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
             (lval, True, _diff_message(lval, True))
 
@@ -280,9 +280,9 @@ def assert_true(lval, message=None):
 def assert_false(lval, message=None):
     """Assert that lval evaluates to False, not identity."""
     if message:
-        assert bool(lval) == False, message
+        assert not bool(lval), message
     else:
-        assert bool(lval) == False, \
+        assert not bool(lval), \
             "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
             (lval, False, _diff_message(lval, False))
 
@@ -571,7 +571,12 @@ def assert_all_not_match_regex(pattern, values, message="expected %(value)r to n
         assert not re.match(pattern, value), message % {'value': value, 'pattern': pattern}
 
 
-def assert_sets_equal(left, right, message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]", msg=None):
+def assert_sets_equal(
+        left,
+        right,
+        message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]",
+        msg=None,
+):
     """Assert that two sets are equal."""
     if msg:
         warnings.warn("msg is deprecated", DeprecationWarning)
@@ -588,7 +593,13 @@ def assert_sets_equal(left, right, message="expected %(left)r == %(right)r [left
         })
 
 
-def assert_dicts_equal(left, right, ignore_keys=None, message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]", msg=None):
+def assert_dicts_equal(
+        left,
+        right,
+        ignore_keys=None,
+        message="expected %(left)r == %(right)r [left has:%(extra_left)r, right has:%(extra_right)r]",
+        msg=None,
+):
     """Assert that two dictionarys are equal (optionally ignoring certain keys)."""
     if msg:
         warnings.warn("msg is deprecated", DeprecationWarning)

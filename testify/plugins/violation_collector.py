@@ -423,19 +423,19 @@ def prepare_test_program(options, program):
     if options.catbox_violations:
         if not sys.platform.startswith('linux'):
             msg = 'Violation collection plugin is Linux-specific. Please either run your tests on Linux or disable the plugin.'
-            raise Exception, msg
+            raise Exception(msg)
         msg_pcre = '\nhttps://github.com/Yelp/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
         if not catbox:
             msg = 'Violation collection requires catbox and you do not have it installed in your PYTHONPATH.\n'
             msg += msg_pcre
-            raise ImportError, msg
+            raise ImportError(msg)
         if catbox and not catbox.has_pcre():
             msg = 'Violation collection requires catbox compiled with PCRE. Your catbox installation does not have PCRE support.'
             msg += msg_pcre
-            raise ImportError, msg
+            raise ImportError(msg)
         if not SA:
             msg = 'Violation collection requires sqlalchemy and you do not have it installed in your PYTHONPATH.\n'
-            raise ImportError, msg
+            raise ImportError(msg)
 
         ctx.output_stream = sys.stderr  # TODO: Use logger?
         ctx.output_verbosity = options.verbosity

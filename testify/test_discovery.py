@@ -142,7 +142,7 @@ def discover(what):
                             yield test_case_class
 
         # it's not a list, it's not a bare module - let's see if it's an honest-to-god TestCaseBase
-        elif isinstance(test_module, MetaTestCase) and (not '__test__' in test_module.__dict__ or bool(test_module.__test__)):
+        elif isinstance(test_module, MetaTestCase) and ('__test__' not in test_module.__dict__ or bool(test_module.__test__)):
             if test_module not in discover_set:
                 _log.debug("discover: discovered %s" % test_module)
                 if suites:
@@ -155,7 +155,7 @@ def discover(what):
                 yield test_module
 
         # detect unittest test cases
-        elif issubclass(test_module, unittest.TestCase) and (not '__test__' in test_module.__dict__ or bool(test_module.__test__)):
+        elif issubclass(test_module, unittest.TestCase) and ('__test__' not in test_module.__dict__ or bool(test_module.__test__)):
             test_case = TestifiedUnitTest.from_unittest_case(test_module, module_suites=suites)
             discover_set.add(test_case)
             yield test_case

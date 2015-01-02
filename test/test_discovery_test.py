@@ -62,7 +62,6 @@ class TestDiscoverFilePath(DiscoveryTestCase):
 class TestDiscoverIgnoreImportedThings(DiscoveryTestCase):
     @relative
     def test_imported_things_are_ignored(self):
-        #TODO CHANGE MY NAME
         discovered_imported = list(test_discovery.discover('test_suite_subdir.import_testcase'))
         discovered_actually_defined_in_module = list(test_discovery.discover('test_suite_subdir.define_testcase'))
 

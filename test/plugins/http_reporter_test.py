@@ -98,7 +98,10 @@ class HTTPReporterTestCase(TestCase):
         assert_equal(test_case_result['method']['name'], 'run')
 
     def test_http_reporter_class_teardown_exception(self):
-        runner = TestRunner(ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase, test_reporters=[HTTPReporter(None, self.connect_addr, 'runner1')])
+        runner = TestRunner(
+            ExceptionInClassFixtureSampleTests.FakeClassTeardownTestCase,
+            test_reporters=[HTTPReporter(None, self.connect_addr, 'runner1')],
+        )
         runner.run()
 
         (test1_method_result, test2_method_result, class_teardown_result, test_case_result) = self.results_reported

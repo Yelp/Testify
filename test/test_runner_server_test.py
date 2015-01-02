@@ -28,7 +28,10 @@ _log = logging.getLogger('testify')
 def get_test(server, runner_id):
     """A blocking function to request a test from a TestRunnerServer."""
     sem = threading.Semaphore(0)
-    tests_received = []  # Python closures aren't as cool as JS closures, so we have to use something already on the heap in order to pass data from an inner func to an outer func.
+    # Python closures aren't as cool as JS closures, so we have to use
+    # something already on the heap in order to pass data from an inner func
+    # to an outer func.
+    tests_received = []
 
     def inner(test_dict):
         tests_received.append(test_dict)
@@ -98,7 +101,8 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
 
         self.server = test_runner_server.TestRunnerServer(
             self.dummy_test_case,
-            options=turtle.Turtle(
+            options=mock.Mock(
+                disable_requeueing=False,
                 runner_timeout=1,
                 server_timeout=10,
                 revision=None,
@@ -175,10 +179,15 @@ class TestRunnerServerBrokenImportTestCase(TestRunnerServerBaseTestCase, BrokenI
 class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
     def timeout_class(self, runner, test):
         assert test
-        tornado.ioloop.IOLoop.instance().add_callback(lambda: self.server.check_in_class(runner, test['class_path'], timed_out=True))
+        tornado.ioloop.IOLoop.instance().add_callback(
+            lambda: self.server.check_in_class(runner, test['class_path'], timed_out=True)
+        )
 
     def test_passing_tests_run_only_once(self):
-        """Start a server with one test case to run. Make sure it hands out that test, report it as success, then make sure it gives us nothing else."""
+        """Start a server with one test case to run. Make sure it hands out
+        that test, report it as success, then make sure it gives us nothing
+        else.
+        """
         first_test = get_test(self.server, 'runner1')
 
         assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
@@ -190,7 +199,10 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         assert_equal(second_test, None)
 
     def test_requeue_on_failure(self):
-        """Start a server with one test case to run. Make sure it hands out that test, report it as failure, then make sure it gives us the same one, then nothing else."""
+        """Start a server with one test case to run. Make sure it hands out
+        that test, report it as failure, then make sure it gives us the same
+        one, then nothing else.
+        """
         first_test = get_test(self.server, 'runner1')
         assert_equal(first_test['class_path'], 'test.test_runner_server_test DummyTestCase')
         assert_equal(set(first_test['methods']), set(['test', 'run']))
@@ -533,7 +545,9 @@ class FailureLimitTestCaseMixin(object):
             assert False, "I am the second (and last) failure. failure_limit is %s" % self.failure_limit
 
         def test3(self):
-            assert False, "This test should not run because failure_count (%s) >= failure_limit (%s)." % (self.failure_count, self.failure_limit)
+            assert False, "This test should not run because failure_count (%s) >= failure_limit (%s)." % (
+                self.failure_count, self.failure_limit
+            )
 
     class TestCaseFailureLimitTestCase(FailureLimitTestCase):
         TEST_CASE_FAILURE_LIMIT = 2
@@ -602,7 +616,10 @@ class TestCaseFailureLimitClassTeardownFailureTestCase(TestRunnerServerBaseTestC
         # Let C = the number of class_teardown methods with failures
         # N failing tests will run, followed by C class_teardown methods.
         # So the test case's failure_count should be N + C.
-        assert_equal(self.test_instance.failure_count, self.dummy_test_case.TEST_CASE_FAILURE_LIMIT + self.dummy_test_case.CLASS_TEARDOWN_FAILURES)
+        assert_equal(
+            self.test_instance.failure_count,
+            self.dummy_test_case.TEST_CASE_FAILURE_LIMIT + self.dummy_test_case.CLASS_TEARDOWN_FAILURES,
+        )
 
 
 class TestCaseFailureLimitClassTeardownErrorTestCase(TestCaseFailureLimitClassTeardownFailureTestCase):
@@ -659,7 +676,9 @@ class TestRunnerServerFailureLimitClassTeardownFailureTestCase(TestRunnerServerB
 
     def start_server(self):
         """Call parent's start_server but with a failure_limit."""
-        super(TestRunnerServerFailureLimitClassTeardownFailureTestCase, self).start_server(failure_limit=self.TEST_RUNNER_SERVER_FAILURE_LIMIT)
+        super(TestRunnerServerFailureLimitClassTeardownFailureTestCase, self).start_server(
+            failure_limit=self.TEST_RUNNER_SERVER_FAILURE_LIMIT,
+        )
 
     def test_class_teardown_counted_as_failure_after_limit_reached(self):
         assert_equal(self.server.failure_count, 0)
