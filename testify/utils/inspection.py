@@ -26,6 +26,8 @@ callable's type.
 import inspect
 import types
 
+import six
+
 
 def callable_hasattr(callable_, attr_name):
     function = get_function(callable_)
@@ -40,7 +42,7 @@ def callable_setattr(callable_, attr_name, attr_value):
 def get_function(callable_):
     """If given a method, returns its function object; otherwise a no-op."""
     if isinstance(callable_, types.MethodType):
-        return callable_.im_func
+        return six.get_method_function(callable_)
     return callable_
 
 

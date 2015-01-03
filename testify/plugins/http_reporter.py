@@ -1,8 +1,7 @@
-import httplib
 import logging
-import Queue
 import threading
-import urllib2
+
+import six
 
 from testify import test_reporter
 
@@ -17,14 +16,29 @@ class HTTPReporter(test_reporter.TestReporter):
         while True:
             result = self.result_queue.get()
             result['runner_id'] = self.runner_id
+            result_dumped = json.dumps(result)
+            if not isinstance(result_dumped, bytes):
+                result_dumped = result_dumped.encode('UTF-8')
 
             try:
                 try:
-                    urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result))
-                except (urllib2.URLError, httplib.BadStatusLine) as e:
+                    six.moves.urllib.request.urlopen(
+                        'http://%s/results?runner=%s' % (
+                            self.connect_addr,
+                            self.runner_id,
+                        ),
+                        result_dumped,
+                    )
+                except (six.moves.urllib.error.URLError, six.moves.http_client.BadStatusLine) as e:
                     # Retry once.
-                    urllib2.urlopen('http://%s/results?runner=%s' % (self.connect_addr, self.runner_id), json.dumps(result))
-            except urllib2.HTTPError as e:
+                    six.moves.urllib.request.urlopen(
+                        'http://%s/results?runner=%s' % (
+                            self.connect_addr,
+                            self.runner_id,
+                        ),
+                        result_dumped,
+                    )
+            except six.moves.urllib.error.HTTPError as e:
                 logging.error(
                     'Skipping returning results for test %s because of error: %s' % (
                         result['method']['full_name'], e.read(),
@@ -43,7 +57,7 @@ class HTTPReporter(test_reporter.TestReporter):
         self.connect_addr = connect_addr
         self.runner_id = runner_id
 
-        self.result_queue = Queue.Queue()
+        self.result_queue = six.moves.queue.Queue()
         self.reporting_thread = threading.Thread(target=self.report_results)
         # A daemon thread should be fine, since the test_runner_client won't quit until the server goes away or says to quit.
         # In either of these cases, any outstanding results won't be processed anyway, so there's no reason for us to wait

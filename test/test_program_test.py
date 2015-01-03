@@ -70,7 +70,7 @@ def test_call(command):
     stdout, stderr = proc.communicate()
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.returncode, command)
-    return stdout.strip()
+    return stdout.strip().decode('UTF-8')
 
 
 class TestifyRunAcceptanceTestCase(TestCase):

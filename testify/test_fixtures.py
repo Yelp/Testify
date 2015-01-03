@@ -2,7 +2,8 @@ __testify = 1
 import contextlib
 import inspect
 import sys
-from new import instancemethod
+
+import six
 
 from testify.utils import inspection
 from testify.test_result import TestResult
@@ -82,7 +83,10 @@ class TestFixtures(object):
         wrapper._fixture_id = fixture._fixture_id
         wrapper._defining_class_depth = fixture._defining_class_depth
 
-        return instancemethod(wrapper, fixture.im_self, fixture.im_class)
+        # http://stackoverflow.com/q/4364565
+        func_self = six.get_method_self(fixture)
+        assert func_self is not None
+        return wrapper.__get__(func_self, type(func_self))
 
     @contextlib.contextmanager
     def class_context(self, setup_callbacks=None, teardown_callbacks=None):
@@ -163,7 +167,7 @@ class TestFixtures(object):
         # we end up with.
         def exit():
             try:
-                ctm.gen.next()
+                next(ctm.gen)
             except StopIteration:
                 pass
 
@@ -283,7 +287,8 @@ class TestFixtures(object):
 
                 # we grabbed this from the class and need to bind it to the
                 # test case
-                instance_method = instancemethod(unbound_method, test_case, test_case.__class__)
+                # http://stackoverflow.com/q/4364565
+                instance_method = unbound_method.__get__(test_case, type(test_case))
                 all_fixtures[instance_method._fixture_type].append(instance_method)
 
         class_level = ['class_setup', 'class_teardown', 'class_setup_teardown']

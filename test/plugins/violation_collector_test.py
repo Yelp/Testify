@@ -1,25 +1,16 @@
 import contextlib
+import functools
 import os
 import socket
 import tempfile
 import time
 
-catbox = None
-try:
-    import catbox
-except ImportError:
-    pass
-
-SA = None
-try:
-    import sqlalchemy as SA
-except ImportError:
-    pass
-
+import six
+import sqlalchemy as SA
 import mock
 
 import testify as T
-
+from testify import test_logger
 from testify.plugins.violation_collector import ctx
 from testify.plugins.violation_collector import cleandict
 from testify.plugins.violation_collector import collect
@@ -32,10 +23,35 @@ from testify.plugins.violation_collector import ViolationReporter
 from testify.plugins.violation_collector import ViolationStore
 from testify.plugins.violation_collector import TEST_METHOD_TYPE
 
+catbox = None
+try:
+    import catbox
+except ImportError:
+    pass
+
+
+def xfailif_python3_catbox_not_importable(func):
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        if six.PY3:
+            with T.assert_raises_exactly(
+                ImportError,
+                (
+                    'Violation collection pipeline tests require catbox.\n'
+                    'https://github.com/Yelp/catbox/wiki/Install-Catbox-with-PCRE-enabled\n'
+                ),
+            ):
+                func(*args, **kwargs)
+        else:
+            return func(*args, **kwargs)
+
+    return wrapped
+
 
 @contextlib.contextmanager
 def mocked_ctx():
     with mock.patch('testify.plugins.violation_collector.ctx') as mock_ctx:
+        mock_ctx.output_verbosity = test_logger.VERBOSITY_NORMAL
         yield mock_ctx
 
 
@@ -392,6 +408,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
 
                 ctx.store = None
 
+    @xfailif_python3_catbox_not_importable
     def test_catbox_methods_inserts(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCase):
             query = SA.sql.select([
@@ -408,6 +425,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
             result = ctx.store.conn.execute(query).fetchone()
             T.assert_equal(result, ('ViolatingTestCase', 'test_filesystem_violation', TEST_METHOD_TYPE))
 
+    @xfailif_python3_catbox_not_importable
     def test_catbox_violations_inserts(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCase):
             query = SA.sql.select([
@@ -418,6 +436,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
             result = ctx.store.conn.execute(query).fetchall()
             T.assert_equal(len(result), 1)
 
+    @xfailif_python3_catbox_not_importable
     def test_violation_collector_pipeline(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCase) as violations:
             T.assert_in(
@@ -433,6 +452,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
                 violations
             )
 
+    @xfailif_python3_catbox_not_importable
     def test_violation_collector_pipeline_with_fixtures(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCaseWithSetupAndTeardown) as violations:
             # setup/teardown fixtures will bump the unlink count for test_filesystem_violation by 2
@@ -446,6 +466,7 @@ class ViolationCollectorPipelineTestCase(T.TestCase):
                 violations
             )
 
+    @xfailif_python3_catbox_not_importable
     def test_violation_collector_pipeline_with_class_level_fixtures(self):
         with self.run_testcase_in_catbox(self.ViolatingTestCaseWithClassSetupAndTeardown) as violations:
             T.assert_in(

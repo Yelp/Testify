@@ -1,9 +1,11 @@
-PY2 = str is bytes
-PY3 = str is not bytes
+from __future__ import absolute_import
 
-# flake8: noqa
+import io
 
-if PY2:  # pragma: no cover PY2
-    import __builtin__ as builtins
-else:  # pragma: no cover PY3
-    import builtins
+import six
+
+
+if six.PY2:
+    NativeIO = io.BytesIO
+else:
+    NativeIO = io.StringIO

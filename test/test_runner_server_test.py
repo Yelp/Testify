@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from __future__ import print_function
 import contextlib
 import logging
@@ -6,8 +7,8 @@ import threading
 import mock
 import tornado.ioloop
 
-from discovery_failure_test import BrokenImportTestCase
-from test_logger_test import ExceptionInClassFixtureSampleTests
+from .discovery_failure_test import BrokenImportTestCase
+from .test_logger_test import ExceptionInClassFixtureSampleTests
 from testify import (
     assert_equal,
     assert_in,
@@ -133,6 +134,13 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
     @class_setup
     def setup_test_case(self):
         self.build_test_case()
+
+    @class_setup
+    def setup_instance(self):
+        if isinstance(self.dummy_test_case, type):
+            self.test_case_instance = self.dummy_test_case()
+        else:
+            self.test_case_instance = None
 
     @setup
     def setup_server(self):
@@ -352,7 +360,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         test = get_test(self.server, 'runner1')
 
         def make_fake_result(method):
-            result = test_result.TestResult(getattr(self.dummy_test_case, method))
+            result = test_result.TestResult(getattr(self.test_case_instance, method))
             result.start()
             result.end_in_success()
             return result.to_dict()
@@ -378,7 +386,7 @@ class TestRunnerServerTestCase(TestRunnerServerBaseTestCase):
         fake_result = self.server._fake_result('foo', 'bar', 'baz')
         fake_result = _replace_values_with_types(fake_result)
 
-        real_result = test_result.TestResult(self.dummy_test_case.test, runner_id='foo!')
+        real_result = test_result.TestResult(self.test_case_instance.test, runner_id='foo!')
         real_result.start()
         try:
             print(1 / 0)

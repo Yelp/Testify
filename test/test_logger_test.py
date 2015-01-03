@@ -1,8 +1,7 @@
-import cStringIO
-
 from mock import patch
 
 from test.discovery_failure_test import BrokenImportTestCase
+from testify import compat
 from testify import TestCase, assert_equal, assert_in, class_setup, class_setup_teardown, class_teardown, run, setup, teardown
 from testify.test_logger import TextTestLogger, VERBOSITY_NORMAL
 from testify.test_runner import TestRunner
@@ -12,7 +11,7 @@ from testify.utils import turtle
 class TextLoggerBaseTestCase(TestCase):
     @setup
     def create_stream_for_logger(self):
-        self.stream = cStringIO.StringIO()
+        self.stream = compat.NativeIO()
 
     @setup
     def create_options_for_test_runner(self):

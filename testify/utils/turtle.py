@@ -68,6 +68,9 @@ class Turtle(object):
     def __nonzero__(self):
         return True
 
+    def __bool__(self):
+        return True
+
     def __getattr__(self, name):
         self.__dict__[name] = Turtle()
         return self.__dict__[name]

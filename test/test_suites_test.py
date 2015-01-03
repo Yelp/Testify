@@ -1,5 +1,4 @@
 import unittest
-from types import MethodType
 
 from testify import TestCase, assert_equal, suite
 from testify.test_runner import TestRunner
@@ -67,7 +66,7 @@ class ListSuitesMixin(object):
 
         # add a dynamic test to guard against
         # https://github.com/Yelp/Testify/issues/85
-        test = MethodType(lambda self: True, self, type(self))
+        test = (lambda self: True).__get__(self, type(self))
         setattr(self, 'test_foo', test)
 
     @suite('disabled', 'crazy', conditions=True)

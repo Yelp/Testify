@@ -14,16 +14,13 @@
 
 
 import inspect
-import logging
 import os
 import pkgutil
 import sys
 import traceback
 import unittest
-from test_case import MetaTestCase, TestifiedUnitTest
-from errors import TestifyError
-
-_log = logging.getLogger('testify')
+from .test_case import MetaTestCase, TestifiedUnitTest
+from .errors import TestifyError
 
 
 class DiscoveryError(TestifyError):

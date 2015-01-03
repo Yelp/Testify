@@ -441,11 +441,11 @@ class LetTest(TestCase):
         return itertools.count(0)
 
     def test_first_call_is_not_cached(self):
-        assert_equal(self.counter.next(), 0)
+        assert_equal(next(self.counter), 0)
 
     def test_subsequent_calls_are_cached(self):
-        assert_equal(self.counter.next(), 0)
-        assert_equal(self.counter.next(), 1)
+        assert_equal(next(self.counter), 0)
+        assert_equal(next(self.counter), 1)
 
 
 class LetWithLambdaTest(TestCase):
@@ -453,11 +453,11 @@ class LetWithLambdaTest(TestCase):
     counter = let(lambda self: itertools.count(0))
 
     def test_first_call_is_not_cached(self):
-        assert_equal(self.counter.next(), 0)
+        assert_equal(next(self.counter), 0)
 
     def test_subsequent_calls_are_cached(self):
-        assert_equal(self.counter.next(), 0)
-        assert_equal(self.counter.next(), 1)
+        assert_equal(next(self.counter), 0)
+        assert_equal(next(self.counter), 1)
 
 
 class LetWithSubclassTest(LetWithLambdaTest):

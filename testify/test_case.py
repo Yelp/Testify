@@ -15,25 +15,27 @@
 
 """This module contains the TestCase class and other helper code, like decorators for test methods."""
 
-# TODO: finish doing the retry stuff for the inner clauses
+from __future__ import absolute_import
 
+# TODO: finish doing the retry stuff for the inner clauses
 __author__ = "Oliver Nicholas <bigo@yelp.com>"
 __testify = 1
 
 from collections import defaultdict
-from new import instancemethod
 import functools
 import inspect
 import sys
 import types
 import unittest
 
+import six
+
 from testify.utils import class_logger
 from testify.test_fixtures import DEPRECATED_FIXTURE_TYPE_MAP
 from testify.test_fixtures import TestFixtures
 from testify.test_fixtures import suite
-from test_result import TestResult
-import deprecated_assertions
+from .test_result import TestResult
+from . import deprecated_assertions
 
 
 class MetaTestCase(type):
@@ -45,7 +47,7 @@ class MetaTestCase(type):
 
     def __new__(mcls, name, bases, dct):
         # This is the constructor for all TestCase *classes*.
-        for member_name, member in dct.iteritems():
+        for member_name, member in dct.items():
             if member_name.startswith('test') and isinstance(member, types.FunctionType):
                 if not hasattr(member, '_suites'):
                     member._suites = set()
@@ -66,12 +68,8 @@ class MetaTestCase(type):
         """Return a canonical representation of a TestCase for sorting and hashing."""
         return "%s.%s" % (instance.__module__, instance.__name__)
 
-    def __cmp__(cls, other):
-        """Sort TestCases by a particular string representation."""
-        return cmp(MetaTestCase._cmp_str(cls), MetaTestCase._cmp_str(other))
 
-
-class TestCase(object):
+class TestCase(six.with_metaclass(MetaTestCase, object)):
     """The TestCase class defines test methods and fixture methods; it is the meat and potatoes of testing.
 
     QuickStart:
@@ -99,7 +97,6 @@ class TestCase(object):
             register_on_complete_test_method_callback
             register_on_run_test_method_callback
     """
-    __metaclass__ = MetaTestCase
     __test__ = False
 
     STAGE_UNSTARTED = 0
@@ -142,8 +139,14 @@ class TestCase(object):
         # for now, we still support the use of unittest-style assertions defined on the TestCase instance
         for name in dir(deprecated_assertions):
             if name.startswith(('assert', 'fail')):
-                setattr(self, name, instancemethod(getattr(deprecated_assertions, name), self, self.__class__))
-
+                setattr(
+                    self,
+                    name,
+                    # http://stackoverflow.com/q/4364565
+                    getattr(deprecated_assertions, name).__get__(
+                        self, type(self),
+                    ),
+                )
         self.failure_limit = kwargs.pop('failure_limit', None)
         self.failure_count = 0
 
@@ -154,7 +157,12 @@ class TestCase(object):
     def _generate_test_method(self, method_name, function):
         """Allow tests to define new test methods in their __init__'s and have appropriate suites applied."""
         suite(*getattr(self, '_suites', set()))(function)
-        setattr(self, method_name, instancemethod(function, self, self.__class__))
+        setattr(
+            self,
+            method_name,
+            # http://stackoverflow.com/q/4364565
+            function.__get__(self, type(self)),
+        )
 
     def runnable_test_methods(self):
         """Generator method to yield runnable test methods.
@@ -391,7 +399,7 @@ class TestifiedUnitTest(TestCase, unittest.TestCase):
             del default_test_case_dict[deprecated_fixture_name]
 
         # set testify defaults on the unittest class
-        for member_name, member in default_test_case_dict.iteritems():
+        for member_name, member in default_test_case_dict.items():
             unittest_dict.setdefault(member_name, member)
 
         # use an __init__ smart enough to figure out our inheritance

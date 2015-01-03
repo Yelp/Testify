@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import warnings
 
+import six
+
 from testify import TestCase
 from testify import assertions
 from testify import run
@@ -90,21 +92,45 @@ class AssertEqualTestCase(TestCase):
 
         def assert_with_unicode_msg():
             assert_equal(unicode_string, utf8_string)
-        assertions.assert_raises_and_contains(AssertionError, r"l: u'm\xfcnchen'", assert_with_unicode_msg)
-        assertions.assert_raises_and_contains(AssertionError, r"r: 'm\xc3\xbcnchen'", assert_with_unicode_msg)
-        assertions.assert_raises_and_contains(AssertionError, 'l: münchen', assert_with_unicode_msg)
-        assertions.assert_raises_and_contains(AssertionError, 'r: münchen', assert_with_unicode_msg)
+
+        for part in (
+            (
+                r"l: u'm\xfcnchen'" if six.PY2 else
+                r"l: 'münchen'"
+            ),
+            (
+                r"r: 'm\xc3\xbcnchen'" if six.PY2 else
+                r"r: b'm\xc3\xbcnchen'"
+            ),
+            'l: münchen',
+            'r: münchen',
+        ):
+            assertions.assert_raises_and_contains(
+                AssertionError, part, assert_with_unicode_msg,
+            )
 
     def test_bytes_diff(self):
-        byte_string1 = 'm\xeenchen'
-        byte_string2 = 'm\xaanchen'
+        byte_string1 = b'm\xeenchen'
+        byte_string2 = b'm\xaanchen'
 
         def assert_with_unicode_msg():
             assert_equal(byte_string1, byte_string2)
-        assertions.assert_raises_and_contains(AssertionError, r"l: 'm\xeenchen'", assert_with_unicode_msg)
-        assertions.assert_raises_and_contains(AssertionError, r"r: 'm\xaanchen'", assert_with_unicode_msg)
-        assertions.assert_raises_and_contains(AssertionError, 'l: m<î>nchen', assert_with_unicode_msg)
-        assertions.assert_raises_and_contains(AssertionError, 'r: m<ª>nchen', assert_with_unicode_msg)
+
+        for part in (
+            (
+                r"l: 'm\xeenchen'" if six.PY2 else
+                r"l: b'm\xeenchen'"
+            ),
+            (
+                r"r: 'm\xaanchen'" if six.PY2 else
+                r"r: b'm\xaanchen'"
+            ),
+            'l: m<î>nchen',
+            'r: m<ª>nchen'
+        ):
+            assertions.assert_raises_and_contains(
+                AssertionError, part, assert_with_unicode_msg,
+            )
 
     def test_utf8_diff(self):
         utf8_string1 = u'münchen'.encode('utf8')
@@ -113,25 +139,38 @@ class AssertEqualTestCase(TestCase):
         def assert_with_unicode_msg():
             assert_equal(utf8_string1, utf8_string2)
         for content in (
-                r"l: 'm\xc3\xbcnchen'",
-                r"r: 'm\xc3\xabnchen'",
+                (
+                    r"l: 'm\xc3\xbcnchen'" if six.PY2 else
+                    r"l: b'm\xc3\xbcnchen'"
+                ),
+                (
+                    r"r: 'm\xc3\xabnchen'" if six.PY2 else
+                    r"r: b'm\xc3\xabnchen'"
+                ),
                 "l: m<ü>nchen",
                 "r: m<ë>nchen",
         ):
             assertions.assert_raises_and_contains(AssertionError, content, assert_with_unicode_msg)
 
-    def test_str_versus_unicode_diff(self):
+    def test_bytes_versus_unicode_diff(self):
         """Real-world example from https://github.com/Yelp/Testify/issues/144#issuecomment-14188539
         A good assert_equal implementation will clearly show that these have completely different character contents.
         """
         unicode_string = u'm\xc3\xbcnchen'
-        byte_string = 'm\xc3\xbcnchen'
+        byte_string = b'm\xc3\xbcnchen'
 
         def assert_with_unicode_msg():
             assert_equal(unicode_string, byte_string)
+
         for content in (
-                r"l: u'm\xc3\xbcnchen'",
-                r"r: 'm\xc3\xbcnchen'",
+                (
+                    r"l: u'm\xc3\xbcnchen'" if six.PY2 else
+                    r"l: 'mã¼nchen'"
+                ),
+                (
+                    r"r: 'm\xc3\xbcnchen'" if six.PY2 else
+                    r"r: b'm\xc3\xbcnchen'"
+                ),
                 "l: m<Ã¼>nchen",
                 "r: m<ü>nchen",
         ):

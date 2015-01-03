@@ -7,6 +7,8 @@ import select
 import sys
 import time
 
+import six
+
 catbox = None
 try:
     import catbox
@@ -69,7 +71,7 @@ def get_db_url(options):
 
 def is_sqlite_filepath(dburl):
     '''Check if dburl is an sqlite file path.'''
-    return type(dburl) in (str, unicode) and dburl.startswith('sqlite:///')
+    return isinstance(dburl, six.string_types) and dburl.startswith('sqlite:///')
 
 
 def sqlite_dbpath(dburl):
@@ -81,7 +83,7 @@ def sqlite_dbpath(dburl):
 
 def cleandict(dictionary, allowed_keys):
     '''Cleanup the dictionary removing all keys but the allowed ones.'''
-    return dict((k, v) for k, v in dictionary.iteritems() if k in allowed_keys)
+    return dict((k, v) for k, v in dictionary.items() if k in allowed_keys)
 
 
 def writable_paths(options):
@@ -115,7 +117,10 @@ def writeln(msg, verbosity=None):
     global ctx
     verbosity = verbosity or ctx.output_verbosity
     if ctx.output_stream and (verbosity <= ctx.output_verbosity):
-        msg = msg.encode('utf8') if isinstance(msg, unicode) else msg
+        if six.PY2:
+            msg = msg.encode('utf8') if isinstance(msg, six.text_type) else msg
+        else:
+            msg = msg.decode('UTF-8') if isinstance(msg, bytes) else msg
         ctx.output_stream.write(msg + '\n')
         ctx.output_stream.flush()
 

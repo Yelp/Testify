@@ -21,6 +21,8 @@ import logging
 import subprocess
 import sys
 
+import six
+
 from testify import test_reporter
 
 VERBOSITY_SILENT = 0  # Don't say anything, just exit with a status code
@@ -134,13 +136,16 @@ class TextTestLogger(TestLoggerBase):
 
     def write(self, message):
         """Write a message to the output stream, no trailing newline"""
-        self.stream.write(message.encode('utf8') if isinstance(message, unicode) else message)
+        if six.PY2:
+            self.stream.write(message.encode('utf8') if isinstance(message, six.text_type) else message)
+        else:
+            self.stream.write(message.decode('UTF-8') if type(message) is bytes else message)
         self.stream.flush()
 
     def writeln(self, message):
         """Write a message and append a newline"""
-        self.stream.write("%s\n" % (message.encode('utf8') if isinstance(message, unicode) else message))
-        self.stream.flush()
+        self.write(message)
+        self.write('\n')
 
     BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(30, 38)
 
