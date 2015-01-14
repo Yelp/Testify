@@ -144,15 +144,14 @@ class TestRunnerServerBaseTestCase(test_case.TestCase):
 
 
 class TestRunnerServerBrokenImportTestCase(TestRunnerServerBaseTestCase, BrokenImportTestCase,):
-    def create_broken_import_file(self):
-        """We must control when this setup method is run since
-        build_test_case() depends on it. So we'll stub it out for now and call
-        it when we're ready from build_test_case()."""
-        pass
+
+    @property
+    def dummy_test_case(self):
+        # Done as a property to defer execution?
+        return self.broken_import_module
 
     def build_test_case(self):
-        super(TestRunnerServerBrokenImportTestCase, self).create_broken_import_file()
-        self.dummy_test_case = self.broken_import_module
+        pass
 
     def start_server(self):
         """To insure the server has started before we start testing, set up a

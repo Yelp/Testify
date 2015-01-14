@@ -10,7 +10,7 @@ from testify import run
 from testify import setup
 from testify import teardown
 from testify import TestCase
-from testify import test_runner
+from testify.test_case import TestifiedUnitTest
 
 
 class TestMethodsGetRun(TestCase):
@@ -140,22 +140,12 @@ class UnitTest(unittest.TestCase):
         self.status[5] = True
 
 
-class UnitTestUntested(UnitTest):
-    __test__ = False
-    status = [False] * 6
-
-
 class UnitTestTestYoDawg(TestCase):
     """Make sure we actually detect and run all steps in unittest.TestCases."""
 
     def test_unit_test_status(self):
-        runner = test_runner.TestRunner(UnitTest)
-        assert runner.run()
-        assert UnitTest.status == [True] * 6, UnitTest.status
-
-        runner = test_runner.TestRunner(UnitTestUntested)
-        assert runner.run()
-        assert UnitTestUntested.status == [False] * 6, UnitTestUntested.status
+        TestifiedUnitTest.from_unittest_case(UnitTest)().run()
+        assert_equal(UnitTest.status, [True] * 6)
 
 # The following cases test unittest.TestCase inheritance, fixtures and mixins
 
