@@ -244,10 +244,10 @@ class TestRunner(object):
     def list_tests(self, selected_suite_name=None):
         """Lists all tests, optionally scoped to a single suite."""
         test_list = self.get_tests_for_suite(selected_suite_name)
-        for test_method_name in (
-            self.get_test_method_name(test)
-            for test in test_list
-        ):
+        test_method_names = sorted([
+            self.get_test_method_name(test) for test in test_list
+        ])
+        for test_method_name in test_method_names:
             print(test_method_name)
 
         return test_list
