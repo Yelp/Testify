@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 
 import testify as T
+from test.test_case_test import RegexMatcher
 
 
 def cmd_output(*cmd, **kwargs):
@@ -56,8 +57,34 @@ class DiscoveryFailureTestCase(BrokenImportTestCase):
         stdout, stderr = cmd_output(
             'python', '-m', 'testify.test_program', self.broken_import_module,
         )
-        T.assert_in('DISCOVERY FAILURE', stdout)
-        T.assert_in('ImportError: No module named non_existent_module', stderr)
+
+        T.assert_equal(
+            stdout,
+            RegexMatcher(
+                r'DISCOVERY FAILURE!\n'
+                r'There was a problem importing one or more tests:\n\n'
+                r'    Traceback \(most recent call last\):\n'
+                r'      File .+, line \d+, in discover\n'
+                r"        mod = __import__\(what, fromlist=\[str\(\'__trash\'\)\]\)\n"
+                r'      File .+, line \d+, in <module>\n'
+                r'        import non_existent_module\n'
+                r'    ImportError: No module named non_existent_module\n\n'
+                r"No tests were discovered \(tests must subclass TestCase and test methods must begin with 'test'\).\n"
+                r'ERROR.  0 tests / 0 cases: 0 passed, 0 failed.  \(Total test time \d+\.\d+s\)\n'
+            ),
+        )
+
+        T.assert_equal(
+            stderr,
+            RegexMatcher(
+                r'Traceback \(most recent call last\):\n'
+                r'  File .+, line \d+, in discover\n'
+                r"    mod = __import__\(what, fromlist=\[str\(\'__trash\'\)\]\)\n"
+                r'  File .+, line \d+, in <module>\n'
+                r'    import non_existent_module\n'
+                r'ImportError: No module named non_existent_module\n'
+            ),
+        )
 
 
 class DiscoveryFailureUnknownErrorTestCase(BrokenImportTestCase):

@@ -102,7 +102,12 @@ def discover(what):
         return discovered
     except Exception:
         traceback.print_exc()
-        raise DiscoveryError()
+        raise DiscoveryError(
+            (
+                '\n    ' +
+                traceback.format_exc().replace('\n', '\n    ')
+            ).rstrip()
+        )
 
 
 def import_test_class(module_path, class_name):
