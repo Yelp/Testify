@@ -19,6 +19,8 @@ import sys
 import time
 import traceback
 
+import six
+
 from testify.utils import inspection
 
 __testify = 1
@@ -104,11 +106,9 @@ class TestResult(object):
         print("\nDEBUGGER")
         print(self.format_exception_info())
         try:
-            import ipdb
-            detected_postmortem_tool = ipdb.post_mortem
+            detected_postmortem_tool = __import__('ipdb').post_mortem
         except ImportError:
-            import pdb
-            detected_postmortem_tool = pdb.post_mortem
+            detected_postmortem_tool = __import__('pdb').post_mortem
         detected_postmortem_tool(traceback)
 
     def _complete(self):
@@ -202,6 +202,8 @@ class TestResult(object):
         return self.__make_multi_error_message(formatter)
 
     def to_dict(self):
+        test_method_self_t = type(six.get_method_self(self.test_method))
+        assert not isinstance(test_method_self_t, type(None))
         return {
             'previous_run': self.previous_run,
             'start_time': time.mktime(self.start_time.timetuple()) if self.start_time else None,
@@ -222,12 +224,12 @@ class TestResult(object):
             'exception_only': self.format_exception_only(),
             'runner_id': self.runner_id,
             'method': {
-                'module': self.test_method.im_class.__module__,
-                'class': self.test_method.im_class.__name__,
+                'module': test_method_self_t.__module__,
+                'class': test_method_self_t.__name__,
                 'name': self.test_method.__name__,
                 'full_name': '%s %s.%s' % (
-                    self.test_method.im_class.__module__,
-                    self.test_method.im_class.__name__,
+                    test_method_self_t.__module__,
+                    test_method_self_t.__name__,
                     self.test_method.__name__,
                 ),
                 'fixture_type': None if not inspection.is_fixture_method(self.test_method) else self.test_method._fixture_type,

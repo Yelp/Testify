@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 try:
     import simplejson as json  # noqa
 except ImportError:
@@ -6,7 +7,7 @@ except ImportError:
 import sys
 
 
-from test_runner import TestRunner
+from .test_runner import TestRunner
 
 
 class TestRunnerJSONReplay(TestRunner):

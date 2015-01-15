@@ -1,5 +1,3 @@
-import __builtin__
-import contextlib
 import imp
 import mock
 from testify import assert_equal
@@ -8,6 +6,8 @@ from testify import setup_teardown
 from testify import test_case
 from testify import test_discovery
 from testify import test_runner
+
+import six
 
 from .test_runner_subdir.inheriting_class import InheritingClass
 from .test_runner_bucketing import bucketing_test
@@ -38,7 +38,7 @@ class TestTestRunnerGetTestMethodName(test_case.TestCase):
 
     def test_method_from_other_module_reports_class_module(self):
         ret = test_runner.TestRunner.get_test_method_name(
-            InheritingClass.test_foo,
+            InheritingClass().test_foo,
         )
 
         assert_equal(
@@ -99,22 +99,17 @@ class TestTestRunnerGetTestsForSuite(test_case.TestCase):
         mock_returned_test.runnable_test_methods.return_value = [
             self.mock_test_method,
         ]
-        with contextlib.nested(
-            mock.patch.object(
-                test_runner.TestRunner,
-                'discover',
-                autospec=True,
-                return_value=[mock_returned_test],
-            ),
-            mock.patch.object(
-                test_case.TestCase,
-                'in_suite',
-            ),
-        ) as (
-            self.discover_mock,
-            self.in_suite_mock,
-        ):
-            yield
+        with mock.patch.object(
+            test_runner.TestRunner,
+            'discover',
+            autospec=True,
+            return_value=[mock_returned_test],
+        ) as self.discover_mock:
+            with mock.patch.object(
+                    test_case.TestCase,
+                    'in_suite',
+            ) as self.in_suite_mock:
+                yield
 
     def test_get_tests_for_suite_in_suite(self):
         self.in_suite_mock.return_value = True
@@ -135,28 +130,26 @@ class TestTestRunnerPrintsTestNames(test_case.TestCase):
 
     @setup_teardown
     def mock_out_things(self):
-        with contextlib.nested(
-            mock.patch.object(
-                test_runner.TestRunner,
-                'get_tests_for_suite',
-                autospec=True,
-                return_value=[mock.sentinel.test1, mock.sentinel.test2],
-            ),
-            mock.patch.object(
+        class OrderableMock(mock.Mock):
+            def __lt__(self, other):
+                return id(self) < id(other)
+
+        with mock.patch.object(
+            test_runner.TestRunner,
+            'get_tests_for_suite',
+            autospec=True,
+            return_value=[mock.sentinel.test1, mock.sentinel.test2],
+        ) as self.get_tests_for_suite_mock:
+            with mock.patch.object(
                 test_runner.TestRunner,
                 'get_test_method_name',
-            ),
-            mock.patch.object(
-                __builtin__,
-                'print',
-                autospec=True,
-            ),
-        ) as (
-            self.get_tests_for_suite_mock,
-            self.get_test_method_name_mock,
-            self.print_mock,
-        ):
-            yield
+                return_value=OrderableMock(),
+            ) as self.get_test_method_name_mock:
+                with mock.patch.object(
+                    six.moves.builtins,
+                    'print',
+                ) as self.print_mock:
+                    yield
 
     def test_prints_one_per_line(self):
         instance = test_runner.TestRunner(mock.sentinel.test_class)

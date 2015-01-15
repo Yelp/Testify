@@ -20,11 +20,10 @@ try:
 except ImportError:
     import json
 
+import six
 import yaml
 import time
 import threading
-import Queue as queue
-from Queue import Queue
 
 SA = None
 try:
@@ -36,22 +35,24 @@ from testify import test_reporter
 
 
 def md5(s):
-    return hashlib.md5(s.encode('utf8') if isinstance(s, unicode) else s).hexdigest()
+    return hashlib.md5(
+        s.encode('utf8') if isinstance(s, six.text_type) else s
+    ).hexdigest()
 
 
-class TaskQueue(Queue):
+class TaskQueue(six.moves.queue.Queue):
     def __init__(self, maxsize=0, worker_function=lambda: None):
         self._func = worker_function
         self._thread = None
         # Queue is apparently an old-style class.
-        Queue.__init__(self, maxsize)
+        six.moves.queue.Queue.__init__(self, maxsize)
 
     def put(self, item, block=True, timeout=None):
         if self._thread is None:
             self._thread = threading.Thread(target=self._func)
             self._thread.daemon = True
             self._thread.start()
-        Queue.put(self, item, block, timeout)
+        six.moves.queue.Queue.put(self, item, block, timeout)
 
 
 class SQLReporter(test_reporter.TestReporter):
@@ -325,7 +326,7 @@ class SQLReporter(test_reporter.TestReporter):
             try:
                 while True:
                     results.append(self.result_queue.get_nowait())
-            except queue.Empty:
+            except six.moves.queue.Empty:
                 pass
 
             # Insert any previous runs, if necessary.

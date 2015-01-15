@@ -1,12 +1,11 @@
 import sys
 from doctest import DocTestFinder, DocTestRunner, REPORT_NDIFF
-from StringIO import StringIO
-from types import MethodType
 
 import mock
+import six
 
+from testify import compat
 from testify import MetaTestCase, TestCase, setup_teardown
-from testify.compat import builtins
 
 
 class DocMetaTestCase(MetaTestCase):
@@ -26,7 +25,7 @@ class DocMetaTestCase(MetaTestCase):
         globs = dct.get('globs', None)
         extraglobs = dct.get('extraglobs', None)
 
-        if isinstance(module, basestring):
+        if isinstance(module, six.string_types):
             # transform a module name into a module
             module = sys.modules[module]
 
@@ -44,22 +43,21 @@ class DocMetaTestCase(MetaTestCase):
         # Need to change dots to colons so that testify doesn't try to interpret them.
         testname = doctest.name.replace('.', ':')
         test.__name__ = doctest.name = testname
-
-        test = MethodType(test, None, cls)
+        test = test.__get__(None, cls)
         vars(test)['_suites'] = set()
 
         setattr(cls, test.__name__, test)
 
 
 def run_test(doctest):
-    summary = StringIO()
+    summary = compat.NativeIO()
     runner = DocTestRunner(optionflags=REPORT_NDIFF)
     runner.run(doctest, out=summary.write)
 
     assert runner.failures == 0, '\n' + summary.getvalue()
 
 
-class DocTestCase(TestCase):
+class DocTestCase(six.with_metaclass(DocMetaTestCase, TestCase)):
     """
     A testify TestCase that turns doctests into unit tests.
 
@@ -69,11 +67,10 @@ class DocTestCase(TestCase):
             A new copy of this dictionary is created for each test.
         extraglobs -- (optional) an extra set of global variables, which is merged into globs.
     """
-    __metaclass__ = DocMetaTestCase
     __test__ = False
 
     @setup_teardown
     def patch_builtins(self):
         # XXX: doctest lets things spew into builtins._
-        with mock.patch.dict(builtins.__dict__):
+        with mock.patch.dict(six.moves.builtins.__dict__):
             yield

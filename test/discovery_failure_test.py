@@ -36,7 +36,7 @@ class BrokenImportTestCase(T.TestCase):
         with io.open(filename, 'w') as test_file:
             test_file.write(self.broken_contents)
 
-    @T.setup_teardown
+    @T.class_setup_teardown
     def create_temporary_directory(self):
         self.tempdir = tempfile.mkdtemp()
         cwd = os.getcwd()
@@ -68,7 +68,7 @@ class DiscoveryFailureTestCase(BrokenImportTestCase):
                 r"        mod = __import__\(what, fromlist=\[str\(\'__trash\'\)\]\)\n"
                 r'      File .+, line \d+, in <module>\n'
                 r'        import non_existent_module\n'
-                r'    ImportError: No module named non_existent_module\n\n'
+                r"    ImportError: No module named '?non_existent_module'?\n\n"
                 r"No tests were discovered \(tests must subclass TestCase and test methods must begin with 'test'\).\n"
                 r'ERROR.  0 tests / 0 cases: 0 passed, 0 failed.  \(Total test time \d+\.\d+s\)\n'
             ),
@@ -82,7 +82,7 @@ class DiscoveryFailureTestCase(BrokenImportTestCase):
                 r"    mod = __import__\(what, fromlist=\[str\(\'__trash\'\)\]\)\n"
                 r'  File .+, line \d+, in <module>\n'
                 r'    import non_existent_module\n'
-                r'ImportError: No module named non_existent_module\n'
+                r"ImportError: No module named '?non_existent_module'?\n"
             ),
         )
 

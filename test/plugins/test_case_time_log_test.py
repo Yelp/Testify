@@ -2,9 +2,11 @@ import contextlib
 import datetime
 import mock
 from optparse import OptionParser
-from StringIO import StringIO
 import time
 
+import six
+
+from testify import compat
 from testify import assert_equal, TestCase
 from testify.test_result import TestResult
 from testify.plugins.test_case_time_log import add_command_line_options, TestCaseJSONReporter
@@ -15,7 +17,7 @@ except ImportError:
     import json
 
 
-class MyStringIO(StringIO):
+class MyStringIO(compat.NativeIO):
     def close(self):
         pass
 
@@ -29,7 +31,7 @@ def _mock_conf_file_open(fname, mode='w'):
 
 @contextlib.contextmanager
 def mock_conf_files():
-    with mock.patch('__builtin__.open', _mock_conf_file_open):
+    with mock.patch.object(six.moves.builtins, 'open', _mock_conf_file_open):
         yield
 
 start_time = datetime.datetime(2014, 12, 17, 12, 38, 37, 0)
@@ -49,9 +51,6 @@ output_str = (
                                      time.mktime(end_time.timetuple())))
 
 
-OUTPUT = StringIO(output_str)
-
-
 class TestCaseJSONReporterTestCase(TestCase):
 
     def set_options(self):
@@ -69,10 +68,13 @@ class TestCaseJSONReporterTestCase(TestCase):
             test_case = TestCase()
             fake_test_result = TestResult(test_case.run)
             with mock.patch.object(
-                    datetime, 'datetime', **{'now.return_value': start_time}):
+                datetime, 'datetime', **{'now.return_value': start_time}
+            ):
                 fake_test_result.start()
             with mock.patch.object(datetime, 'datetime', **{'now.return_value': end_time}):
                 fake_test_result._complete()
             self.reporter.test_case_complete(fake_test_result.to_dict())
-            assert_equal(json.loads(self.reporter.log_file.getvalue()),
-                         json.loads(OUTPUT.getvalue()))
+            assert_equal(
+                json.loads(self.reporter.log_file.getvalue()),
+                json.loads(output_str),
+            )

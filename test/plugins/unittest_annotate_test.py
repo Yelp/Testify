@@ -1,4 +1,5 @@
 import testify
+import six
 import sqlalchemy
 import mock
 import os
@@ -76,10 +77,12 @@ class DatabaseTestCase(testify.TestCase):
 
         for time in times:
             bb_runid = str(time)
-            build = Denormalized(buildbot_run_id=bb_runid,
-                                 branch='test_branch',
-                                 revision='test_rev',
-                                 start_time=time)
+            build = Denormalized(
+                buildbot_run_id=bb_runid,
+                branch='test_branch',
+                revision='test_rev',
+                start_time=time,
+            )
             self.session.add(build)
             self.session.commit()
 
@@ -90,14 +93,16 @@ class DatabaseTestCase(testify.TestCase):
             if time in methods_with_test_attribute:
                 # These methods will be labeled as tests, not undefined
                 method_type = 'test'
-            method = Methods(buildbot_run_id=bb_runid,
-                             branch=u"test",
-                             revision=u"test",
-                             start_time=0,
-                             module=u'test',
-                             class_name=u'test' + unicode(time),
-                             method_name=u'test' + unicode(time),
-                             method_type=method_type)
+            method = Methods(
+                buildbot_run_id=bb_runid,
+                branch=u"test",
+                revision=u"test",
+                start_time=0,
+                module=u'test',
+                class_name=u'test{0}'.format(time),
+                method_name=u'test{0}'.format(time),
+                method_type=method_type,
+            )
             self.session.add(method)
             self.session.commit()
 
@@ -164,7 +169,7 @@ class DatabaseTestCase(testify.TestCase):
         # Build the proper data structure
         proper_response = {}
         for test in range(1, 10):
-            test_name_part = u'test' + unicode(test)
+            test_name_part = u'test{0}'.format(test)
             name = "%s %s.%s" % (u'test', test_name_part, test_name_part)
             if test == 2 or test == 3:
                 proper_response[name] = False
@@ -225,12 +230,11 @@ class DatabaseTestCase(testify.TestCase):
         runner.unittests['mod class.sample_method3'] = True
 
         # Populate fake test_case with 3 fake methods
-        self.sample_method1.im_class.__module__ = 'mod'
-        self.sample_method1.im_class.__name__ = 'class'
-        self.sample_method2.im_class.__module__ = 'mod'
-        self.sample_method2.im_class.__name__ = 'class'
-        self.sample_method3.im_class.__module__ = 'mod'
-        self.sample_method3.im_class.__name__ = 'class'
+        self1_t = type(six.get_method_self(self.sample_method1))
+        self2_t = type(six.get_method_self(self.sample_method2))
+        self3_t = type(six.get_method_self(self.sample_method3))
+        self1_t.__name__ = self2_t.__name__ = self3_t.__name__ = 'class'
+        self1_t.__module__ = self2_t.__module__ = self3_t.__module__ = 'mod'
 
         test_methods = [self.sample_method1, self.sample_method2, self.sample_method3]
 

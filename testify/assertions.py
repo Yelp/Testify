@@ -17,6 +17,8 @@ from itertools import islice
 import re
 import warnings
 
+import six
+
 from .utils import stringdiffer
 
 
@@ -249,7 +251,10 @@ def _diff_message(lhs, rhs):
 
     message = u'Diff:\nl: %s\nr: %s' % stringdiffer.highlight(lhs, rhs)
     # Python2 exceptions require bytes.
-    return message.encode('UTF-8')
+    if six.PY2:
+        return message.encode('UTF-8')
+    else:
+        return message
 
 
 def assert_equal(lval, rval, message=None):
@@ -793,20 +798,20 @@ def assert_warns_such_that(warnings_test, callable=None, *args, **kwargs):
 
 def _to_characters(x):
     """Return characters that represent the object `x`, come hell or high water."""
-    if isinstance(x, unicode):
+    if isinstance(x, six.text_type):
         return x
     try:
-        return unicode(x, 'UTF-8')
+        return six.text_type(x, 'UTF-8')
     except UnicodeDecodeError:
-        return unicode(x, 'latin1')
+        return six.text_type(x, 'latin1')
     except TypeError:
         # We're only allowed to specify an encoding for str values, for whatever reason.
         try:
-            return unicode(x)
+            return six.text_type(x)
         except UnicodeDecodeError:
             # You get this (for example) when an error object contains utf8 bytes.
             try:
-                return unicode(str(x), 'UTF-8')
+                return bytes(x).decode('UTF-8')
             except UnicodeDecodeError:
-                return unicode(str(x), 'latin1')
+                return bytes(x).decode('latin1')
 # vim:et:sts=4:sw=4:

@@ -6,10 +6,12 @@ receive tests to run, and send back their results.
 The server keeps track of the overall status of the run and manages timeouts and retries.
 """
 
+import collections
 import logging
 
-from test_fixtures import FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS
-from test_runner import TestRunner
+from .test_fixtures import FIXTURES_WHICH_CAN_RETURN_UNEXPECTED_RESULTS
+from .test_runner import TestRunner
+import six
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
@@ -22,14 +24,21 @@ except ImportError:
     import json
 import logging
 
-import Queue
 import time
+
+
+class Work(collections.namedtuple('Work', ('priority', 'worker', 'runner'))):
+    def __lt__(self, other):
+        return (
+            (self.priority, self.worker.__name__, self.runner) <
+            (other.priority, other.worker.__name__, other.runner)
+        )
 
 
 class AsyncDelayedQueue(object):
     def __init__(self):
-        self.test_queue = Queue.PriorityQueue()
-        self.worker_queue = Queue.PriorityQueue()
+        self.test_queue = six.moves.queue.PriorityQueue()
+        self.worker_queue = six.moves.queue.PriorityQueue()
         self.finalized = False
 
     def add_worker(self, w_priority, worker, runner=None):
@@ -38,11 +47,14 @@ class AsyncDelayedQueue(object):
             worker(None, None)
             return
 
-        self.worker_queue.put((w_priority, worker, runner))
+        self.worker_queue.put(Work(w_priority, worker, runner))
         tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def add_test(self, t_priority, test):
         """Queue up a test to get given to a worker."""
+        # Priority queues need sortable things, so we'll convert the test
+        # dict to a tuple representation
+        test = tuple(sorted(list(test.items())))
         self.test_queue.put((t_priority, test))
         tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
@@ -65,17 +77,18 @@ class AsyncDelayedQueue(object):
         while worker is None:
             try:
                 w_priority, worker, runner = self.worker_queue.get_nowait()
-            except Queue.Empty:
+            except six.moves.queue.Empty:
                 break
 
             while test is None:
                 try:
                     t_priority, test = self.test_queue.get_nowait()
-                except Queue.Empty:
+                    test = dict(test)
+                except six.moves.queue.Empty:
                     break
 
             if test is None:
-                skipped_workers.append((w_priority, worker, runner))
+                skipped_workers.append(Work(w_priority, worker, runner))
                 worker = None
                 continue
 
@@ -102,7 +115,7 @@ class AsyncDelayedQueue(object):
             while True:
                 _, worker, _ = self.worker_queue.get_nowait()
                 worker(None, None)
-        except Queue.Empty:
+        except six.moves.queue.Empty:
             pass
 
 
@@ -236,7 +249,7 @@ class TestRunnerServer(TestRunner):
             def post(handler):
                 runner_id = handler.get_argument('runner')
                 self.runners_outstanding.add(runner_id)
-                result = json.loads(handler.request.body)
+                result = json.loads(handler.request.body.decode('UTF-8'))
 
                 try:
                     self.report_result(runner_id, result)
@@ -463,7 +476,7 @@ class TestRunnerServer(TestRunner):
             pass
 
     def early_shutdown(self):
-        for class_path in self.checked_out.keys():
+        for class_path in list(self.checked_out.keys()):
             self.check_in_class(None, class_path, early_shutdown=True)
         self.shutdown()
 
