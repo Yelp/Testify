@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="testify",
-    version="0.5.7",
+    version="0.6.0",
     provides=["testify"],
     author="Yelp",
     author_email="yelplabs@yelp.com",
@@ -23,7 +23,7 @@ setup(
         "Intended Audience :: Developers",
         "Development Status :: 4 - Beta",
     ],
-    install_requires=['Mock', 'PyYaml', 'SQLAlchemy', 'Tornado', 'six'],
+    install_requires=['Mock', 'PyYaml', 'SQLAlchemy', 'Tornado', 'six>=1.7.3'],
     packages=["testify", "testify.contrib", "testify.utils", "testify.plugins"],
     scripts=['bin/testify'],
     long_description="""Testify - A Testing Framework
