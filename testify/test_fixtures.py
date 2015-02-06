@@ -1,6 +1,7 @@
 __testify = 1
 import contextlib
 import inspect
+import itertools
 import sys
 
 import six
@@ -69,11 +70,12 @@ class TestFixtures(object):
             # already a context manager, nothing to do
             return fixture
 
-        def wrapper(self):
-            if fixture._fixture_type in SETUP_FIXTURES:
+        if fixture._fixture_type in SETUP_FIXTURES:
+            def wrapper(self):
                 fixture()
                 yield
-            elif fixture._fixture_type in TEARDOWN_FIXTURES:
+        elif fixture._fixture_type in TEARDOWN_FIXTURES:
+            def wrapper(self):
                 yield
                 fixture()
 
@@ -286,27 +288,20 @@ class TestFixtures(object):
                 obj = defining_class.__dict__[name]
 
             # End inspection; now this is testify logic.
-            # Skip everything that's not a function/method.
-            if not inspect.isroutine(obj):
-                continue
 
-            # if this is an old setUp/tearDown/etc, tag it as a fixture
-            if name in DEPRECATED_FIXTURE_TYPE_MAP:
+            if inspection.is_fixture_method(obj):
+                fixture_method = obj
+            elif (name in DEPRECATED_FIXTURE_TYPE_MAP and
+                    inspect.isroutine(obj)):
+                # if this is an old setUp/tearDown/etc, tag it as a fixture
                 fixture_type = DEPRECATED_FIXTURE_TYPE_MAP[name]
                 fixture_decorator = globals()[fixture_type]
                 fixture_method = fixture_decorator(obj)
-            elif inspection.is_fixture_method(obj):
-                fixture_method = obj
             else:
                 continue
 
-            # Collect all of our fixtures in appropriate buckets.  First find
-            # where in our MRO this fixture was defined
-            inspection.callable_setattr(
-                fixture_method,
-                '_defining_class_depth',
-                reverse_mro_index[defining_class],
-            )
+            depth = reverse_mro_index[defining_class]
+            fixture_method._defining_class_depth = depth
 
             # We grabbed this from the class and need to bind it to the test
             # case
@@ -318,8 +313,8 @@ class TestFixtures(object):
         inst_level = ['setup', 'teardown', 'setup_teardown']
 
         return cls(
-            class_fixtures=sum([all_fixtures[typ] for typ in class_level], []),
-            instance_fixtures=sum([all_fixtures[typ] for typ in inst_level], []),
+            class_fixtures=list(itertools.chain(*[all_fixtures[typ] for typ in class_level])),
+            instance_fixtures=list(itertools.chain(*[all_fixtures[typ] for typ in inst_level])),
         )
 
 
