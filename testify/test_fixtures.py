@@ -251,45 +251,68 @@ class TestFixtures(object):
 
         # the list of classes in our heirarchy, starting with the highest class
         # (object), and ending with our class
-        reverse_mro_list = [x for x in reversed(type(test_case).mro())]
+        test_class = type(test_case)
+        mro = inspect.getmro(test_class)
+        reverse_mro_index = dict(
+            (cls, i) for (i, cls) in enumerate(reversed(mro)))
 
         # discover which fixures are on this class, including mixed-in ones
 
-        # we want to know everything on this class (including stuff inherited
-        # from bases), but we don't want to trigger any lazily loaded
-        # attributes, so dir() isn't an option; this traverses __bases__/__dict__
-        # correctly for us.
-        for classified_attr in inspect.classify_class_attrs(type(test_case)):
-            # have to index here for Python 2.5 compatibility
-            attr_name = classified_attr[0]
-            unbound_method = classified_attr[3]
-            defining_class = classified_attr[2]
+        # We want to know everything on this class (including stuff inherited
+        # from bases), AND where it came from.  This code is based on
+        # classify_class_attrs from the inspect module, which does just that.
+        # (classify_class_attrs isn't used here because it does a bunch of
+        # relatively slow checks for the type of the attribute, which we then
+        # completely ignore.)
+        for name in dir(test_class):
+            # Try __dict__ first, to subvert descriptor magic when possible
+            # (important for e.g. methods)
+            if name in test_class.__dict__:
+                obj = test_class.__dict__[name]
+            else:
+                obj = getattr(test_class, name)
 
-            # skip everything that's not a function/method
-            if not inspect.isroutine(unbound_method):
+            # Figure out where it came from
+            defining_class = getattr(obj, '__objclass__', None)
+            if defining_class is None:
+                for base in mro:
+                    if name in base.__dict__:
+                        defining_class = base
+                        break
+
+            # Re-fetch the object, to get it from its owning __dict__ instead
+            # of a getattr, if possible.  Don't know why, but inspect does it!
+            if defining_class is not None and name in defining_class.__dict__:
+                obj = defining_class.__dict__[name]
+
+            # End inspection; now this is testify logic.
+            # Skip everything that's not a function/method.
+            if not inspect.isroutine(obj):
                 continue
 
             # if this is an old setUp/tearDown/etc, tag it as a fixture
-            if attr_name in DEPRECATED_FIXTURE_TYPE_MAP:
-                fixture_type = DEPRECATED_FIXTURE_TYPE_MAP[attr_name]
+            if name in DEPRECATED_FIXTURE_TYPE_MAP:
+                fixture_type = DEPRECATED_FIXTURE_TYPE_MAP[name]
                 fixture_decorator = globals()[fixture_type]
-                unbound_method = fixture_decorator(unbound_method)
+                fixture_method = fixture_decorator(obj)
+            elif inspection.is_fixture_method(obj):
+                fixture_method = obj
+            else:
+                continue
 
-            # collect all of our fixtures in appropriate buckets
-            if inspection.is_fixture_method(unbound_method):
-                # where in our MRO this fixture was defined
-                defining_class_depth = reverse_mro_list.index(defining_class)
-                inspection.callable_setattr(
-                    unbound_method,
-                    '_defining_class_depth',
-                    defining_class_depth,
-                )
+            # Collect all of our fixtures in appropriate buckets.  First find
+            # where in our MRO this fixture was defined
+            inspection.callable_setattr(
+                fixture_method,
+                '_defining_class_depth',
+                reverse_mro_index[defining_class],
+            )
 
-                # we grabbed this from the class and need to bind it to the
-                # test case
-                # http://stackoverflow.com/q/4364565
-                instance_method = unbound_method.__get__(test_case, type(test_case))
-                all_fixtures[instance_method._fixture_type].append(instance_method)
+            # We grabbed this from the class and need to bind it to the test
+            # case
+            # http://stackoverflow.com/q/4364565
+            instance_method = fixture_method.__get__(test_case, test_class)
+            all_fixtures[instance_method._fixture_type].append(instance_method)
 
         class_level = ['class_setup', 'class_teardown', 'class_setup_teardown']
         inst_level = ['setup', 'teardown', 'setup_teardown']
