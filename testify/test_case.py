@@ -117,6 +117,14 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
 
     log = class_logger.ClassLogger()
 
+    # For now, we still support the use of unittest-style assertions defined on
+    # the TestCase instance
+    for _name in dir(deprecated_assertions):
+        if _name.startswith(('assert', 'fail')):
+            locals()[_name] = classmethod(
+                getattr(deprecated_assertions, _name))
+    del _name
+
     def __init__(self, *args, **kwargs):
         super(TestCase, self).__init__()
 
@@ -136,17 +144,6 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
 
         self._stage = self.STAGE_UNSTARTED
 
-        # for now, we still support the use of unittest-style assertions defined on the TestCase instance
-        for name in dir(deprecated_assertions):
-            if name.startswith(('assert', 'fail')):
-                setattr(
-                    self,
-                    name,
-                    # http://stackoverflow.com/q/4364565
-                    getattr(deprecated_assertions, name).__get__(
-                        self, type(self),
-                    ),
-                )
         self.failure_limit = kwargs.pop('failure_limit', None)
         self.failure_count = 0
 

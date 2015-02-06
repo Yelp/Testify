@@ -27,12 +27,35 @@ import logging
 import time
 
 
-class Work(collections.namedtuple('Work', ('priority', 'worker', 'runner'))):
+class PrioritizedItem(collections.namedtuple(
+        '_PrioritizedItem', ('priority', 'payload'))):
+    """Associates a priority with an arbitrary value, for use with
+    PriorityQueue.  The difference from a plain tuple is that the associated
+    value doesn't need to be comparable.
+
+    Instances of this class are always totally ordered; ties are broken by the
+    id of the payload.
+
+    Comparison to other types is not supported and will almost certainly
+    explode.
+    """
     def __lt__(self, other):
         return (
-            (self.priority, self.worker.__name__, self.runner) <
-            (other.priority, other.worker.__name__, other.runner)
+            (self.priority, id(self.payload)) <
+            (other.priority, id(other.payload))
         )
+
+    def __gt__(self, other):
+        return (
+            (self.priority, id(self.payload)) >
+            (other.priority, id(other.payload))
+        )
+
+    def __le__(self, other):
+        return self == other or self < other
+
+    def __ge__(self, other):
+        return self == other or self > other
 
 
 class AsyncDelayedQueue(object):
@@ -47,15 +70,12 @@ class AsyncDelayedQueue(object):
             worker(None, None)
             return
 
-        self.worker_queue.put(Work(w_priority, worker, runner))
+        self.worker_queue.put(PrioritizedItem(w_priority, (worker, runner)))
         tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def add_test(self, t_priority, test):
         """Queue up a test to get given to a worker."""
-        # Priority queues need sortable things, so we'll convert the test
-        # dict to a tuple representation
-        test = tuple(sorted(list(test.items())))
-        self.test_queue.put((t_priority, test))
+        self.test_queue.put(PrioritizedItem(t_priority, test))
         tornado.ioloop.IOLoop.instance().add_callback(self.match)
 
     def match(self):
@@ -76,19 +96,19 @@ class AsyncDelayedQueue(object):
         skipped_workers = []
         while worker is None:
             try:
-                w_priority, worker, runner = self.worker_queue.get_nowait()
+                w_priority, (worker, runner) = self.worker_queue.get_nowait()
             except six.moves.queue.Empty:
                 break
 
             while test is None:
                 try:
                     t_priority, test = self.test_queue.get_nowait()
-                    test = dict(test)
                 except six.moves.queue.Empty:
                     break
 
             if test is None:
-                skipped_workers.append(Work(w_priority, worker, runner))
+                skipped_workers.append(
+                    PrioritizedItem(w_priority, (worker, runner)))
                 worker = None
                 continue
 
@@ -113,7 +133,7 @@ class AsyncDelayedQueue(object):
         self.finalized = True
         try:
             while True:
-                _, worker, _ = self.worker_queue.get_nowait()
+                _, (worker, _) = self.worker_queue.get_nowait()
                 worker(None, None)
         except six.moves.queue.Empty:
             pass
