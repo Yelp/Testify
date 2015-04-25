@@ -270,24 +270,39 @@ def assert_equal(lval, rval, message=None):
 assert_equals = assert_equal
 
 
-def assert_true(lval, message=None):
-    """Assert that lval evaluates to True, not identity."""
-    if message:
-        assert bool(lval), message
-    else:
-        assert bool(lval), \
-            "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
-            (lval, True, _diff_message(lval, True))
+def _get_msg(args, kwargs, suggestion):
+    if args:
+        raise TypeError(
+            '`message` is kwargs only.  Perhaps you meant `{0}`?'.format(
+                suggestion,
+            ),
+        )
+    message = kwargs.pop('message', None)
+    if kwargs:
+        raise TypeError('Unexpected kwargs {0!r}'.format(kwargs))
+    return message
 
 
-def assert_false(lval, message=None):
-    """Assert that lval evaluates to False, not identity."""
+def assert_truthy(lval, *args, **kwargs):
+    """Assert that lval evaluates truthy, not identity."""
+    message = _get_msg(args, kwargs, 'assert_equal')
     if message:
-        assert not bool(lval), message
+        assert lval, message
     else:
-        assert not bool(lval), \
-            "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % \
-            (lval, False, _diff_message(lval, False))
+        assert lval, "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % (
+            lval, True, _diff_message(lval, True),
+        )
+
+
+def assert_falsey(lval, *args, **kwargs):
+    """Assert that lval evaluates falsey, not identity."""
+    message = _get_msg(args, kwargs, 'assert_not_equal')
+    if message:
+        assert not lval, message
+    else:
+        assert not lval, "assertion failed: l == r\nl: %r\nr: %r\n\n%s" % (
+            lval, False, _diff_message(lval, False),
+        )
 
 
 def assert_almost_equal(lval, rval, digits, message=None):
