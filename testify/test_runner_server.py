@@ -189,8 +189,6 @@ class TestRunnerServer(TestRunner):
 
         if not d:
             raise ValueError("Class %s not checked out." % class_path)
-        if d['runner'] != runner_id:
-            raise ValueError("Class %s checked out by runner %s, not %s" % (class_path, d['runner'], runner_id))
         if result['method']['name'] not in d['methods']:
             # If class_teardown failed, the client will send us a result to let us
             # know. If that happens, don't worry about the apparently un-checked
