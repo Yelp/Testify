@@ -433,7 +433,7 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
         # Exceptions during execution of class_setup cause test methods to fail
         # and get requeued as flakes. They aren't reported now because they
         # aren't complete.
-        expected_methods = set(['classTearDown', 'run'])
+        expected_methods = set(['classTearDown', 'run', '__setup_extra_class_teardowns'])
         # self.run_test configures us up to collect results submitted at
         # class_teardown completion time. class_setup_teardown methods report
         # the result of their teardown phase at "class_teardown completion"
@@ -463,7 +463,7 @@ class TestRunnerServerExceptionInSetupPhaseBaseTestCase(TestRunnerServerBaseTest
 
         # This time, test methods have been re-run as flakes. Now that these
         # methods are are complete, they should be reported.
-        expected_methods = set(['test1', 'test2', 'classTearDown', 'run'])
+        expected_methods = set(['test1', 'test2', 'classTearDown', 'run', '__setup_extra_class_teardowns'])
         if hasattr(self, 'class_setup_teardown_method_name'):
             expected_methods.add(self.class_setup_teardown_method_name)
         seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
@@ -512,7 +512,14 @@ class TestRunnerServerExceptionInTeardownPhaseBaseTestCase(TestRunnerServerBaseT
 
         # 'classTearDown' is a deprecated synonym for 'class_teardown'. We
         # don't especially care about it, but it's in there.
-        expected_methods = set(['test1', 'test2', self.teardown_method_name, 'classTearDown', 'run'])
+        expected_methods = set([
+            'test1',
+            'test2',
+            self.teardown_method_name,
+            'classTearDown',
+            'run',
+            '__setup_extra_class_teardowns',
+        ])
         seen_methods = self.get_seen_methods(self.test_reporter.test_complete.calls)
         # This produces a clearer diff than simply asserting the sets are
         # equal.
