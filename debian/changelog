@@ -1,3 +1,10 @@
+python-testify (0.7.0) lucid; urgency=low
+
+  * Make assert_true and assert_false less dangerous (asottile #293)
+  * Improve discovery speed (eevee #307 #308)
+
+ -- asottile <asottile@yelp.com> Fri, 1 May 2015 11:05:00 -0700
+
 python-testify (0.6.0) lucid; urgency=low
 
   * Prevent pollution of __builtins__ in DocTestCase (asottile #297)
