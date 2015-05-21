@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="testify",
-    version="0.7.0",
+    version="0.7.1",
     provides=["testify"],
     author="Yelp",
     author_email="yelplabs@yelp.com",

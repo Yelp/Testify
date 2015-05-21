@@ -1,3 +1,9 @@
+python-testify (0.7.1) lucid; urgency=low
+
+  * Add new function addfinalizer (ealter #311)
+
+ -- asottile <asottile@yelp.com> Thu, 21 May 2015 15:49:00 -0700
+
 python-testify (0.7.0) lucid; urgency=low
 
   * Make assert_true and assert_false less dangerous (asottile #293)
