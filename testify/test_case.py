@@ -30,6 +30,7 @@ import unittest
 
 import six
 
+from testify import test_fixtures
 from testify.utils import class_logger
 from testify.test_fixtures import DEPRECATED_FIXTURE_TYPE_MAP
 from testify.test_fixtures import TestFixtures
@@ -336,6 +337,32 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
                     self.failure_count += 1
                     if self.failure_limit and self.failure_count >= self.failure_limit:
                         break
+
+    def addfinalizer(self, teardown_func):
+        if self._stage in (self.STAGE_SETUP, self.STAGE_TEST_METHOD, self.STAGE_TEARDOWN):
+            self.__extra_test_teardowns.append(teardown_func)
+        elif self._stage in (self.STAGE_CLASS_SETUP, self.STAGE_CLASS_TEARDOWN):
+            self.__extra_class_teardowns.append(teardown_func)
+        else:
+            raise RuntimeError('Tried to add a teardown while the test was not being executed.')
+
+    @test_fixtures.class_setup_teardown
+    def __setup_extra_class_teardowns(self):
+        self.__extra_class_teardowns = []
+
+        yield
+
+        for teardown in self.__extra_class_teardowns:
+            teardown()
+
+    @test_fixtures.setup_teardown
+    def __setup_extra_test_teardowns(self):
+        self.__extra_test_teardowns = []
+
+        yield
+
+        for teardown in self.__extra_test_teardowns:
+            teardown()
 
     def register_callback(self, event, callback):
         """Register a callback for an internal event, usually used for logging.

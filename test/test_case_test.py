@@ -1,3 +1,4 @@
+import mock
 import unittest
 
 from testify import assert_equal
@@ -288,6 +289,9 @@ class CallbacksGetCalledTest(TestCase):
         assert_equal(calls_to_callback, [
             (TestCase.EVENT_ON_RUN_TEST_CASE, 'run'),
 
+            (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, '__setup_extra_class_teardowns'),
+            (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, '__setup_extra_class_teardowns'),
+
             (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, 'classSetUp'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, 'classSetUp'),
 
@@ -302,6 +306,9 @@ class CallbacksGetCalledTest(TestCase):
 
             (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, 'classTearDown'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, 'classTearDown'),
+
+            (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, '__setup_extra_class_teardowns'),
+            (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, '__setup_extra_class_teardowns'),
 
             (TestCase.EVENT_ON_COMPLETE_TEST_CASE, 'run'),
         ])
@@ -621,6 +628,117 @@ class NoAttributesNamedTest(TestCase):
         ])
         actual_attributes = sorted([attribute for attribute in dir(test_case) if attribute.startswith("test")])
         assert_equal(expected_attributes, actual_attributes)
+
+
+class AdhocTeardownsGetCalledTest(TestCase):
+
+    def test_addfinalizer(self):
+        class_setup_mock = mock.MagicMock()
+        test_setup_mock = mock.MagicMock()
+        test_mock = mock.MagicMock()
+        test_teardown_mock = mock.MagicMock()
+        class_teardown_mock = mock.MagicMock()
+
+        class InnerTestCase(TestCase):
+
+            @class_setup
+            def _setup_class_mocks(self):
+                self.addfinalizer(class_setup_mock)
+
+            @setup
+            def _setup_test_mock(self):
+                self.addfinalizer(test_setup_mock)
+
+            def test_things(self):
+                self.addfinalizer(test_mock)
+                assert not class_setup_mock.called
+                assert not test_setup_mock.called
+                assert not test_mock.called
+
+            @teardown
+            def _test_teardown(self):
+                self.addfinalizer(test_teardown_mock)
+                # The test instance teardowns run at the end of the test
+                assert not class_setup_mock.called
+                assert not test_setup_mock.called
+                assert not test_mock.called
+                assert not test_teardown_mock.called
+
+            @class_teardown
+            def _test_class_teardown(self):
+                self.addfinalizer(class_teardown_mock)
+                # The class teardowns run at the end of the tests
+                assert not class_setup_mock.called
+                assert not class_teardown_mock.called
+                assert_equal(test_setup_mock.call_count, 1)
+                assert_equal(test_mock.call_count, 1)
+                assert_equal(test_teardown_mock.call_count, 1)
+
+        test_case = InnerTestCase()
+        test_case.run()
+        assert_equal(test_case.results()[0].format_exception_info(), None)
+        assert_equal(test_setup_mock.call_count, 1)
+        assert_equal(test_mock.call_count, 1)
+        assert_equal(test_teardown_mock.call_count, 1)
+        assert_equal(class_setup_mock.call_count, 1)
+        assert_equal(class_teardown_mock.call_count, 1)
+
+    def test_multiple_tests(self):
+        class_setup_mock = mock.MagicMock()
+        test_setup_mock = mock.MagicMock()
+        test_mock_1 = mock.MagicMock()
+        test_mock_2 = mock.MagicMock()
+        test_teardown_mock = mock.MagicMock()
+        class_teardown_mock = mock.MagicMock()
+
+        class InnerTestCase(TestCase):
+
+            @class_setup
+            def _setup_class_mocks(self):
+                self.addfinalizer(class_setup_mock)
+
+            @setup
+            def _setup_test_mock(self):
+                self.addfinalizer(test_setup_mock)
+
+            def test_1(self):
+                self.addfinalizer(test_mock_1)
+                assert not class_setup_mock.called
+                assert not test_setup_mock.called
+                assert not test_mock_1.called
+                assert not test_mock_2.called
+
+            def test_2(self):
+                self.addfinalizer(test_mock_2)
+                assert_equal(test_mock_1.call_count, 1)
+                assert not class_setup_mock.called
+                assert not test_setup_mock.called
+                assert not test_mock_2.called
+
+            @teardown
+            def _test_teardown(self):
+                self.addfinalizer(test_teardown_mock)
+                assert not class_setup_mock.called
+
+            @class_teardown
+            def _test_class_teardown(self):
+                self.addfinalizer(class_teardown_mock)
+                assert not class_setup_mock.called
+                assert not class_teardown_mock.called
+                assert_equal(test_setup_mock.call_count, 2)
+                assert_equal(test_mock_1.call_count, 1)
+                assert_equal(test_mock_2.call_count, 1)
+                assert_equal(test_teardown_mock.call_count, 2)
+
+        test_case = InnerTestCase()
+        test_case.run()
+        assert_equal(test_case.results()[0].format_exception_info(), None)
+        assert_equal(test_setup_mock.call_count, 2)
+        assert_equal(test_teardown_mock.call_count, 2)
+        assert_equal(class_setup_mock.call_count, 1)
+        assert_equal(class_teardown_mock.call_count, 1)
+        assert_equal(test_mock_1.call_count, 1)
+        assert_equal(test_mock_2.call_count, 1)
 
 
 if __name__ == '__main__':
