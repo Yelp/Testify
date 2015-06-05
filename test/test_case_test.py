@@ -740,6 +740,62 @@ class AdhocTeardownsGetCalledTest(TestCase):
         assert_equal(test_mock_1.call_count, 1)
         assert_equal(test_mock_2.call_count, 1)
 
+    def test_individual_test_teardowns_ordering(self):
+        mock_1 = mock.MagicMock()
+        mock_2 = mock.MagicMock()
+
+        def finalizer_1():
+            assert not mock_1.called
+            assert mock_2.called
+            mock_1()
+
+        def finalizer_2():
+            assert not mock_1.called
+            assert not mock_2.called
+            mock_2()
+
+        class InnerTestCase(TestCase):
+
+            def test_things(self):
+                self.addfinalizer(finalizer_1)
+                self.addfinalizer(finalizer_2)
+
+        test_case = InnerTestCase()
+        test_case.run()
+        assert_equal(test_case.results()[0].format_exception_info(), None)
+        assert_equal(mock_1.call_count, 1)
+        assert_equal(mock_2.call_count, 1)
+
+    def test_class_teardowns_ordering(self):
+        mock_1 = mock.MagicMock()
+        mock_2 = mock.MagicMock()
+
+        def finalizer_1():
+            assert not mock_1.called
+            assert mock_2.called
+            mock_1()
+
+        def finalizer_2():
+            assert not mock_1.called
+            assert not mock_2.called
+            mock_2()
+
+        class InnerTestCase(TestCase):
+
+            @class_setup
+            def _class_setup(self):
+                self.addfinalizer(finalizer_1)
+                self.addfinalizer(finalizer_2)
+
+            def test_things(self):
+                pass
+
+        test_case = InnerTestCase()
+        test_case.run()
+        assert_equal(test_case.results()[0].format_exception_info(), None)
+        assert_equal(mock_1.call_count, 1)
+        assert_equal(mock_2.call_count, 1)
+
 
 if __name__ == '__main__':
     run()
