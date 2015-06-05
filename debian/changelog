@@ -1,3 +1,9 @@
+python-testify (0.7.2) lucid; urgency=low
+
+  * Make addfinalizer LIFO instead of FIFO (ealter #314)
+
+ -- asottile <asottile@yelp.com> Fri, 05 Jun 2015 14:22:00 -0700
+
 python-testify (0.7.1) lucid; urgency=low
 
   * Add new function addfinalizer (ealter #311)
