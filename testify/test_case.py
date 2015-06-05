@@ -352,7 +352,7 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
 
         yield
 
-        for teardown in self.__extra_class_teardowns:
+        for teardown in reversed(self.__extra_class_teardowns):
             teardown()
 
     @test_fixtures.setup_teardown
@@ -361,7 +361,7 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
 
         yield
 
-        for teardown in self.__extra_test_teardowns:
+        for teardown in reversed(self.__extra_test_teardowns):
             teardown()
 
     def register_callback(self, event, callback):
