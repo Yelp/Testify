@@ -139,7 +139,7 @@ class DatabaseTestCase(testify.TestCase):
         last_time = db_class.last_time_of_catbox_run()
 
         # Find actual last time
-        self.assertEqual(last_time, 9)
+        testify.assert_equal(last_time, 9)
 
     def test_bb_run_id(self):
         # We know that 9 is max_time
@@ -147,22 +147,22 @@ class DatabaseTestCase(testify.TestCase):
         db_class = Database(self.options_db)
         bb_runid = db_class.buildbot_run_id(max_time)
 
-        self.assertEqual(bb_runid, str(max_time))
+        testify.assert_equal(bb_runid, str(max_time))
 
     def test_all_tests(self):
         db_class = Database(self.options_db)
         all_tests = db_class.all_tests(9)
-        self.assertEqual(len(all_tests), 9)
+        testify.assert_equal(len(all_tests), 9)
 
     def test_violations(self):
         max_time = 9
         db_class = Database(self.options_db)
 
         all_violating_tests = db_class.all_violating_tests(max_time)
-        self.assertEqual(len(all_violating_tests), 2)
+        testify.assert_equal(len(all_violating_tests), 2)
 
         for test in all_violating_tests:
-            self.assertEqual(test.method_type, 'test')
+            testify.assert_equal(test.method_type, 'test')
 
     def test_build_dict(self):
         """Test that the data structure is correct"""
@@ -178,12 +178,12 @@ class DatabaseTestCase(testify.TestCase):
 
         db_class = Database(self.options_db)
         unittest = db_class.build_dict()
-        self.assertEqual(unittest, proper_response)
+        testify.assert_equal(unittest, proper_response)
 
     def test_get_db_url(self):
         db_url = 'test/test'
         self.options_db.violation_dburl = db_url
-        self.assertEqual(db_url, get_db_url(self.options_db))
+        testify.assert_equal(db_url, get_db_url(self.options_db))
 
     @mock.patch.object(sqlalchemy.engine.url, 'URL')
     @mock.patch('testify.plugins.unittest_annotate.open', create=True)
@@ -198,8 +198,6 @@ class DatabaseTestCase(testify.TestCase):
 
         testify.assert_not_equal(get_db_url(self.options_db),
                                  self.options_db.violation_dburl)
-        mocked_open.read.assert_called
-        mocked_sa_url.URL.assert_called
 
     @mock.patch.object(sqlalchemy.engine.url, 'URL')
     @mock.patch('testify.plugins.unittest_annotate.open', create=True)
@@ -214,8 +212,6 @@ class DatabaseTestCase(testify.TestCase):
 
         testify.assert_not_equal(get_db_url(self.options_db),
                                  self.options_db.unittest_db_url)
-        mocked_open.read.assert_called
-        mocked_sa_url.URL.assert_called
 
     @mock.patch('testify.test_case.TestCase.runnable_test_methods')
     def test_add_testcase_info(self, mock_methods):
@@ -244,9 +240,9 @@ class DatabaseTestCase(testify.TestCase):
 
         # Verify that unittests work
         suites1 = getattr(self.sample_method1.__func__, '_suites', [])
-        self.assertEqual('unittest' in suites1, True)
+        testify.assert_in('unittest', suites1)
         suites2 = getattr(self.sample_method2.__func__, '_suites', [])
-        self.assertEqual('unittest' not in suites2, True)
-        self.assertEqual('test_suite' in suites2, True)
+        testify.assert_not_in('unittest', suites2)
+        testify.assert_in('test_suite', suites2)
         suites3 = getattr(self.sample_method3.__func__, '_suites', [])
-        self.assertEqual('unittest' in suites3, True)
+        testify.assert_in('unittest', suites3)
