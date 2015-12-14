@@ -16,10 +16,6 @@ from __future__ import absolute_import
 from collections import defaultdict
 from optparse import OptionParser
 import os
-try:
-    import pwd
-except ImportError:
-    pwd = None
 import socket
 import sys
 import logging
@@ -334,9 +330,6 @@ def parse_test_runner_command_line_args(plugin_modules, args):
         parser.error("--serve and --connect are mutually exclusive.")
 
     test_path, module_method_overrides = _parse_test_runner_command_line_module_method_overrides(args)
-
-    if pwd and pwd.getpwuid(os.getuid()).pw_name == 'buildbot':
-        options.disable_color = True
 
     if options.list_suites:
         runner_action = ACTION_LIST_SUITES

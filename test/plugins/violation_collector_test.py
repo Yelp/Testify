@@ -118,10 +118,8 @@ class HelperFunctionsTestCase(T.TestCase):
             create=True,
             return_value=mocked_open
         ):
-            with mock.patch.object(SA.engine.url, 'URL') as mocked_sa_url:
+            with mock.patch.object(SA.engine.url, 'URL'):
                 T.assert_not_equal(get_db_url(options), options.violation_dburl)
-                mocked_open.read.assert_called
-                mocked_sa_url.URL.assert_called
 
     def test_is_sqliteurl(self):
         assert is_sqlite_filepath("sqlite:///")
