@@ -16,7 +16,6 @@ from __future__ import absolute_import
 from collections import defaultdict
 from optparse import OptionParser
 import os
-import socket
 import sys
 import logging
 import imp
@@ -141,126 +140,12 @@ def default_parser():
     )
 
     parser.add_option(
-        '--serve',
-        action="store",
-        dest="serve_port",
-        type="int",
-        default=None,
-        help="Run in server mode, listening on this port for testify clients.",
-    )
-    parser.add_option(
-        '--connect',
-        action="store",
-        dest="connect_addr",
-        type="string",
-        default=None,
-        metavar="HOST:PORT",
-        help="Connect to a testify server (testify --serve) at this HOST:PORT",
-    )
-    parser.add_option(
-        '--revision',
-        action="store",
-        dest="revision",
-        type="string",
-        default=None,
-        help=(
-            "With --serve, refuses clients that identify with a different or "
-            "no revision. In client mode, sends the revision number to the "
-            "server for verification."
-        ),
-    )
-    parser.add_option(
-        '--retry-limit',
-        action="store",
-        dest="retry_limit",
-        type="float",
-        default=300,
-        help="Number of seconds to try connecting to the server before giving.",
-    )
-    parser.add_option(
-        '--retry-interval',
-        action="store",
-        dest="retry_interval",
-        type="float",
-        default=.1,
-        help="Number of seconds to wait between trying to connect to the server.",
-    )
-    parser.add_option(
-        '--retry-backoff',
-        action="store",
-        dest="retry_backoff",
-        type="float",
-        default=.1,
-        help="Number of seconds to add to the wait period between retries.",
-    )
-    parser.add_option(
-        '--reconnect-retry-limit',
-        action="store",
-        dest="reconnect_retry_limit",
-        type="int",
-        default=10,
-        help="Number of seconds to try reconnecting to the server before exiting if we have previously connected.",
-    )
-    parser.add_option(
-        '--disable-requeueing',
-        action="store_true",
-        dest="disable_requeueing",
-        help="Disable re-queueing/re-running failed tests on a different builder.",
-    )
-
-    parser.add_option(
         '--failure-limit',
         action="store",
         dest="failure_limit",
         type="int",
         default=None,
         help="Quit after this many test failures.",
-    )
-    parser.add_option(
-        '--runner-timeout',
-        action="store",
-        dest="runner_timeout",
-        type="int",
-        default=300,
-        help="How long to wait to wait for activity from a test runner before requeuing the tests it has checked out.",
-    )
-    parser.add_option(
-        '--server-timeout',
-        action="store",
-        dest="server_timeout",
-        type="int",
-        default=300,
-        help="How long to wait after the last activity from any test runner before shutting down.",
-    )
-
-    parser.add_option(
-        '--server-shutdown-delay',
-        action='store',
-        dest='shutdown_delay_for_connection_close',
-        type="float",
-        default=0.01,
-        help="How long to wait (in seconds) for data to finish writing to sockets before shutting down the server.",
-    )
-    parser.add_option(
-        '--server-shutdown-delay-outstanding-runners',
-        action='store',
-        dest='shutdown_delay_for_outstanding_runners',
-        type='int',
-        default=5,
-        help="How long to wait (in seconds) for all clients to check for new tests before shutting down the server.",
-    )
-
-    parser.add_option(
-        '--runner-id',
-        action="store",
-        dest="runner_id",
-        type="string",
-        default="%s-%d" % (socket.gethostname(), os.getpid()),
-        help=(
-            "With --connect, an identity passed to the server on each "
-            "request. Passed to the server's test reporters. Defaults to "
-            "<HOST>-<PID>."
-        ),
     )
 
     parser.add_option(
@@ -318,16 +203,12 @@ def parse_test_runner_command_line_args(plugin_modules, args):
     if (
             len(args) < 1 and
             not (
-                options.connect_addr or
                 options.rerun_test_file or
                 options.replay_json or
                 options.replay_json_inline
             )
     ):
         parser.error("Test path required unless --connect or --rerun-test-file specified.")
-
-    if options.connect_addr and options.serve_port:
-        parser.error("--serve and --connect are mutually exclusive.")
 
     test_path, module_method_overrides = _parse_test_runner_command_line_module_method_overrides(args)
 
@@ -410,16 +291,7 @@ class TestProgram(object):
         if self.other_opts.bucket_overrides_file:
             bucket_overrides = get_bucket_overrides(self.other_opts.bucket_overrides_file)
 
-        if self.other_opts.serve_port:
-            from .test_runner_server import TestRunnerServer
-            test_runner_class = TestRunnerServer
-            self.test_runner_args['serve_port'] = self.other_opts.serve_port
-        elif self.other_opts.connect_addr:
-            from .test_runner_client import TestRunnerClient
-            test_runner_class = TestRunnerClient
-            self.test_runner_args['connect_addr'] = self.other_opts.connect_addr
-            self.test_runner_args['runner_id'] = self.other_opts.runner_id
-        elif self.other_opts.replay_json or self.other_opts.replay_json_inline:
+        if self.other_opts.replay_json or self.other_opts.replay_json_inline:
             from .test_runner_json_replay import TestRunnerJSONReplay
             test_runner_class = TestRunnerJSONReplay
             self.test_runner_args['replay_json'] = self.other_opts.replay_json

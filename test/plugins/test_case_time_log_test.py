@@ -60,8 +60,7 @@ class TestCaseJSONReporterTestCase(TestCase):
             '--test-case-results', 'test_case_dummy.json'
         ])
 
-    def test_http_reporter_reports(self):
-
+    def test_json_reporter_reports(self):
         self.set_options()
         with mock_conf_files():
             self.reporter = TestCaseJSONReporter(self.options)

@@ -287,8 +287,6 @@ class CallbacksGetCalledTest(TestCase):
         inner_test_case.run()
 
         assert_equal(calls_to_callback, [
-            (TestCase.EVENT_ON_RUN_TEST_CASE, 'run'),
-
             (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, '__setup_extra_class_teardowns'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, '__setup_extra_class_teardowns'),
 
@@ -309,8 +307,6 @@ class CallbacksGetCalledTest(TestCase):
 
             (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, '__setup_extra_class_teardowns'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, '__setup_extra_class_teardowns'),
-
-            (TestCase.EVENT_ON_COMPLETE_TEST_CASE, 'run'),
         ])
 
 
