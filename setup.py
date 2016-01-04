@@ -23,7 +23,7 @@ setup(
         "Intended Audience :: Developers",
         "Development Status :: 4 - Beta",
     ],
-    install_requires=['Mock', 'PyYaml', 'SQLAlchemy', 'Tornado', 'six>=1.7.3'],
+    install_requires=['Mock', 'PyYaml', 'SQLAlchemy', 'six>=1.7.3'],
     packages=["testify", "testify.contrib", "testify.utils", "testify.plugins"],
     scripts=['bin/testify'],
     long_description="""Testify - A Testing Framework
@@ -40,6 +40,5 @@ will run under testify with a minimum of adjustments, but it has features above 
   - Support for splitting up tests into buckets to support multi-processing
   - Extensible plugin system for adding additional functionality around reporting
   - Comes complete with other handy testing utilities: Mocking (turtle), code coverage integration and profiling.
-  - Client-server support
 """
 )
