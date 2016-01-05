@@ -208,7 +208,10 @@ def parse_test_runner_command_line_args(plugin_modules, args):
                 options.replay_json_inline
             )
     ):
-        parser.error("Test path required unless --connect or --rerun-test-file specified.")
+        parser.error(
+            'Test path required unless --rerun-test-file, --replay-json, or '
+            '--replay-json-inline specified.'
+        )
 
     test_path, module_method_overrides = _parse_test_runner_command_line_module_method_overrides(args)
 

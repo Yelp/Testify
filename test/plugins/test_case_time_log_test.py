@@ -1,5 +1,6 @@
 import contextlib
 import datetime
+import json
 import mock
 from optparse import OptionParser
 import time
@@ -10,11 +11,6 @@ from testify import compat
 from testify import assert_equal, TestCase
 from testify.test_result import TestResult
 from testify.plugins.test_case_time_log import add_command_line_options, TestCaseJSONReporter
-
-try:
-    import simplejson as json  # noqa
-except ImportError:
-    import json
 
 
 class MyStringIO(compat.NativeIO):
