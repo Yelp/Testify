@@ -1,12 +1,9 @@
+import json
+
 from testify import test_case
 from testify import run
 from testify import test_result
 from testify import assert_equal
-
-try:
-    import simplejson as json  # noqa
-except ImportError:
-    import json
 
 
 class TestResultIsSerializableTestCase(test_case.TestCase):

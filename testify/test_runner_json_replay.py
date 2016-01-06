@@ -1,11 +1,7 @@
 from __future__ import absolute_import
-try:
-    import simplejson as json  # noqa
-except ImportError:
-    import json
 
+import json
 import sys
-
 
 from .test_runner import TestRunner
 

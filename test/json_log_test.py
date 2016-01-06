@@ -1,8 +1,4 @@
-try:
-    import simplejson as json  # noqa
-except ImportError:
-    import json
-
+import json
 import mock
 import six
 
