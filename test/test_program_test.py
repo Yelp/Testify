@@ -1,4 +1,5 @@
 import subprocess
+import sys
 
 import mock
 from testify import setup_teardown, TestCase, test_program
@@ -73,7 +74,7 @@ class TestifyRunAcceptanceTestCase(TestCase):
     expected_tests = 'PASSED.  3 tests'
 
     def test_help(self):
-        output = test_call(['python', '-m', 'testify.test_program', '--help'])
+        output = test_call([sys.executable, '-m', 'testify.test_program', '--help'])
         assert_in('Usage:', output)
 
     def test_run_testify_from_bin_list_tests(self):
@@ -82,7 +83,7 @@ class TestifyRunAcceptanceTestCase(TestCase):
 
     def test_run_testify_as_module_list_tests(self):
         output = test_call([
-            'python', '-m', 'testify.test_program',
+            sys.executable, '-m', 'testify.test_program',
             '--list-tests', 'testing_suite'])
         assert_equal(output, self.expected_list)
 
@@ -91,22 +92,22 @@ class TestifyRunAcceptanceTestCase(TestCase):
         assert_in(self.expected_tests, output)
 
     def test_run_testify_test_module(self):
-        output = test_call(['python', '-m', 'testing_suite.example_test', '-v'])
+        output = test_call([sys.executable, '-m', 'testing_suite.example_test', '-v'])
         assert_in(self.expected_tests, output)
 
     def test_run_testify_test_file(self):
-        output = test_call(['python', 'testing_suite/example_test.py', '-v'])
+        output = test_call([sys.executable, 'testing_suite/example_test.py', '-v'])
         assert_in(self.expected_tests, output)
 
     def test_run_testify_test_file_class(self):
         output = test_call([
-            'python', 'testing_suite/example_test.py', '-v',
+            sys.executable, 'testing_suite/example_test.py', '-v',
             'ExampleTestCase'])
         assert_in('PASSED.  2 tests', output)
 
     def test_run_testify_test_file_class_and_method(self):
         output = test_call([
-            'python', 'testing_suite/example_test.py', '-v',
+            sys.executable, 'testing_suite/example_test.py', '-v',
             'ExampleTestCase.test_one'])
         assert_in('PASSED.  1 test', output)
 
@@ -114,11 +115,27 @@ class TestifyRunAcceptanceTestCase(TestCase):
         assert_raises(
             subprocess.CalledProcessError,
             test_call,
-            ['python', 'testing_suite/example_test.py', 'DoesNotExist'])
+            [sys.executable, 'testing_suite/example_test.py', 'DoesNotExist'])
 
     def test_failure_on_interrupt(self):
         with assert_raises(subprocess.CalledProcessError):
             test_call([
-                'python', '-m', 'testify.test_program',
+                sys.executable, '-m', 'testify.test_program',
                 'test.failing_test_interrupt'
             ])
+
+    def test_rerun_with_failure_limit(self):
+        proc = subprocess.Popen(
+            (
+                sys.executable, '-m', 'testify.test_program',
+                '--rerun-test-file=/dev/stdin',
+                '--failure-limit', '1',
+            ),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        stdout, _ = proc.communicate(
+            b'test.fails_two_tests FailsTwoTests.test1\n'
+            b'test.fails_two_tests FailsTwoTests.test2\n'
+        )
+        assert_in(b'FAILED.  1 test / 1 case: 0 passed, 1 failed.', stdout)

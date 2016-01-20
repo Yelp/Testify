@@ -17,9 +17,6 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-__author__ = "Oliver Nicholas <bigo@yelp.com>"
-__testify = 1
-
 from collections import defaultdict
 import itertools
 import functools
@@ -30,6 +27,10 @@ import six
 
 from .test_case import MetaTestCase, TestCase
 from . import test_discovery
+
+
+__author__ = "Oliver Nicholas <bigo@yelp.com>"
+__testify = 1
 
 
 class TestRunner(object):
@@ -90,27 +91,32 @@ class TestRunner(object):
             test_method.__name__,
         )
 
+    def _construct_test(self, test_case_cls, **kwargs):
+        name_overrides = kwargs.pop(
+            'name_overrides',
+            self.module_method_overrides.get(test_case_cls.__name__, None),
+        )
+        test_case = test_case_cls(
+            suites_include=self.suites_include,
+            suites_exclude=self.suites_exclude,
+            suites_require=self.suites_require,
+            name_overrides=name_overrides,
+            failure_limit=(self.failure_limit - self.failure_count) if self.failure_limit else None,
+            debugger=self.debugger,
+            **kwargs
+        )
+
+        # Add in information from plugins
+        for plugin_mod in self.plugin_modules:
+            if hasattr(plugin_mod, 'add_testcase_info'):
+                plugin_mod.add_testcase_info(test_case, self)
+
+        return test_case
+
     def discover(self):
-        def construct_test(test_case_class):
-            test_case = test_case_class(
-                suites_include=self.suites_include,
-                suites_exclude=self.suites_exclude,
-                suites_require=self.suites_require,
-                name_overrides=self.module_method_overrides.get(test_case_class.__name__, None),
-                failure_limit=(self.failure_limit - self.failure_count) if self.failure_limit else None,
-                debugger=self.debugger,
-            )
-
-            # Add in information from plugins
-            for plugin_mod in self.plugin_modules:
-                if hasattr(plugin_mod, 'add_testcase_info'):
-                    plugin_mod.add_testcase_info(test_case, self)
-
-            return test_case
-
         def discover_tests():
             return [
-                construct_test(test_case_class)
+                self._construct_test(test_case_class)
                 for test_case_class in test_discovery.discover(self.test_path_or_test_case)
                 if not self.module_method_overrides or test_case_class.__name__ in self.module_method_overrides
             ]

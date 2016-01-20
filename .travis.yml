@@ -6,3 +6,7 @@ env: # These should match the tox env list
     - TOXENV=py34
 install: pip install coveralls tox
 script: tox
+sudo: false
+cache:
+    directories:
+        - $HOME/.cache/pip
