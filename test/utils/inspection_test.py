@@ -42,7 +42,8 @@ class IsFixtureMethodTest(TestCase):
 class CallableSetattrTest(TestCase):
 
     def test_set_function_attr(self):
-        function = lambda: None
+        def function():
+            pass
         inspection.callable_setattr(function, 'foo', True)
         assert function.foo
 

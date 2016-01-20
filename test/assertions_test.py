@@ -24,10 +24,12 @@ class DiffMessageTestCase(TestCase):
 
     def test_shows_repr_diffs(self):
         class AbcRepr(object):
-            __repr__ = lambda self: 'abc'
+            def __repr__(self):
+                return 'abc'
 
         class AbcDefRepr(object):
-            __repr__ = lambda self: 'abcdef'
+            def __repr__(self):
+                return 'abcdef'
 
         expected = 'Diff:\nl: abc<>\nr: abc<def>'
         diff_message = assertions._diff_message(AbcRepr(), AbcDefRepr())
@@ -474,7 +476,8 @@ class AssertRaisesAsContextManagerTestCase(TestCase):
 class AssertRaisesAsCallableTestCase(TestCase):
 
     def test_fails_when_exception_is_not_raised(self):
-        raises_nothing = lambda: None
+        def raises_nothing():
+            pass
         try:
             assertions.assert_raises(ValueError, raises_nothing)
         except AssertionError:
@@ -513,7 +516,8 @@ class AssertRaisesSuchThatTestCase(TestCase):
 
     def test_fails_when_no_exception_is_raised(self):
         """Tests that the assertion fails when no exception is raised."""
-        exists = lambda e: True
+        def exists(e):
+            return True
         with assertions.assert_raises(AssertionError):
             with assertions.assert_raises_such_that(Exception, exists):
                 pass
@@ -521,7 +525,8 @@ class AssertRaisesSuchThatTestCase(TestCase):
     def test_fails_when_wrong_exception_is_raised(self):
         """Tests that when an unexpected exception is raised, that it is
         passed through and the assertion fails."""
-        exists = lambda e: True
+        def exists(e):
+            return True
         # note: in assert_raises*, if the exception raised is not of the
         # expected type, that exception just falls through
         with assertions.assert_raises(Exception):
@@ -531,7 +536,8 @@ class AssertRaisesSuchThatTestCase(TestCase):
     def test_fails_when_exception_test_fails(self):
         """Tests that when an exception of the right type that fails the
         passed in exception test is raised, the assertion fails."""
-        has_two_args = lambda e: assertions.assert_length(e.args, 2)
+        def has_two_args(e):
+            assertions.assert_length(e.args, 2)
         with assertions.assert_raises(AssertionError):
             with assertions.assert_raises_such_that(Exception, has_two_args):
                 raise Exception("only one argument")
@@ -539,14 +545,16 @@ class AssertRaisesSuchThatTestCase(TestCase):
     def test_passes_when_correct_exception_is_raised(self):
         """Tests that when an exception of the right type that passes the
         exception test is raised, the assertion passes."""
-        has_two_args = lambda e: assertions.assert_length(e.args, 2)
+        def has_two_args(e):
+            assertions.assert_length(e.args, 2)
         with assertions.assert_raises_such_that(Exception, has_two_args):
             raise Exception("first", "second")
 
     def test_callable_is_called_with_all_arguments(self):
         """Tests that the callable form works properly, with all arguments
         passed through."""
-        message_is_foo = lambda e: assert_equal(str(e), 'foo')
+        def message_is_foo(e):
+            assert_equal(str(e), 'foo')
 
         class GoodArguments(Exception):
             pass
@@ -597,7 +605,8 @@ class AssertRaisesExactlyTestCase(TestCase):
 class AssertRaisesAndContainsTestCase(TestCase):
 
     def test_fails_when_exception_is_not_raised(self):
-        raises_nothing = lambda: None
+        def raises_nothing():
+            pass
         try:
             assertions.assert_raises_and_contains(ValueError, 'abc', raises_nothing)
         except AssertionError:
@@ -854,7 +863,8 @@ class AssertWarnsTestCase(TestCase):
     def test_fails_when_no_warning_with_callable(self):
         """Test that assert_warns fails when there is no warning thrown."""
         with assertions.assert_raises(AssertionError):
-            do_nothing = lambda: None
+            def do_nothing():
+                pass
             assertions.assert_warns(UserWarning, do_nothing)
 
     def test_fails_when_incorrect_warning(self):
@@ -937,7 +947,8 @@ class AssertWarnsTestCase(TestCase):
             for _ in range(warnings_count):
                 self._create_user_warning()
 
-        three_warnings_caught = lambda warnings: assert_equal(len(warnings), 3)
+        def three_warnings_caught(warnings):
+            assert_equal(len(warnings), 3)
         assertions.assert_warns_such_that(three_warnings_caught,
                                           create_multiple_warnings, 3)
 

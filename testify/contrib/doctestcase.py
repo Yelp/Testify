@@ -38,7 +38,8 @@ class DocMetaTestCase(MetaTestCase):
             # There's no tests in this doctest. Don't bother.
             return
 
-        test = lambda self: run_test(doctest)
+        def test(self):
+            return run_test(doctest)
 
         # Need to change dots to colons so that testify doesn't try to interpret them.
         testname = doctest.name.replace('.', ':')
