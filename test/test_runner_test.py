@@ -178,15 +178,15 @@ class TestMoreFairBucketing(test_case.TestCase):
     """
 
     all_tests = (
-        bucketing_test.TestCaseWithManyTests,
-        bucketing_test.TestCaseWithFewTests,
         bucketing_test.AAA_FirstTestCaseWithSameNumberOfTests,
+        bucketing_test.TestCaseWithFewTests,
+        bucketing_test.TestCaseWithManyTests,
         bucketing_test.ZZZ_SecondTestCaseWithSameNumberOfTests,
     )
 
     all_tests_sorted_by_number_of_tests = (
-        all_tests[0],
         all_tests[2],
+        all_tests[0],
         all_tests[3],
         all_tests[1],
     )
