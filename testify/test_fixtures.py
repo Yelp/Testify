@@ -1,4 +1,3 @@
-__testify = 1
 import contextlib
 import inspect
 import itertools
@@ -8,6 +7,8 @@ import six
 
 from testify.utils import inspection
 from testify.test_result import TestResult
+
+__testify = 1
 
 
 FIXTURE_TYPES = (

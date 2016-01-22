@@ -14,7 +14,6 @@
 
 
 """This module contains classes and constants related to outputting test results."""
-__testify = 1
 
 import collections
 import logging
@@ -24,6 +23,9 @@ import sys
 import six
 
 from testify import test_reporter
+
+
+__testify = 1
 
 VERBOSITY_SILENT = 0  # Don't say anything, just exit with a status code
 VERBOSITY_NORMAL = 1  # Output dots for each test method run

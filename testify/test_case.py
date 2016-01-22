@@ -17,10 +17,6 @@
 
 from __future__ import absolute_import
 
-# TODO: finish doing the retry stuff for the inner clauses
-__author__ = "Oliver Nicholas <bigo@yelp.com>"
-__testify = 1
-
 from collections import defaultdict
 import functools
 import inspect
@@ -37,6 +33,10 @@ from testify.test_fixtures import TestFixtures
 from testify.test_fixtures import suite
 from .test_result import TestResult
 from . import deprecated_assertions
+
+
+__author__ = "Oliver Nicholas <bigo@yelp.com>"
+__testify = 1
 
 
 class MetaTestCase(type):

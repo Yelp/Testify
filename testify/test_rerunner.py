@@ -24,5 +24,5 @@ class TestRerunner(TestRunner):
 
             module_path, _, class_name = class_path.partition(' ')
 
-            klass = test_discovery.import_test_class(module_path, class_name)
-            yield klass(name_overrides=methods)
+            cls = test_discovery.import_test_class(module_path, class_name)
+            yield self._construct_test(cls, name_overrides=methods)
