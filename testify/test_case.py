@@ -195,6 +195,12 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance.
         """
+        # The TestResult constructor wants an actual method, which it inspects
+        # to determine the method name (and class name, so it must be a method
+        # and not a function!). self.run is as good a method as any.
+        test_case_result = TestResult(self.run)
+        test_case_result.start()
+        self.fire_event(self.EVENT_ON_RUN_TEST_CASE, test_case_result)
         self._stage = self.STAGE_CLASS_SETUP
         with self.__test_fixtures.class_context(
                 setup_callbacks=[
@@ -214,6 +220,13 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
 
         # class fixture failures count towards our total
         self.failure_count += len(class_fixture_failures)
+        # Once a test case completes we should trigger
+        # EVENT_ON_COMPLETE_TEST_CASE event so that we can log/report test case
+        # results.
+
+        if not test_case_result.complete:
+                test_case_result.end_in_success()
+        self.fire_event(self.EVENT_ON_COMPLETE_TEST_CASE, test_case_result)
 
     @classmethod
     def in_suite(cls, method, suite_name):
