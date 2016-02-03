@@ -243,6 +243,38 @@ class ClobberLetTest(TestCase):
         assert_equal(self.something_else, 2)
 
 
+class TestResultDataTest(TestCase):
+    """ Tests the data returned by Testify for test-results have required
+    arguments/parameters or not. """
+    def test_testresult_started(self):
+        class InnerTestCase(TestCase):
+            pass
+
+        class TestCaseCallback(object):
+            def __init__(self):
+                pass
+
+            def __call__(self, result_dict):
+                self.result_dict = result_dict
+
+        run_test_case_callback = TestCaseCallback()
+        complete_test_case_callback = TestCaseCallback()
+        inner_test_case = InnerTestCase()
+        inner_test_case.register_callback(TestCase.EVENT_ON_RUN_TEST_CASE, run_test_case_callback)
+        inner_test_case.register_callback(TestCase.EVENT_ON_COMPLETE_TEST_CASE, complete_test_case_callback)
+
+        inner_test_case.run()
+
+        assert 'start_time' in run_test_case_callback.result_dict
+        assert run_test_case_callback.result_dict['end_time'] is None
+
+        assert complete_test_case_callback.result_dict['end_time'] is not None
+        assert complete_test_case_callback.result_dict['run_time'] is not None
+        assert complete_test_case_callback.result_dict['method']['module'] is not None
+        assert complete_test_case_callback.result_dict['method']['full_name'] is not None
+        assert complete_test_case_callback.result_dict['method']['class'] is not None
+
+
 class CallbacksGetCalledTest(TestCase):
     def test_class_fixtures_get_reported(self):
         """Make a test case, register a bunch of callbacks for class fixtures
@@ -287,6 +319,7 @@ class CallbacksGetCalledTest(TestCase):
         inner_test_case.run()
 
         assert_equal(calls_to_callback, [
+            (TestCase.EVENT_ON_RUN_TEST_CASE, 'run'),
             (TestCase.EVENT_ON_RUN_CLASS_SETUP_METHOD, '__setup_extra_class_teardowns'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_SETUP_METHOD, '__setup_extra_class_teardowns'),
 
@@ -307,6 +340,8 @@ class CallbacksGetCalledTest(TestCase):
 
             (TestCase.EVENT_ON_RUN_CLASS_TEARDOWN_METHOD, '__setup_extra_class_teardowns'),
             (TestCase.EVENT_ON_COMPLETE_CLASS_TEARDOWN_METHOD, '__setup_extra_class_teardowns'),
+
+            (TestCase.EVENT_ON_COMPLETE_TEST_CASE, 'run'),
         ])
 
 
