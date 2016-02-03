@@ -1,3 +1,9 @@
+python-testify (0.8.1) lucid; urgency=low
+
+  * Fixing Testify to report test case results when it finishes #322
+
+ -- milki <milki@yelp.com>  Tue, 02 Feb 2016 18:26:37 -0800
+
 python-testify (0.8.0) lucid; urgency=low
 
   * Run tests in a deterministic order #321
