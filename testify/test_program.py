@@ -105,7 +105,7 @@ def default_parser():
     parser.add_option("-s", "--silent", action="store_const", const=test_logger.VERBOSITY_SILENT, dest="verbosity")
     parser.add_option("-v", "--verbose", action="store_const", const=test_logger.VERBOSITY_VERBOSE, dest="verbosity")
     parser.add_option(
-        "-d", "--ipdb",
+        '-d', '--ipdb', '--pdb',
         action="store_true",
         dest="debugger",
         help="Enter post mortem debugging mode with ipdb in the case of an exception thrown in a test method or fixture method.",
@@ -141,6 +141,7 @@ def default_parser():
 
     parser.add_option(
         '--failure-limit',
+        '--max-fail',
         action="store",
         dest="failure_limit",
         type="int",
