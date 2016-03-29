@@ -4,11 +4,15 @@ import json
 import mock
 from optparse import OptionParser
 import time
+import os
+import subprocess
+import sys
+import tempfile
 
 import six
 
 from testify import compat
-from testify import assert_equal, TestCase
+from testify import assert_equal, assert_in, TestCase
 from testify.test_result import TestResult
 from testify.plugins.test_case_time_log import add_command_line_options, TestCaseJSONReporter
 
@@ -73,3 +77,22 @@ class TestCaseJSONReporterTestCase(TestCase):
                 json.loads(self.reporter.log_file.getvalue()),
                 json.loads(output_str),
             )
+
+    def test_test_case_results_reports(self):
+        tempdir = tempfile.mkdtemp()
+        temp_json_file = os.path.join(tempdir, 'tmp.json')
+        subprocess.check_call((
+            sys.executable,
+            '-m',
+            'testify.test_program',
+            '--test-case-results',
+            temp_json_file,
+            'test/test_suite_subdir/define_testcase.py'
+        ))
+        with open(temp_json_file, 'r') as f:
+            result = f.readlines()[0]
+            contents = json.loads(result)
+            assert_in('start_time', contents)
+            assert_in('end_time', contents)
+            assert_in('success', contents)
+            assert_in('method', contents)
