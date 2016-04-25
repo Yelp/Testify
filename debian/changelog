@@ -1,3 +1,9 @@
+python-testify (0.8.2) lucid; urgency=low
+
+  * Alias options to match pytest #324
+
+ -- asottile <asottile@work>  Mon, 25 Apr 2016 08:54:25 -0700
+
 python-testify (0.8.1) lucid; urgency=low
 
   * Fixing Testify to report test case results when it finishes #322
