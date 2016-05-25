@@ -97,6 +97,10 @@ def default_parser():
 
     parser.add_option("--list-suites", action="store_true", dest="list_suites")
     parser.add_option("--list-tests", action="store_true", dest="list_tests")
+    parser.add_option(
+        '-f', "--list-tests-format", action="store", default="txt",
+        help='controls the format of --list-tests',
+    )
 
     parser.add_option("--label", action="store", dest="label", type="string", help="label for this test run")
 
@@ -152,6 +156,7 @@ def default_parser():
     parser.add_option(
         '--rerun-test-file',
         action="store",
+        metavar='FILE',
         dest="rerun_test_file",
         type="string",
         default=None,
@@ -291,7 +296,7 @@ class TestProgram(object):
             runner.list_suites()
             return True
         elif self.runner_action == ACTION_LIST_TESTS:
-            runner.list_tests()
+            runner.list_tests(format=self.other_opts.list_tests_format)
             return True
         elif self.runner_action == ACTION_RUN_TESTS:
             label_text = ""

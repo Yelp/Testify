@@ -212,9 +212,20 @@ class TestRunner(object):
                 if not selected_suite_name or TestCase.in_suite(test_method, selected_suite_name):
                     yield test_method
 
-    def list_tests(self, selected_suite_name=None):
+    def list_tests(self, format, selected_suite_name=None):
         """Lists all tests, optionally scoped to a single suite."""
         for test in self.get_tests_for_suite(selected_suite_name):
-            print(self.get_test_method_name(test))
+            name = self.get_test_method_name(test)
+            if format == 'txt':
+                print(name)
+            elif format == 'json':
+                testcase = test.__self__
+                import json
+                print(json.dumps(dict(
+                    name=name,
+                    suites=sorted(testcase.suites(test)),
+                )))
+            else:
+                raise ValueError("unknown test list format: '%s'" % format)
 
 # vim: set ts=4 sts=4 sw=4 et:
