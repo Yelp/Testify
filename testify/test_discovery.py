@@ -83,20 +83,20 @@ def discover(what):
     try:
         what = to_module(what)
         mod = __import__(what, fromlist=[str('__trash')])
-        discovered = set()
+        for cls in get_test_classes_from_module(mod):
+            yield cls
 
-        if hasattr(mod, '__path__'):
-            # It's a package!
-            for _, module_name, _ in pkgutil.walk_packages(
-                mod.__path__,
-                prefix=mod.__name__ + '.',
-            ):
-                mod = __import__(module_name, fromlist=[str('__trash')])
-                discovered.update(get_test_classes_from_module(mod))
-        else:
-            discovered.update(get_test_classes_from_module(mod))
+        if not hasattr(mod, '__path__'):
+            return
 
-        return discovered
+        # It's a package!
+        for _, module_name, _ in pkgutil.walk_packages(
+            mod.__path__,
+            prefix=mod.__name__ + '.',
+        ):
+            submod = __import__(module_name, fromlist=[str('__trash')])
+            for cls in get_test_classes_from_module(submod):
+                yield cls
     except Exception:
         traceback.print_exc()
         raise DiscoveryError(

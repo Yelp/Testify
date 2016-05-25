@@ -31,9 +31,6 @@ class TestRunnerJSONReplay(TestRunner):
             test_cases.add((result['method']['module'], result['method']['class'],))
             test_methods.add((result['method']['module'], result['method']['class'], result['method']['name'],))
 
-        for reporter in self.test_reporters:
-            reporter.test_counts(len(test_cases), len(test_methods))
-
         for result in self.results:
             for reporter in self.test_reporters:
                 reporter.test_start(result)
