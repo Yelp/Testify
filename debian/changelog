@@ -1,3 +1,9 @@
+python-testify (0.8.3) lucid; urgency=low
+
+  * Correct --max-fail -> --maxfail (pytest option)
+
+ -- asottile <asottile@work>  Fri, 27 May 2016 10:14:57 -0700
+
 python-testify (0.8.2) lucid; urgency=low
 
   * Alias options to match pytest #324
