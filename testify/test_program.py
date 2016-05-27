@@ -141,7 +141,7 @@ def default_parser():
 
     parser.add_option(
         '--failure-limit',
-        '--max-fail',
+        '--maxfail',
         action="store",
         dest="failure_limit",
         type="int",
