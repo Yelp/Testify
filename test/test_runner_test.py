@@ -116,14 +116,14 @@ class TestTestRunnerGetTestsForSuite(test_case.TestCase):
 
         instance = test_runner.TestRunner(mock.sentinel.test_class)
         ret = instance.get_tests_for_suite(mock.sentinel.selected_suite_name)
-        assert_equal(ret, [self.mock_test_method])
+        assert_equal(list(ret), [self.mock_test_method])
 
     def test_get_tests_for_suite_not_in_suite(self):
         self.in_suite_mock.return_value = False
 
         instance = test_runner.TestRunner(mock.sentinel.test_class)
         ret = instance.get_tests_for_suite(mock.sentinel.selected_suite_name)
-        assert_equal(ret, [])
+        assert_equal(list(ret), [])
 
 
 class TestTestRunnerPrintsTestNames(test_case.TestCase):

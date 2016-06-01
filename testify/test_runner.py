@@ -115,13 +115,10 @@ class TestRunner(object):
 
     def discover(self):
         def discover_tests():
-            return sorted(
-                [
-                    self._construct_test(test_case_class)
-                    for test_case_class in test_discovery.discover(self.test_path_or_test_case)
-                    if not self.module_method_overrides or test_case_class.__name__ in self.module_method_overrides
-                ],
-                key=lambda test_case: MetaTestCase._cmp_str(type(test_case)),
+            return (
+                self._construct_test(test_case_class)
+                for test_case_class in test_discovery.discover(self.test_path_or_test_case)
+                if not self.module_method_overrides or test_case_class.__name__ in self.module_method_overrides
             )
 
         def discover_tests_by_buckets():
@@ -153,23 +150,20 @@ class TestRunner(object):
             # For testing purposes only
             return [self.test_path_or_test_case()]
 
-        discovered_tests = []
+        if isinstance(self.test_path_or_test_case, (TestCase, MetaTestCase)):
+            discovered_tests = discover_tests_testing()
+        elif self.bucket is not None:
+            discovered_tests = discover_tests_by_buckets()
+        else:
+            discovered_tests = discover_tests()
+
         try:
-            if isinstance(self.test_path_or_test_case, (TestCase, MetaTestCase)):
-                discovered_tests = discover_tests_testing()
-            elif self.bucket is not None:
-                discovered_tests = discover_tests_by_buckets()
-            else:
-                discovered_tests = discover_tests()
+            for test in discovered_tests:
+                yield test
         except test_discovery.DiscoveryError as exc:
             for reporter in self.test_reporters:
                 reporter.test_discovery_failure(exc)
             sys.exit(1)
-        test_case_count = len(discovered_tests)
-        test_method_count = sum(len(list(test_case.runnable_test_methods())) for test_case in discovered_tests)
-        for reporter in self.test_reporters:
-            reporter.test_counts(test_case_count, test_method_count)
-        return discovered_tests
 
     def run(self):
         """Instantiate our found test case classes and run their test methods.
@@ -252,22 +246,14 @@ class TestRunner(object):
 
     def get_tests_for_suite(self, selected_suite_name):
         """Gets the test list for the suite"""
-        test_list = []
         for test_instance in self.discover():
             for test_method in test_instance.runnable_test_methods():
                 if not selected_suite_name or TestCase.in_suite(test_method, selected_suite_name):
-                    test_list.append(test_method)
-        return test_list
+                    yield test_method
 
     def list_tests(self, selected_suite_name=None):
         """Lists all tests, optionally scoped to a single suite."""
-        test_list = self.get_tests_for_suite(selected_suite_name)
-        test_method_names = sorted([
-            self.get_test_method_name(test) for test in test_list
-        ])
-        for test_method_name in test_method_names:
-            print(test_method_name)
-
-        return test_list
+        for test in self.get_tests_for_suite(selected_suite_name):
+            print(self.get_test_method_name(test))
 
 # vim: set ts=4 sts=4 sw=4 et:
