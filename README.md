@@ -21,8 +21,6 @@ However, Testify has features above and beyond unittest:
   - Support for detecting and running test suites, grouped by modules,
     classes, or individual test methods.
 
-  - Support for splitting up tests into buckets for multiprocessing.
-
   - Pretty test runner output (hooray color!).
 
   - Extensible plugin system for adding additional functionality around

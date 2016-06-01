@@ -32,8 +32,6 @@ class JSONReporterTestCase(test_case.TestCase):
         json_results=None,
         label=None,
         extra_json_info=None,
-        bucket=None,
-        bucket_count=None,
         verbosity=0,
     )
 

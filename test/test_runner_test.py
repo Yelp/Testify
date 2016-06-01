@@ -4,13 +4,11 @@ from testify import assert_equal
 from testify import setup
 from testify import setup_teardown
 from testify import test_case
-from testify import test_discovery
 from testify import test_runner
 
 import six
 
 from .test_runner_subdir.inheriting_class import InheritingClass
-from .test_runner_bucketing import bucketing_test
 
 prepared = False
 running = False
@@ -158,104 +156,3 @@ class TestTestRunnerPrintsTestNames(test_case.TestCase):
             mock.call(self.get_test_method_name_mock.return_value)
             for _ in self.get_tests_for_suite_mock.return_value
         ])
-
-
-class TestMoreFairBucketing(test_case.TestCase):
-    """This tests the "more fair bucketing" approach to bucketing tests.
-
-    The algorithm for bucketing tests is as follows:
-
-    - If there is no bucketing, don't sort or bucket
-    - Otherwise bucket as follows:
-
-        1. Sort the tests, first by number of tests and then by name
-           (Sorting by name is merely for determinism)
-        2. In order, round robin associate the tests with a bucket
-           following this pattern:
-
-           (for example 3 buckets)
-           1 2 3 3 2 1 1 2 3 (etc.)
-    """
-
-    all_tests = (
-        bucketing_test.AAA_FirstTestCaseWithSameNumberOfTests,
-        bucketing_test.TestCaseWithFewTests,
-        bucketing_test.TestCaseWithManyTests,
-        bucketing_test.ZZZ_SecondTestCaseWithSameNumberOfTests,
-    )
-
-    all_tests_sorted_by_number_of_tests = (
-        all_tests[2],
-        all_tests[0],
-        all_tests[3],
-        all_tests[1],
-    )
-
-    @setup_teardown
-    def mock_out_test_discovery(self):
-        with mock.patch.object(
-            test_discovery,
-            'discover',
-            autospec=True,
-        ) as self.discover_mock:
-            yield
-
-    def assert_types_of_discovered(self, discovered, expected):
-        assert_equal(tuple(map(type, discovered)), tuple(expected))
-
-    def test_bucketing_no_buckets(self):
-        self.discover_mock.return_value = self.all_tests
-
-        instance = test_runner.TestRunner(mock.sentinel.test_path)
-        discovered = instance.discover()
-        # The tests we discover should be in the order that test_discovery
-        # returns them as
-        self.assert_types_of_discovered(discovered, self.all_tests)
-
-    def test_bucketing_one_bucket(self):
-        """Trivial base case, should return similar to no_buckets, but with sorting"""
-        self.discover_mock.return_value = self.all_tests
-
-        instance = test_runner.TestRunner(mock.sentinel.test_path, bucket=0, bucket_count=1)
-        discovered = instance.discover()
-        self.assert_types_of_discovered(discovered, self.all_tests_sorted_by_number_of_tests)
-
-    def test_multiple_buckets(self):
-        self.discover_mock.return_value = self.all_tests
-
-        # Buckets should be assigned:
-        # 0 -> TestCaseWithManyTesets, TestCaseWithFewTests
-        # 1 -> AAA_FirstTestCaseWithSameNumberOfTests, ZZZ_SecondTestCaseWithSameNumberOfTests
-        instance = test_runner.TestRunner(mock.sentinel.test_path, bucket=0, bucket_count=2)
-        discovered = instance.discover()
-        self.assert_types_of_discovered(
-            discovered,
-            (
-                bucketing_test.TestCaseWithManyTests,
-                bucketing_test.TestCaseWithFewTests,
-            ),
-        )
-
-        instance = test_runner.TestRunner(mock.sentinel.test_path, bucket=1, bucket_count=2)
-        discovered = instance.discover()
-        self.assert_types_of_discovered(
-            discovered,
-            (
-                bucketing_test.AAA_FirstTestCaseWithSameNumberOfTests,
-                bucketing_test.ZZZ_SecondTestCaseWithSameNumberOfTests,
-            ),
-        )
-
-    def test_bucketing_with_filtering(self):
-        self.discover_mock.return_value = self.all_tests
-        instance = test_runner.TestRunner(
-            mock.sentinel.test_path,
-            bucket=0,
-            bucket_count=1,
-            module_method_overrides={
-                self.all_tests[0].__name__: set(),
-            },
-        )
-
-        discovered = instance.discover()
-        self.assert_types_of_discovered(discovered, (self.all_tests[0],))
