@@ -11,11 +11,10 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: Implementation :: CPython',
         "Operating System :: OS Independent",
         "License :: OSI Approved :: Apache Software License",
@@ -37,7 +36,6 @@ will run under testify with a minimum of adjustments, but it has features above 
   - enhanced test discovery - testify can drill down into packages to find test cases (similiar to nose).
   - support for collecting and running tests by collecting modules, classes or methods into test suites.
   - Pretty test runner output (color!)
-  - Support for splitting up tests into buckets to support multi-processing
   - Extensible plugin system for adding additional functionality around reporting
   - Comes complete with other handy testing utilities: Mocking (turtle), code coverage integration and profiling.
 """

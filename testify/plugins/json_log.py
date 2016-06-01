@@ -65,10 +65,6 @@ class JSONReporter(test_reporter.TestReporter):
             if not hasattr(self.options, 'parsed_extra_json_info'):
                 self.options.parsed_extra_json_info = json.loads(self.options.extra_json_info)
             result.update(self.options.parsed_extra_json_info)
-        if self.options.bucket is not None:
-            result['bucket'] = self.options.bucket
-        if self.options.bucket_count is not None:
-            result['bucket_count'] = self.options.bucket_count
 
         if not result['success']:
             if self.log_hndl:

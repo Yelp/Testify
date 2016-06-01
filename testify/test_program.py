@@ -33,25 +33,6 @@ DEFAULT_PLUGIN_PATH = os.path.join(os.path.split(__file__)[0], 'plugins')
 log = logging.getLogger('testify')
 
 
-def get_bucket_overrides(filename):
-    """Returns a map from test class name to test bucket.
-
-    test class name: {test module}.{classname}
-    test bucket: int
-    """
-    ofile = open(filename)
-    overrides = {}
-    for line in ofile.readlines():
-        if line.startswith('#'):
-            continue
-        if line.strip() == '':
-            continue
-        test_module_and_class, bucket = line.strip().split(',')
-        overrides[test_module_and_class] = int(bucket)
-    ofile.close()
-    return overrides
-
-
 def load_plugins():
     """Load any plugin modules
 
@@ -119,11 +100,6 @@ def default_parser():
     parser.add_option("--list-tests", action="store_true", dest="list_tests")
 
     parser.add_option("--label", action="store", dest="label", type="string", help="label for this test run")
-
-    parser.add_option("--bucket", action="store", dest="bucket", type="int")
-    parser.add_option("--bucket-count", action="store", dest="bucket_count", type="int")
-    parser.add_option("--bucket-overrides-file", action="store", dest="bucket_overrides_file", default=None)
-    parser.add_option("--bucket-salt", action="store", dest="bucket_salt", default=None)
 
     parser.add_option("--summary", action="store_true", dest="summary_mode")
     parser.add_option("--no-color", action="store_true", dest="disable_color", default=bool(not os.isatty(sys.stdout.fileno())))
@@ -291,10 +267,6 @@ class TestProgram(object):
         """Run testify, return True on success, False on failure."""
         self.setup_logging(self.other_opts)
 
-        bucket_overrides = {}
-        if self.other_opts.bucket_overrides_file:
-            bucket_overrides = get_bucket_overrides(self.other_opts.bucket_overrides_file)
-
         if self.other_opts.replay_json or self.other_opts.replay_json_inline:
             from .test_runner_json_replay import TestRunnerJSONReplay
             test_runner_class = TestRunnerJSONReplay
@@ -314,10 +286,6 @@ class TestProgram(object):
 
         runner = test_runner_class(
             self.test_path,
-            bucket_overrides=bucket_overrides,
-            bucket_count=self.other_opts.bucket_count,
-            bucket_salt=self.other_opts.bucket_salt,
-            bucket=self.other_opts.bucket,
             **self.test_runner_args
         )
 
@@ -329,13 +297,9 @@ class TestProgram(object):
             return True
         elif self.runner_action == ACTION_RUN_TESTS:
             label_text = ""
-            bucket_text = ""
             if self.other_opts.label:
                 label_text = " " + self.other_opts.label
-            if self.other_opts.bucket_count:
-                salt_info = (' [salt: %s]' % self.other_opts.bucket_salt) if self.other_opts.bucket_salt else ''
-                bucket_text = " (bucket %d of %d%s)" % (self.other_opts.bucket, self.other_opts.bucket_count, salt_info)
-            log.info("starting test run%s%s", label_text, bucket_text)
+            log.info("starting test run%s", label_text)
 
             # Allow plugins to modify the test runner.
             for plugin_mod in self.test_runner_args['plugin_modules']:

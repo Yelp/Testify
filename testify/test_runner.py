@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 from collections import defaultdict
-import itertools
 import functools
 import pprint
 import sys
@@ -42,10 +41,6 @@ class TestRunner(object):
 
     def __init__(self,
                  test_path_or_test_case,
-                 bucket=None,
-                 bucket_count=None,
-                 bucket_overrides=None,
-                 bucket_salt=None,
                  debugger=None,
                  suites_include=(),
                  suites_exclude=(),
@@ -59,10 +54,6 @@ class TestRunner(object):
         """After instantiating a TestRunner, call run() to run them."""
 
         self.test_path_or_test_case = test_path_or_test_case
-        self.bucket = bucket
-        self.bucket_count = bucket_count
-        self.bucket_overrides = bucket_overrides if bucket_overrides is not None else {}
-        self.bucket_salt = bucket_salt
 
         self.debugger = debugger
 
@@ -121,39 +112,12 @@ class TestRunner(object):
                 if not self.module_method_overrides or test_case_class.__name__ in self.module_method_overrides
             )
 
-        def discover_tests_by_buckets():
-            # Sort by the test count, use the cmp_str as a fallback for determinism
-            test_cases = sorted(
-                discover_tests(),
-                key=lambda test_case: (
-                    -1 * len(list(test_case.runnable_test_methods())),
-                    MetaTestCase._cmp_str(type(test_case)),
-                )
-            )
-
-            # Assign buckets round robin
-            buckets = defaultdict(list)
-            for bucket, test_case in six.moves.zip(
-                itertools.cycle(
-                    list(range(self.bucket_count)) +
-                    list(reversed(range(self.bucket_count)))
-                ),
-                test_cases,
-            ):
-                # If the class is supposed to be specially bucketed, do so
-                bucket = self.bucket_overrides.get(MetaTestCase._cmp_str(type(test_case)), bucket)
-                buckets[bucket].append(test_case)
-
-            return buckets[self.bucket]
-
         def discover_tests_testing():
             # For testing purposes only
             return [self.test_path_or_test_case()]
 
         if isinstance(self.test_path_or_test_case, (TestCase, MetaTestCase)):
             discovered_tests = discover_tests_testing()
-        elif self.bucket is not None:
-            discovered_tests = discover_tests_by_buckets()
         else:
             discovered_tests = discover_tests()
 
