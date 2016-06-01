@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from collections import defaultdict
 from optparse import OptionParser
 import os
+import pprint
 import sys
 import logging
 import imp
@@ -293,7 +294,9 @@ class TestProgram(object):
         )
 
         if self.runner_action == ACTION_LIST_SUITES:
-            runner.list_suites()
+            suite_counts = runner.list_suites()
+            pp = pprint.PrettyPrinter(indent=2)
+            print(pp.pformat(dict(suite_counts)))
             return True
         elif self.runner_action == ACTION_LIST_TESTS:
             runner.list_tests(format=self.other_opts.list_tests_format)

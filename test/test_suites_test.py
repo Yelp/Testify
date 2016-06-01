@@ -11,15 +11,6 @@ class TestSuitesTestCase(TestCase):
     def test_subclass_suites_doesnt_affect_superclass_suites(self):
         """Check that setting _suites in a subclass only affects that subclass, not the superclass.
         Checking https://github.com/Yelp/Testify/issues/53"""
-        class SuperTestCase(TestCase):
-            _suites = ['super']
-
-            def test_thing(self):
-                pass
-
-        class SubTestCase(SuperTestCase):
-            _suites = ['sub']
-
         # If we set suites_require=['super'], then only the superclass should have a method to run.
         super_instance = SuperTestCase(suites_require=set(['super']))
         sub_instance = SubTestCase(suites_require=set(['super']))
@@ -36,30 +27,46 @@ class TestSuitesTestCase(TestCase):
 
     def test_suite_decorator_overrides_parent(self):
         """Check that the @suite decorator overrides any @suite on the overridden (parent class) method."""
-        class SuperTestCase(TestCase):
-            @suite('super')
-            def test_thing(self):
-                pass
-
-        class SubTestCase(SuperTestCase):
-            __test__ = False
-
-            @suite('sub')
-            def test_thing(self):
-                pass
-
-        super_instance = SuperTestCase()
-        sub_instance = SubTestCase()
+        super_instance = SuperDecoratedTestCase()
+        sub_instance = SubDecoratedTestCase()
 
         assert_equal(super_instance.test_thing._suites, set(['super']))
         assert_equal(sub_instance.test_thing._suites, set(['sub']))
+
+
+@suite('example')
+class ExampleTestCase(TestCase):
+    pass
+
+
+class SuperTestCase(ExampleTestCase):
+    _suites = ['super']
+
+    def test_thing(self):
+        pass
+
+
+class SubTestCase(SuperTestCase):
+    _suites = ['sub']
+
+
+class SuperDecoratedTestCase(ExampleTestCase):
+    @suite('super')
+    def test_thing(self):
+        pass
+
+
+class SubDecoratedTestCase(SuperDecoratedTestCase):
+    @suite('sub')
+    def test_thing(self):
+        pass
 
 
 class ListSuitesMixin(object):
     """Test that we pick up the correct suites when using --list-suites."""
 
     # applied to test_foo, test_disabled, test_also.., test_not.., and test_list..
-    _suites = ['class-level-suite']
+    _suites = ['example', 'class-level-suite']
 
     def __init__(self, **kwargs):
         super(ListSuitesMixin, self).__init__(**kwargs)
@@ -81,20 +88,23 @@ class ListSuitesMixin(object):
     def test_not_disabled(self):
         True
 
+    @suite('assertion')
     def test_list_suites(self):
         # for suites affecting all of this class's tests
         num_tests = len(list(self.runnable_test_methods()))
 
         test_runner = TestRunner(type(self))
-        assert_equal(test_runner.list_suites(), {
-            'disabled': '2 tests',
-            'module-level': '%d tests' % num_tests,
-            'class-level-suite': '%d tests' % num_tests,
-            'crazy': '1 tests'
-        })
+        assert_equal(sorted(test_runner.list_suites().items()), [
+            ('assertion', '1 tests'),
+            ('class-level-suite', '%d tests' % num_tests),
+            ('crazy', '1 tests'),
+            ('disabled', '2 tests'),
+            ('example', '%d tests' % num_tests),
+            ('module-level', '%d tests' % num_tests),
+        ])
 
 
-class ListSuitesTestCase(TestCase, ListSuitesMixin):
+class ListSuitesTestCase(ExampleTestCase, ListSuitesMixin):
     """Test that suites are correctly applied to Testify TestCases."""
     pass
 

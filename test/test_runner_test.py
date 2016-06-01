@@ -6,8 +6,6 @@ from testify import setup_teardown
 from testify import test_case
 from testify import test_runner
 
-import six
-
 from .test_runner_subdir.inheriting_class import InheritingClass
 
 prepared = False
@@ -122,37 +120,3 @@ class TestTestRunnerGetTestsForSuite(test_case.TestCase):
         instance = test_runner.TestRunner(mock.sentinel.test_class)
         ret = instance.get_tests_for_suite(mock.sentinel.selected_suite_name)
         assert_equal(list(ret), [])
-
-
-class TestTestRunnerPrintsTestNames(test_case.TestCase):
-
-    @setup_teardown
-    def mock_out_things(self):
-        class OrderableMock(mock.Mock):
-            def __lt__(self, other):
-                return id(self) < id(other)
-
-        with mock.patch.object(
-            test_runner.TestRunner,
-            'get_tests_for_suite',
-            autospec=True,
-            return_value=[mock.sentinel.test1, mock.sentinel.test2],
-        ) as self.get_tests_for_suite_mock:
-            with mock.patch.object(
-                test_runner.TestRunner,
-                'get_test_method_name',
-                return_value=OrderableMock(),
-            ) as self.get_test_method_name_mock:
-                with mock.patch.object(
-                    six.moves.builtins,
-                    'print',
-                ) as self.print_mock:
-                    yield
-
-    def test_prints_one_per_line(self):
-        instance = test_runner.TestRunner(mock.sentinel.test_class)
-        instance.list_tests(mock.sentinel.selected_suite_name)
-        self.print_mock.assert_has_calls([
-            mock.call(self.get_test_method_name_mock.return_value)
-            for _ in self.get_tests_for_suite_mock.return_value
-        ])

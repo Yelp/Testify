@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from collections import defaultdict
 import functools
-import pprint
+import json
 import sys
 
 import six
@@ -198,12 +198,7 @@ class TestRunner(object):
             for test_method in test_instance.runnable_test_methods():
                 for suite_name in test_instance.suites(test_method):
                     suites[suite_name].append(test_method)
-        suite_counts = dict((suite_name, "%d tests" % len(suite_members)) for suite_name, suite_members in suites.items())
-
-        pp = pprint.PrettyPrinter(indent=2)
-        print(pp.pformat(dict(suite_counts)))
-
-        return suite_counts
+        return dict((suite_name, "%d tests" % len(suite_members)) for suite_name, suite_members in suites.items())
 
     def get_tests_for_suite(self, selected_suite_name):
         """Gets the test list for the suite"""
@@ -220,11 +215,13 @@ class TestRunner(object):
                 print(name)
             elif format == 'json':
                 testcase = test.__self__
-                import json
-                print(json.dumps(dict(
-                    name=name,
-                    suites=sorted(testcase.suites(test)),
-                )))
+                print(json.dumps(
+                    dict(
+                        test=name,
+                        suites=sorted(testcase.suites(test)),
+                    ),
+                    sort_keys=True,
+                ))
             else:
                 raise ValueError("unknown test list format: '%s'" % format)
 
