@@ -131,7 +131,6 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
 
         self.__test_fixtures = TestFixtures.discover_from(self)
 
-        self.__suites_include = kwargs.get('suites_include', set())
         self.__suites_exclude = kwargs.get('suites_exclude', set())
         self.__suites_require = kwargs.get('suites_require', set())
         self.__name_overrides = kwargs.get('name_overrides', None)
@@ -166,7 +165,7 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
         """Generator method to yield runnable test methods.
 
         This will pick out the test methods from this TestCase, and then exclude any in
-        any of our exclude_suites.  If there are any include_suites, it will then further
+        any of our exclude_suites.  If there are any require_suites, it will then further
         limit itself to test methods in those suites.
         """
         for member_name in dir(self):
@@ -180,9 +179,6 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
 
             # if there are any exclude suites, exclude methods under them
             if self.__suites_exclude and self.__suites_exclude & member_suites:
-                continue
-            # if there are any include suites, only run methods in them
-            if self.__suites_include and not (self.__suites_include & member_suites):
                 continue
             # if there are any require suites, only run methods in *all* of those suites
             if self.__suites_require and not ((self.__suites_require & member_suites) == self.__suites_require):
