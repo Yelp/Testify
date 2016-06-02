@@ -42,7 +42,6 @@ class TestRunner(object):
     def __init__(self,
                  test_path_or_test_case,
                  debugger=None,
-                 suites_include=(),
                  suites_exclude=(),
                  suites_require=(),
                  options=None,
@@ -57,7 +56,6 @@ class TestRunner(object):
 
         self.debugger = debugger
 
-        self.suites_include = set(suites_include)
         self.suites_exclude = set(suites_exclude)
         self.suites_require = set(suites_require)
 
@@ -88,7 +86,6 @@ class TestRunner(object):
             self.module_method_overrides.get(test_case_cls.__name__, None),
         )
         test_case = test_case_cls(
-            suites_include=self.suites_include,
             suites_exclude=self.suites_exclude,
             suites_require=self.suites_require,
             name_overrides=name_overrides,

@@ -92,7 +92,6 @@ def default_parser():
         help="Enter post mortem debugging mode with ipdb in the case of an exception thrown in a test method or fixture method.",
     )
 
-    parser.add_option("-i", "--include-suite", action="append", dest="suites_include", type="string", default=[])
     parser.add_option("-x", "--exclude-suite", action="append", dest="suites_exclude", type="string", default=[])
     parser.add_option("-q", "--require-suite", action="append", dest="suites_require", type="string", default=[])
 
@@ -201,7 +200,6 @@ def parse_test_runner_command_line_args(plugin_modules, args):
 
     test_runner_args = {
         'debugger': options.debugger,
-        'suites_include': options.suites_include,
         'suites_exclude': options.suites_exclude,
         'suites_require': options.suites_require,
         'failure_limit': options.failure_limit,
