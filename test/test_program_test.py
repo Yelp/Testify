@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 
@@ -86,6 +87,65 @@ class TestifyRunAcceptanceTestCase(TestCase):
             sys.executable, '-m', 'testify.test_program',
             '--list-tests', 'testing_suite'])
         assert_equal(output, self.expected_list)
+
+    def test_list_tests_json(self):
+        output = test_call([
+            sys.executable, '-m', 'testify.test_program',
+            '--list-tests', 'testing_suite',
+            '--list-tests-format', 'json',
+        ])
+        assert_equal(output, '''\
+{"suites": [], "test": "testing_suite.example_test ExampleTestCase.test_one"}
+{"suites": [], "test": "testing_suite.example_test ExampleTestCase.test_two"}
+{"suites": [], "test": "testing_suite.example_test SecondTestCase.test_one"}''')
+
+    def test_list_tests_json_suites(self):
+        output = test_call([
+            sys.executable, '-m', 'testify.test_program',
+            '--list-tests', 'test.test_suites_test',
+            '--list-tests-format', 'json',
+        ])
+        assert_equal(output, '''\
+{"suites": ["class-level-suite", "disabled", "example", "module-level"], "test": "test.test_suites_test ListSuitesTestCase.test_also_disabled"}
+{"suites": ["class-level-suite", "crazy", "disabled", "example", "module-level"], "test": "test.test_suites_test ListSuitesTestCase.test_disabled"}
+{"suites": ["class-level-suite", "example", "module-level"], "test": "test.test_suites_test ListSuitesTestCase.<lambda>"}
+{"suites": ["assertion", "class-level-suite", "example", "module-level"], "test": "test.test_suites_test ListSuitesTestCase.test_list_suites"}
+{"suites": ["class-level-suite", "example", "module-level"], "test": "test.test_suites_test ListSuitesTestCase.test_not_disabled"}
+{"suites": ["class-level-suite", "disabled", "example", "module-level"], "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_also_disabled"}
+{"suites": ["class-level-suite", "crazy", "disabled", "example", "module-level"], "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_disabled"}
+{"suites": ["assertion", "class-level-suite", "example", "module-level"], "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_list_suites"}
+{"suites": ["class-level-suite", "example", "module-level"], "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_not_disabled"}
+{"suites": ["example", "module-level", "sub"], "test": "test.test_suites_test SubDecoratedTestCase.test_thing"}
+{"suites": ["example", "module-level", "sub", "super"], "test": "test.test_suites_test SubTestCase.test_thing"}
+{"suites": ["example", "module-level", "super"], "test": "test.test_suites_test SuperDecoratedTestCase.test_thing"}
+{"suites": ["example", "module-level", "super"], "test": "test.test_suites_test SuperTestCase.test_thing"}
+{"suites": ["module-level"], "test": "test.test_suites_test TestSuitesTestCase.test_subclass_suites_doesnt_affect_superclass_suites"}
+{"suites": ["module-level"], "test": "test.test_suites_test TestSuitesTestCase.test_suite_decorator_overrides_parent"}''')  # noqa
+
+    def assert_rerun_discovery(self, format):
+        output = test_call([
+            'sh', '-c', '''\
+{python} -m testify.test_program --list-tests test.test_suites_test --list-tests-format {format} |
+{python} -m testify.test_program -v --require-suite example --exclude-suite disabled --exclude-suite assertion --rerun-test-file -
+'''.format(python=sys.executable, format=format)
+        ])
+        output = re.sub(r'\b[0-9.]+s\b', '${TIME}', output)
+        assert_equal(output, '''\
+test.test_suites_test ListSuitesTestCase.<lambda> ... ok in ${TIME}
+test.test_suites_test ListSuitesTestCase.test_not_disabled ... ok in ${TIME}
+test.test_suites_test TestifiedListSuitesUnittestCase.test_not_disabled ... ok in ${TIME}
+test.test_suites_test SubDecoratedTestCase.test_thing ... ok in ${TIME}
+test.test_suites_test SubTestCase.test_thing ... ok in ${TIME}
+test.test_suites_test SuperDecoratedTestCase.test_thing ... ok in ${TIME}
+test.test_suites_test SuperTestCase.test_thing ... ok in ${TIME}
+
+PASSED.  7 tests / 6 cases: 7 passed, 0 failed.  (Total test time ${TIME})''')
+
+    def test_rerun_discovery_txt(self):
+        self.assert_rerun_discovery('txt')
+
+    def test_rerun_discovery_json(self):
+        self.assert_rerun_discovery('json')
 
     def test_run_testify_from_bin(self):
         output = test_call(['bin/testify', 'testing_suite', '-v'])

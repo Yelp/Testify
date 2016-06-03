@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from collections import defaultdict
 import functools
-import pprint
+import json
 import sys
 
 import six
@@ -198,12 +198,7 @@ class TestRunner(object):
             for test_method in test_instance.runnable_test_methods():
                 for suite_name in test_instance.suites(test_method):
                     suites[suite_name].append(test_method)
-        suite_counts = dict((suite_name, "%d tests" % len(suite_members)) for suite_name, suite_members in suites.items())
-
-        pp = pprint.PrettyPrinter(indent=2)
-        print(pp.pformat(dict(suite_counts)))
-
-        return suite_counts
+        return dict((suite_name, "%d tests" % len(suite_members)) for suite_name, suite_members in suites.items())
 
     def get_tests_for_suite(self, selected_suite_name):
         """Gets the test list for the suite"""
@@ -212,9 +207,22 @@ class TestRunner(object):
                 if not selected_suite_name or TestCase.in_suite(test_method, selected_suite_name):
                     yield test_method
 
-    def list_tests(self, selected_suite_name=None):
+    def list_tests(self, format, selected_suite_name=None):
         """Lists all tests, optionally scoped to a single suite."""
         for test in self.get_tests_for_suite(selected_suite_name):
-            print(self.get_test_method_name(test))
+            name = self.get_test_method_name(test)
+            if format == 'txt':
+                print(name)
+            elif format == 'json':
+                testcase = test.__self__
+                print(json.dumps(
+                    dict(
+                        test=name,
+                        suites=sorted(testcase.suites(test)),
+                    ),
+                    sort_keys=True,
+                ))
+            else:
+                raise ValueError("unknown test list format: '%s'" % format)
 
 # vim: set ts=4 sts=4 sw=4 et:
