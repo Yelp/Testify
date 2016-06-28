@@ -80,7 +80,7 @@ class PluginTestCase(test_case.TestCase):
     def test_plugin_run(self):
         runner = test_runner.TestRunner(self.dummy_test_class, plugin_modules=[self.our_module])
 
-        assert runner.run()
+        assert runner.run() == 0
         assert self.ran_test
         assert not running
         assert prepared

@@ -98,7 +98,6 @@ def discover(what):
             for cls in get_test_classes_from_module(submod):
                 yield cls
     except Exception:
-        traceback.print_exc()
         raise DiscoveryError(
             (
                 '\n    ' +

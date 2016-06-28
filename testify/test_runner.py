@@ -20,12 +20,12 @@ from __future__ import print_function
 from collections import defaultdict
 import functools
 import json
-import sys
 
 import six
 
 from .test_case import MetaTestCase, TestCase
 from . import test_discovery
+from . import exit
 
 
 __author__ = "Oliver Nicholas <bigo@yelp.com>"
@@ -118,13 +118,8 @@ class TestRunner(object):
         else:
             discovered_tests = discover_tests()
 
-        try:
-            for test in discovered_tests:
-                yield test
-        except test_discovery.DiscoveryError as exc:
-            for reporter in self.test_reporters:
-                reporter.test_discovery_failure(exc)
-            sys.exit(1)
+        for test in discovered_tests:
+            yield test
 
     def run(self):
         """Instantiate our found test case classes and run their test methods.
@@ -137,6 +132,9 @@ class TestRunner(object):
 
         At its conclusion, we pass our collected results to our TestLogger to
         print out exceptions and testing summaries.
+
+        Returns an exit code from sysexits.h. See:
+            http://linux.die.net/include/sysexits.h
         """
 
         try:
@@ -183,13 +181,20 @@ class TestRunner(object):
                 # And we finally execute our finely wrapped test case
                 runnable()
 
-        except (KeyboardInterrupt, SystemExit):
+        except test_discovery.DiscoveryError as exc:
+            for reporter in self.test_reporters:
+                reporter.test_discovery_failure(exc)
+            return exit.DISCOVERY_FAILED
+        except KeyboardInterrupt:
             # we'll catch and pass a keyboard interrupt so we can cancel in the middle of a run
             # but still get a testing summary.
             pass
 
         report = [reporter.report() for reporter in self.test_reporters]
-        return all(report)
+        if all(report):
+            return exit.OK
+        else:
+            return exit.TESTS_FAILED
 
     def list_suites(self):
         """List the suites represented by this TestRunner's tests."""

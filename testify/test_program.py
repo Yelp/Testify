@@ -268,7 +268,7 @@ class TestProgram(object):
         return reporters
 
     def run(self):
-        """Run testify, return True on success, False on failure."""
+        """Run testify, return 0 on success, nonzero on failure."""
         self.setup_logging(self.other_opts)
 
         if self.other_opts.replay_json or self.other_opts.replay_json_inline:
@@ -297,10 +297,10 @@ class TestProgram(object):
             suite_counts = runner.list_suites()
             pp = pprint.PrettyPrinter(indent=2)
             print(pp.pformat(dict(suite_counts)))
-            return True
+            return 0
         elif self.runner_action == ACTION_LIST_TESTS:
             runner.list_tests(format=self.other_opts.list_tests_format)
-            return True
+            return 0
         elif self.runner_action == ACTION_RUN_TESTS:
             label_text = ""
             if self.other_opts.label:
@@ -344,11 +344,11 @@ class TestProgram(object):
 def run():
     """Entry point for running a test file directly."""
     args = ["__main__"] + sys.argv[1:]
-    sys.exit(not TestProgram(command_line_args=args).run())
+    sys.exit(TestProgram(command_line_args=args).run())
 
 
 def main():
-    sys.exit(not TestProgram().run())
+    sys.exit(TestProgram().run())
 
 
 if __name__ == "__main__":

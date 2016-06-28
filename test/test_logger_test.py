@@ -1,7 +1,7 @@
 from mock import patch
 
-from test.discovery_failure_test import BrokenImportTestCase
 from testify import compat
+from testify import exit
 from testify import TestCase, assert_equal, assert_in, class_setup, class_setup_teardown, class_teardown, run, setup, teardown
 from testify.test_logger import TextTestLogger, VERBOSITY_NORMAL
 from testify.test_runner import TestRunner
@@ -26,10 +26,10 @@ class TextLoggerBaseTestCase(TestCase):
         self.stream.close()
 
 
-class TextLoggerDiscoveryFailureTestCase(BrokenImportTestCase, TextLoggerBaseTestCase):
+class TextLoggerDiscoveryFailureTestCase(TextLoggerBaseTestCase):
     def test_text_test_logger_prints_discovery_failure_message(self):
         runner = TestRunner(
-            self.broken_import_module,
+            'does.not.exist',
             test_reporters=[TextTestLogger(self.options, stream=self.stream)],
         )
         runner.run()
@@ -104,7 +104,7 @@ class TextLoggerExceptionInClassFixtureTestCase(TextLoggerBaseTestCase):
             test_reporters=[self.logger],
         )
         runner_result = runner.run()
-        assert_equal(runner_result, False)
+        assert_equal(runner_result, exit.TESTS_FAILED)
 
     def test_class_setup(self):
         self._run_test_case(ExceptionInClassFixtureSampleTests.FakeClassSetupTestCase)
