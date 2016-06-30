@@ -102,24 +102,15 @@ class TestRunner(object):
         return test_case
 
     def discover(self):
-        def discover_tests():
+        if isinstance(self.test_path_or_test_case, (TestCase, MetaTestCase)):
+            # For testing purposes only
+            return [self.test_path_or_test_case()]
+        else:
             return (
                 self._construct_test(test_case_class)
                 for test_case_class in test_discovery.discover(self.test_path_or_test_case)
                 if not self.module_method_overrides or test_case_class.__name__ in self.module_method_overrides
             )
-
-        def discover_tests_testing():
-            # For testing purposes only
-            return [self.test_path_or_test_case()]
-
-        if isinstance(self.test_path_or_test_case, (TestCase, MetaTestCase)):
-            discovered_tests = discover_tests_testing()
-        else:
-            discovered_tests = discover_tests()
-
-        for test in discovered_tests:
-            yield test
 
     def run(self):
         """Instantiate our found test case classes and run their test methods.
