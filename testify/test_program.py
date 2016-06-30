@@ -22,6 +22,7 @@ import logging
 import imp
 
 import testify
+from testify import exit
 from testify import test_logger
 from testify.test_runner import TestRunner
 
@@ -297,10 +298,10 @@ class TestProgram(object):
             suite_counts = runner.list_suites()
             pp = pprint.PrettyPrinter(indent=2)
             print(pp.pformat(dict(suite_counts)))
-            return 0
+            return exit.OK
         elif self.runner_action == ACTION_LIST_TESTS:
             runner.list_tests(format=self.other_opts.list_tests_format)
-            return 0
+            return exit.OK
         elif self.runner_action == ACTION_RUN_TESTS:
             label_text = ""
             if self.other_opts.label:
