@@ -98,6 +98,7 @@ def discover(what):
             for cls in get_test_classes_from_module(submod):
                 yield cls
     except Exception:
+        # print the traceback to stderr, or else we can't see errors during --list-tests > testlist
         traceback.print_exc()
         raise DiscoveryError(
             (
