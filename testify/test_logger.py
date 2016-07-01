@@ -194,15 +194,14 @@ class TextTestLogger(TestLoggerBase):
             }[status]
 
             if status in ('fail', 'error'):
-                self.writeln("%s: %s\n%s" % (status, self._format_test_method_name(result['method']), result['exception_info']))
+                self.writeln("\n%s: %s\n%s" % (status, self._format_test_method_name(result['method']), result['exception_info']))
 
             if self.options.verbosity == VERBOSITY_NORMAL:
                 self.write(self._colorize(status_letter, color))
+            elif result['normalized_run_time']:
+                self.writeln("%s in %s" % (self._colorize(status_description, color), result['normalized_run_time']))
             else:
-                if result['normalized_run_time']:
-                    self.writeln("%s in %s" % (self._colorize(status_description, color), result['normalized_run_time']))
-                else:
-                    self.writeln(self._colorize(status_description, color))
+                self.writeln(self._colorize(status_description, color))
 
     def heading(self, *messages):
         self.writeln("")

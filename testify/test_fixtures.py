@@ -1,7 +1,6 @@
 import contextlib
 import inspect
 import itertools
-import sys
 
 import six
 
@@ -193,9 +192,6 @@ class TestFixtures(object):
                 result.end_in_success()
             else:
                 return result.exception_infos
-        except (KeyboardInterrupt, SystemExit):
-            result.end_in_interruption(sys.exc_info())
-            raise
         finally:
             if exit_callback:
                 exit_callback(result)

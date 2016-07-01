@@ -26,6 +26,7 @@ import six
 from .test_case import MetaTestCase, TestCase
 from . import test_discovery
 from . import exit
+from . import exceptions
 
 
 __author__ = "Oliver Nicholas <bigo@yelp.com>"
@@ -181,12 +182,12 @@ class TestRunner(object):
                 # And we finally execute our finely wrapped test case
                 runnable()
 
-        except test_discovery.DiscoveryError as exc:
+        except exceptions.DiscoveryError as exc:
             for reporter in self.test_reporters:
                 reporter.test_discovery_failure(exc)
             return exit.DISCOVERY_FAILED
-        except KeyboardInterrupt:
-            # we'll catch and pass a keyboard interrupt so we can cancel in the middle of a run
+        except exceptions.Interruption:
+            # handle interruption so we can cancel in the middle of a run
             # but still get a testing summary.
             pass
 

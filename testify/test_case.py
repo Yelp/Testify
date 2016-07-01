@@ -20,13 +20,13 @@ from __future__ import absolute_import
 from collections import defaultdict
 import functools
 import inspect
-import sys
 import types
 import unittest
 
 import six
 
 from testify import test_fixtures
+from testify.exceptions import Interruption
 from testify.utils import class_logger
 from testify.test_fixtures import DEPRECATED_FIXTURE_TYPE_MAP
 from testify.test_fixtures import TestFixtures
@@ -303,13 +303,12 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
                 for exc_info in fixture_failures:
                     result.end_in_failure(exc_info)
 
+                if result.interrupted:
+                    raise Interruption
+
                 # if nothing's gone wrong, it's not about to start
                 if not result.complete:
                     result.end_in_success()
-
-            except (KeyboardInterrupt, SystemExit):
-                result.end_in_interruption(sys.exc_info())
-                raise
 
             finally:
                 self.fire_event(self.EVENT_ON_COMPLETE_TEST_METHOD, result)
