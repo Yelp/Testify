@@ -31,7 +31,7 @@ __version__ = "0.9.0"
 
 from .assertions import *
 
-from .errors import TestifyError
+from .exceptions import TestifyError
 
 from .test_case import (
     MetaTestCase,

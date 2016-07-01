@@ -20,11 +20,7 @@ import sys
 import traceback
 import unittest
 from .test_case import MetaTestCase, TestifiedUnitTest
-from .errors import TestifyError
-
-
-class DiscoveryError(TestifyError):
-    pass
+from .exceptions import DiscoveryError
 
 
 def to_module(path):
@@ -97,7 +93,9 @@ def discover(what):
             submod = __import__(module_name, fromlist=[str('__trash')])
             for cls in get_test_classes_from_module(submod):
                 yield cls
-    except Exception:
+    except GeneratorExit:
+        raise
+    except BaseException:
         # print the traceback to stderr, or else we can't see errors during --list-tests > testlist
         traceback.print_exc()
         raise DiscoveryError(

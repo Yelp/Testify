@@ -81,9 +81,7 @@ class TestResult(object):
         """
         try:
             function()
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except Exception as exception:
+        except BaseException as exception:
             # some code may want to use an alternative exc_info for an exception
             # (for instance, in an event loop). You can signal an alternative
             # stack to use by adding a _testify_exc_tb attribute to the
@@ -125,6 +123,8 @@ class TestResult(object):
         if isinstance(exception_info[1], AssertionError):
             # test failure, kinda expect these vs. unknown errors
             self.failure = True
+        elif isinstance(exception_info[1], KeyboardInterrupt):
+            self.interrupted = True
         else:
             self.error = True
 
@@ -134,12 +134,6 @@ class TestResult(object):
         if not self.complete:
             self._complete()
             self.success = True
-
-    def end_in_interruption(self, exception_info):
-        if not self.complete:
-            self._complete()
-            self.interrupted = True
-            self.exception_infos.append(exception_info)
 
     def __make_multi_error_message(self, formatter):
         result = []
