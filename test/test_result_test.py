@@ -65,20 +65,6 @@ class TestResultTestCase(TestCase):
         mock_format_exception.assert_called_with(ValueError, value, tb, None)
         assert_equal(formatted, 'Traceback: ValueError\n')
 
-    @mock.patch('testify.test_result.fancy_tb_formatter')
-    def test_format_exception_info_assertion_pretty(self, mock_format):
-        value, tb = self._append_exc_info(AssertionError)
-        formatted = self.test_result.format_exception_info(pretty=True)
-        mock_format.assert_called_with(AssertionError, value, tb, 1)
-        assert_equal(formatted, mock_format.return_value)
-
-    @mock.patch('testify.test_result.fancy_tb_formatter')
-    def test_format_exception_info_error_pretty(self, mock_format):
-        value, tb = self._append_exc_info(ValueError)
-        formatted = self.test_result.format_exception_info(pretty=True)
-        mock_format.assert_called_with(ValueError, value, tb)
-        assert_equal(formatted, mock_format.return_value)
-
     @mock.patch('traceback.format_exception', wraps=fake_format_exception)
     def test_format_exception_info_multiple(self, mock_format_exception):
         class Error1(Exception):

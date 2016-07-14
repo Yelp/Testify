@@ -25,23 +25,6 @@ from testify.utils import inspection
 
 __testify = 1
 
-# If IPython is available, use it for fancy color traceback formatting
-try:
-    try:
-        # IPython >= 0.11
-        from IPython.core.ultratb import ListTB  # noqa
-    except ImportError:
-        # IPython < 0.11
-        from IPython.ultraTB import ListTB
-
-    list_tb = ListTB(color_scheme='Linux')
-
-    def fancy_tb_formatter(etype, value, tb, length=None):
-        tb = traceback.extract_tb(tb, limit=length)
-        return list_tb.text(etype, value, tb, context=0)
-except ImportError:
-    fancy_tb_formatter = None
-
 
 def plain_tb_formatter(etype, value, tb, length=None):
     # We want our formatters to return a string.
@@ -153,8 +136,6 @@ class TestResult(object):
         if not self.exception_infos:
             return None
 
-        tb_formatter = fancy_tb_formatter if (pretty and fancy_tb_formatter) else plain_tb_formatter
-
         def is_relevant_tb_level(tb):
             if '__testify' in tb.tb_frame.f_globals:
                 # nobody *wants* to read testify
@@ -181,11 +162,11 @@ class TestResult(object):
             if exctype is AssertionError:
                 # Skip testify.assertions traceback levels at the bottom.
                 length = count_relevant_tb_levels(tb)
-                return tb_formatter(exctype, value, tb, length)
+                return plain_tb_formatter(exctype, value, tb, length)
             elif not tb:
                 return "Exception: %r (%r)" % (exctype, value)
             else:
-                return tb_formatter(exctype, value, tb)
+                return plain_tb_formatter(exctype, value, tb)
 
         return self.__make_multi_error_message(formatter)
 
