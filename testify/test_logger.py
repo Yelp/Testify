@@ -17,6 +17,7 @@
 
 import collections
 import logging
+import os
 import subprocess
 import sys
 
@@ -127,9 +128,11 @@ class TextTestLogger(TestLoggerBase):
         # supported by the shell. But of course we if this fails terribly,
         # we'll want to just fall back to no colors
         self.use_color = False
-        if sys.stdin.isatty():
+        # if TERM is not present in environ, tput prints to stderr
+        # if tput's stderr is a pipe, it lies.
+        if sys.stdin.isatty() and 'TERM' in os.environ:
             try:
-                output = subprocess.Popen(["tput", "colors"], stdout=subprocess.PIPE).communicate()[0]
+                output = subprocess.check_output(('tput', 'colors'))
                 if int(output.strip()) >= 8:
                     self.use_color = True
             except Exception as e:
@@ -139,9 +142,9 @@ class TextTestLogger(TestLoggerBase):
     def write(self, message):
         """Write a message to the output stream, no trailing newline"""
         if six.PY2:
-            self.stream.write(message.encode('utf8') if isinstance(message, six.text_type) else message)
+            self.stream.write(message.encode('UTF-8') if isinstance(message, six.text_type) else message)
         else:
-            self.stream.write(message.decode('UTF-8') if type(message) is bytes else message)
+            self.stream.write(message.decode('UTF-8') if isinstance(message, bytes) else message)
         self.stream.flush()
 
     def writeln(self, message):
