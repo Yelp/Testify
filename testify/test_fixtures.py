@@ -1,3 +1,4 @@
+from collections import defaultdict
 import contextlib
 import inspect
 import itertools
@@ -338,6 +339,24 @@ def suite(*args, **kwargs):
         return function
 
     return mark_test_with_suites
+
+
+def tag(tag_name, tag_value):
+    """Decorator to apply tags to a method or class.
+
+    A tag consists of a name and value, both strings. Testify consolidates all
+    of the tag values for each tag name. You can view tags by using the
+    TestCase.tags() method or via `testify --list-tests --list-tests-format json`
+    """
+    def mark_test_with_tag(function_or_class):
+        # check __dict__ instead of using hasattr() because we do not want to
+        # affect a parent class's attribute
+        if '_tags' not in function_or_class.__dict__:
+            function_or_class._tags = defaultdict(set)
+        function_or_class._tags[tag_name].add(tag_value)
+        return function_or_class
+
+    return mark_test_with_tag
 
 
 # unique id for fixtures

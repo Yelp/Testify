@@ -46,6 +46,7 @@ from .test_fixtures import (
     setup_teardown,
     class_setup_teardown,
     suite,
+    tag,
     let,
 )
 
