@@ -3,7 +3,7 @@ import itertools
 
 
 def merge_dicts_of_sets(*dicts):
-    """ Each value of each dictionary is expected to be a set.
+    """Each value of each dictionary is expected to be a set.
     Merge together the values within the sets of each key across all dictionaries.
     returns a single dictionary with all the merged contents
     """

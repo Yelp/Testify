@@ -10,13 +10,13 @@ class MergeDictsTest(TestCase):
         assert_equals(result, {})
 
     def test_one(self):
-        result = dicts.merge_dicts_of_sets({"a": set([1, 2])})
-        assert_equals(result, {"a": set([1, 2])})
+        result = dicts.merge_dicts_of_sets({"a": {1, 2}})
+        assert_equals(result, {"a": {1, 2}})
 
     def test_merge_unique(self):
         result = dicts.merge_dicts_of_sets(
-            {"a": set([1, 2]), "b": set([5])},
-            {"a": set([1, 2, 3]), "b": set([5, 4])},
-            {"c": set([6]), "a": set()}
+            {"a": {1, 2}, "b": {5}},
+            {"a": {1, 2, 3}, "b": {5, 4}},
+            {"c": {6}, "a": set()}
         )
-        assert_equals(result, {'a': set([1, 2, 3]), 'c': set([6]), 'b': set([4, 5])})
+        assert_equals(result, {'a': {1, 2, 3}, 'c': {6}, 'b': {4, 5}})
