@@ -212,10 +212,12 @@ class TestRunner(object):
                 print(name)
             elif format == 'json':
                 testcase = test.__self__
+                tags_sorted = dict((k, sorted(v)) for k, v in six.iteritems(testcase.tags(test)))
                 print(json.dumps(
                     dict(
                         test=name,
                         suites=sorted(testcase.suites(test)),
+                        tags=tags_sorted,
                     ),
                     sort_keys=True,
                 ))

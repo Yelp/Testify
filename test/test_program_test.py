@@ -95,9 +95,22 @@ class TestifyRunAcceptanceTestCase(TestCase):
             '--list-tests-format', 'json',
         ])
         assert_equal(output, '''\
-{"suites": [], "test": "testing_suite.example_test ExampleTestCase.test_one"}
-{"suites": [], "test": "testing_suite.example_test ExampleTestCase.test_two"}
-{"suites": [], "test": "testing_suite.example_test SecondTestCase.test_one"}''')
+{"suites": [], "tags": {}, "test": "testing_suite.example_test ExampleTestCase.test_one"}
+{"suites": [], "tags": {}, "test": "testing_suite.example_test ExampleTestCase.test_two"}
+{"suites": [], "tags": {}, "test": "testing_suite.example_test SecondTestCase.test_one"}''')
+
+    def test_list_tests_json_tags(self):
+        output = test_call([
+            sys.executable, '-m', 'testify.test_program',
+            '--list-tests', 'test.test_tags_test',
+            '--list-tests-format', 'json',
+        ])
+        assert_equal(output, '''\
+{"suites": [], "tags": {"key_1": ["a", "b", "f", "k"], "key_2": ["c"], "key_3": ["g"], "key_4": ["h"]}, "test": "test.test_tags_test TagsInheritedTestCase.test_extra_tags_on_method"}
+{"suites": [], "tags": {"key_1": ["a", "b", "f"], "key_2": ["c"], "key_3": ["g"], "key_4": ["h", "i"], "key_5": ["j"]}, "test": "test.test_tags_test TagsInheritedTestCase.test_new_method"}
+{"suites": [], "tags": {"key_1": ["a", "b", "f"], "key_2": ["c"], "key_3": ["g"], "key_4": ["h"]}, "test": "test.test_tags_test TagsInheritedTestCase.test_simple"}
+{"suites": [], "tags": {"key_1": ["a", "b", "d"], "key_2": ["c"], "key_3": ["e"]}, "test": "test.test_tags_test TagsTestCase.test_extra_tags_on_method"}
+{"suites": [], "tags": {"key_1": ["a", "b"], "key_2": ["c"]}, "test": "test.test_tags_test TagsTestCase.test_simple"}''')  # noqa
 
     def test_list_tests_json_suites(self):
         output = test_call([
@@ -106,21 +119,21 @@ class TestifyRunAcceptanceTestCase(TestCase):
             '--list-tests-format', 'json',
         ])
         assert_equal(output, '''\
-{"suites": ["class-level-suite", "disabled", "example", "module-level"], "test": "test.test_suites_test ListSuitesTestCase.test_also_disabled"}
-{"suites": ["class-level-suite", "crazy", "disabled", "example", "module-level"], "test": "test.test_suites_test ListSuitesTestCase.test_disabled"}
-{"suites": ["class-level-suite", "example", "module-level"], "test": "test.test_suites_test ListSuitesTestCase.<lambda>"}
-{"suites": ["assertion", "class-level-suite", "example", "module-level"], "test": "test.test_suites_test ListSuitesTestCase.test_list_suites"}
-{"suites": ["class-level-suite", "example", "module-level"], "test": "test.test_suites_test ListSuitesTestCase.test_not_disabled"}
-{"suites": ["class-level-suite", "disabled", "example", "module-level"], "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_also_disabled"}
-{"suites": ["class-level-suite", "crazy", "disabled", "example", "module-level"], "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_disabled"}
-{"suites": ["assertion", "class-level-suite", "example", "module-level"], "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_list_suites"}
-{"suites": ["class-level-suite", "example", "module-level"], "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_not_disabled"}
-{"suites": ["example", "module-level", "sub"], "test": "test.test_suites_test SubDecoratedTestCase.test_thing"}
-{"suites": ["example", "module-level", "sub", "super"], "test": "test.test_suites_test SubTestCase.test_thing"}
-{"suites": ["example", "module-level", "super"], "test": "test.test_suites_test SuperDecoratedTestCase.test_thing"}
-{"suites": ["example", "module-level", "super"], "test": "test.test_suites_test SuperTestCase.test_thing"}
-{"suites": ["module-level"], "test": "test.test_suites_test TestSuitesTestCase.test_subclass_suites_doesnt_affect_superclass_suites"}
-{"suites": ["module-level"], "test": "test.test_suites_test TestSuitesTestCase.test_suite_decorator_overrides_parent"}''')  # noqa
+{"suites": ["class-level-suite", "disabled", "example", "module-level"], "tags": {}, "test": "test.test_suites_test ListSuitesTestCase.test_also_disabled"}
+{"suites": ["class-level-suite", "crazy", "disabled", "example", "module-level"], "tags": {}, "test": "test.test_suites_test ListSuitesTestCase.test_disabled"}
+{"suites": ["class-level-suite", "example", "module-level"], "tags": {}, "test": "test.test_suites_test ListSuitesTestCase.<lambda>"}
+{"suites": ["assertion", "class-level-suite", "example", "module-level"], "tags": {}, "test": "test.test_suites_test ListSuitesTestCase.test_list_suites"}
+{"suites": ["class-level-suite", "example", "module-level"], "tags": {}, "test": "test.test_suites_test ListSuitesTestCase.test_not_disabled"}
+{"suites": ["class-level-suite", "disabled", "example", "module-level"], "tags": {}, "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_also_disabled"}
+{"suites": ["class-level-suite", "crazy", "disabled", "example", "module-level"], "tags": {}, "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_disabled"}
+{"suites": ["assertion", "class-level-suite", "example", "module-level"], "tags": {}, "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_list_suites"}
+{"suites": ["class-level-suite", "example", "module-level"], "tags": {}, "test": "test.test_suites_test TestifiedListSuitesUnittestCase.test_not_disabled"}
+{"suites": ["example", "module-level", "sub"], "tags": {}, "test": "test.test_suites_test SubDecoratedTestCase.test_thing"}
+{"suites": ["example", "module-level", "sub", "super"], "tags": {}, "test": "test.test_suites_test SubTestCase.test_thing"}
+{"suites": ["example", "module-level", "super"], "tags": {}, "test": "test.test_suites_test SuperDecoratedTestCase.test_thing"}
+{"suites": ["example", "module-level", "super"], "tags": {}, "test": "test.test_suites_test SuperTestCase.test_thing"}
+{"suites": ["module-level"], "tags": {}, "test": "test.test_suites_test TestSuitesTestCase.test_subclass_suites_doesnt_affect_superclass_suites"}
+{"suites": ["module-level"], "tags": {}, "test": "test.test_suites_test TestSuitesTestCase.test_suite_decorator_overrides_parent"}''')  # noqa
 
     def assert_rerun_discovery(self, format):
         output = test_call([

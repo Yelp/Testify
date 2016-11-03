@@ -28,6 +28,7 @@ import six
 from testify import test_fixtures
 from testify.exceptions import Interruption
 from testify.utils import class_logger
+from testify.utils import dicts
 from testify.test_fixtures import DEPRECATED_FIXTURE_TYPE_MAP
 from testify.test_fixtures import TestFixtures
 from testify.test_fixtures import suite
@@ -235,6 +236,17 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
         if method is not None:
             suites |= getattr(method, '_suites', set())
         return suites
+
+    def tags(self, method=None):
+        """Returns the tags associated with this test case and, optionally, the
+        given method.  tags is a dictionary with the keys being a string, and
+        the values each being a set of strings."""
+        all_classes = inspect.getmro(type(self))
+        all_tag_dicts = [cls.__dict__['_tags'] for cls in all_classes if '_tags' in cls.__dict__]
+        if method and hasattr(method, '_tags'):
+            all_tag_dicts.append(method._tags)
+
+        return dicts.merge_dicts_of_sets(*all_tag_dicts)
 
     def results(self):
         """Available after calling `self.run()`."""
