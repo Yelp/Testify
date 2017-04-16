@@ -185,7 +185,7 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
                 continue
 
             # if there are any name overrides, only run the named methods
-            if self.__name_overrides is None or member.__name__ in self.__name_overrides:
+            if not self.__name_overrides or member.__name__ in self.__name_overrides:
                 yield member
 
     def run(self):
