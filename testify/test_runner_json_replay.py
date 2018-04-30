@@ -58,7 +58,7 @@ class TestRunnerJSONReplay(TestRunner):
                 continue
             try:
                 results.append(json.loads(line.strip()))
-            except:
+            except Exception:
                 sys.exit("Invalid JSON line: %r" % line.strip())
 
         if lines[-1].strip() != "RUN COMPLETE":

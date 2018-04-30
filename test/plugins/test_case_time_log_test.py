@@ -30,6 +30,7 @@ def mock_conf_files():
     with mock.patch.object(six.moves.builtins, 'open', _mock_conf_file_open):
         yield
 
+
 start_time = datetime.datetime(2014, 12, 17, 12, 38, 37, 0)
 end_time = datetime.datetime(2014, 12, 17, 15, 38, 37, 0)
 output_str = (

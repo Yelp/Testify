@@ -19,6 +19,7 @@ from __future__ import absolute_import
 
 from collections import defaultdict
 import functools
+import itertools
 import inspect
 import types
 import unittest
@@ -133,7 +134,7 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
 
         self.__suites_exclude = kwargs.get('suites_exclude', set())
         self.__suites_require = kwargs.get('suites_require', set())
-        self.__name_overrides = kwargs.get('name_overrides', None)
+        self.__name_overrides = kwargs.get('name_overrides', itertools.repeat(None)) or itertools.repeat(None)
 
         TestResult.debug = kwargs.get('debugger')  # sorry :(
 
@@ -168,25 +169,37 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
         any of our exclude_suites.  If there are any require_suites, it will then further
         limit itself to test methods in those suites.
         """
-        for member_name in dir(self):
-            if not member_name.startswith("test"):
-                continue
-            member = getattr(self, member_name)
-            if not inspect.ismethod(member):
-                continue
+        already_inspected = set()
+        name_overrides, self.__name_overrides = itertools.tee(self.__name_overrides)
 
-            member_suites = self.suites(member)
+        for name_override in name_overrides:
+            for member_name in dir(self):
+                # No overrides were passed in, stop if we've seen all members already
+                if not name_override:
+                    if member_name in already_inspected:
+                        return
+                    already_inspected.add(member_name)
+                elif name_override == "__testify_abort_enumeration":
+                    return
 
-            # if there are any exclude suites, exclude methods under them
-            if self.__suites_exclude and self.__suites_exclude & member_suites:
-                continue
-            # if there are any require suites, only run methods in *all* of those suites
-            if self.__suites_require and not ((self.__suites_require & member_suites) == self.__suites_require):
-                continue
+                if not member_name.startswith("test"):
+                    continue
+                member = getattr(self, member_name)
+                if not inspect.ismethod(member):
+                    continue
 
-            # if there are any name overrides, only run the named methods
-            if self.__name_overrides is None or member.__name__ in self.__name_overrides:
-                yield member
+                member_suites = self.suites(member)
+
+                # if there are any exclude suites, exclude methods under them
+                if self.__suites_exclude and self.__suites_exclude & member_suites:
+                    continue
+                # if there are any require suites, only run methods in *all* of those suites
+                if self.__suites_require and not ((self.__suites_require & member_suites) == self.__suites_require):
+                    continue
+
+                # if there are any name overrides, only run the named methods
+                if name_override is None or member.__name__ == name_override:
+                    yield member
 
     def run(self):
         """Delegator method encapsulating the flow for executing a TestCase instance.

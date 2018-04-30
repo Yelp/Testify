@@ -65,6 +65,7 @@ class DiscoveryFailureUnknownErrorTestCase(T.TestCase):
         T.assert_in('AttributeError: aaaaa!', stderr)
         T.assert_in('AttributeError: aaaaa!', stdout)
 
+
 if __name__ == '__main__':
     T.run()
 
