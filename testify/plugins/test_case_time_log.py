@@ -36,6 +36,7 @@ class TestCaseJSONReporter(test_reporter.TestReporter):
     def test_case_complete(self, result):
         self.log_file.write(json.dumps(result))
         self.log_file.write("\n")
+        self.log_file.flush()
 
         self._reset_logging()
 

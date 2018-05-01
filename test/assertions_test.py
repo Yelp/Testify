@@ -956,6 +956,7 @@ class AssertWarnsTestCase(TestCase):
 class DocTest(DocTestCase):
     module = assertions
 
+
 if __name__ == '__main__':
     run()
 # vim:et:sts=4:sw=4:

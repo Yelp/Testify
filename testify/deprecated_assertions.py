@@ -94,8 +94,10 @@ def failIfAlmostEqual(self, first, second, places=7, msg=None):
 
 # Synonyms for assertion methods
 
+
 # stop using these
 assertEqual = assertEquals = failUnlessEqual
+
 # stop using these
 assertNotEqual = assertNotEquals = failIfEqual
 

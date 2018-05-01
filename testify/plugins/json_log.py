@@ -72,6 +72,7 @@ class JSONReporter(test_reporter.TestReporter):
 
         self.log_file.write(json.dumps(result))
         self.log_file.write("\n")
+        self.log_file.flush()
 
         self._reset_logging()
 

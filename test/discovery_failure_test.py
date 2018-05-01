@@ -23,7 +23,9 @@ class DiscoveryFailureTestCase(T.TestCase):
         non-existent module is discovered."""
 
         stdout, stderr = cmd_output(
-            'python', '-m', 'testify.test_program', 'discovery_error', cwd='examples',
+            'python', '-W', 'ignore::RuntimeWarning:runpy:',
+            '-m', 'testify.test_program', 'discovery_error',
+            cwd='examples',
         )
 
         T.assert_equal(
@@ -37,7 +39,7 @@ class DiscoveryFailureTestCase(T.TestCase):
                 r'        submod = __import__\(module_name, fromlist=\[str\(\'__trash\'\)\]\)\n'
                 r'      File "[^"]+", line \d+, in <module>\n'
                 r'        import non_existent_module\n'
-                r'    ImportError: No module named \'?non_existent_module\'?\n'
+                r'    (ImportError|ModuleNotFoundError): No module named \'?non_existent_module\'?\n'
             ),
         )
 
@@ -49,7 +51,7 @@ class DiscoveryFailureTestCase(T.TestCase):
                 r"    submod = __import__\(module_name, fromlist=\[str\(\'__trash\'\)\]\)\n"
                 r'  File .+, line \d+, in <module>\n'
                 r'    import non_existent_module\n'
-                r"ImportError: No module named '?non_existent_module'?\n"
+                r"(ImportError|ModuleNotFoundError): No module named '?non_existent_module'?\n"
             ),
         )
 
@@ -64,6 +66,7 @@ class DiscoveryFailureUnknownErrorTestCase(T.TestCase):
         # FIXME: let's not print the errror twice -- just on stderr
         T.assert_in('AttributeError: aaaaa!', stderr)
         T.assert_in('AttributeError: aaaaa!', stdout)
+
 
 if __name__ == '__main__':
     T.run()
