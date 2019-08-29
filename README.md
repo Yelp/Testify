@@ -1,6 +1,6 @@
 # Testify - A Testing Framework
 
-*PLEASE NOTE:* Yelp is in the process of switching to [py.test](http://pytest.org/latest/). We recommend you use it instead of Testify.
+*PLEASE NOTE:* Yelp is in the process of switching to [py.test](http://pytest.org/). We recommend you use it instead of Testify.
 
 [![Build Status](https://travis-ci.org/Yelp/Testify.png?branch=master)](https://travis-ci.org/Yelp/Testify)
 
