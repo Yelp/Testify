@@ -41,6 +41,10 @@ class DiscoveryFailureTestCase(T.TestCase):
             ),
         )
 
+        # TODO: fix this runpy warning
+        if 'found in sys.modules' in stderr.splitlines()[0]:
+            stderr = ''.join(stderr.splitlines(True)[2:])
+
         T.assert_equal(
             stderr,
             RegexMatcher(
