@@ -273,13 +273,13 @@ assert_equals = assert_equal
 def _get_msg(args, kwargs, suggestion):
     if args:
         raise TypeError(
-            '`message` is kwargs only.  Perhaps you meant `{0}`?'.format(
+            '`message` is kwargs only.  Perhaps you meant `{}`?'.format(
                 suggestion,
             ),
         )
     message = kwargs.pop('message', None)
     if kwargs:
-        raise TypeError('Unexpected kwargs {0!r}'.format(kwargs))
+        raise TypeError('Unexpected kwargs {!r}'.format(kwargs))
     return message
 
 
@@ -457,7 +457,7 @@ def assert_empty(iterable, max_elements_to_print=None, message=None):
             max_elements_to_print = 10
 
     # Build the message *before* touching iterable since that might modify it.
-    message = message or "iterable {0} was unexpectedly non-empty.".format(iterable)
+    message = message or "iterable {} was unexpectedly non-empty.".format(iterable)
 
     # Get the first max_elements_to_print + 1 items from iterable, or just
     # the first item if max_elements_to_print is 0.  Trying to get an
@@ -491,7 +491,7 @@ def assert_not_empty(iterable, message=None):
     else:
         # The else clause of a for loop is reached iff you break out of the loop.
         raise AssertionError(message if message else
-                             "iterable {0} is unexpectedly empty".format(iterable)
+                             "iterable {} is unexpectedly empty".format(iterable)
                              )
 
 
@@ -624,8 +624,8 @@ def assert_dicts_equal(
         message = msg
 
     if ignore_keys is not None:
-        left = dict((k, left[k]) for k in left if k not in ignore_keys)
-        right = dict((k, right[k]) for k in right if k not in ignore_keys)
+        left = {k: left[k] for k in left if k not in ignore_keys}
+        right = {k: right[k] for k in right if k not in ignore_keys}
 
     if left == right:
         return
@@ -652,7 +652,7 @@ def assert_dict_subset(left, right, message="expected [subset has:%(extra_left)r
         return
 
     extra_left = difference_dict
-    small_right = dict((k, right[k]) for k in right if k in left.keys())
+    small_right = {k: right[k] for k in right if k in left.keys()}
     extra_right = _dict_subtract(small_right, left)
     raise AssertionError(message % {
         'left': left,

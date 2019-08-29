@@ -12,15 +12,15 @@ class TestSuitesTestCase(TestCase):
         """Check that setting _suites in a subclass only affects that subclass, not the superclass.
         Checking https://github.com/Yelp/Testify/issues/53"""
         # If we set suites_require=['super'], then only the superclass should have a method to run.
-        super_instance = SuperTestCase(suites_require=set(['super']))
-        sub_instance = SubTestCase(suites_require=set(['super']))
+        super_instance = SuperTestCase(suites_require={'super'})
+        sub_instance = SubTestCase(suites_require={'super'})
 
         assert_equal(list(super_instance.runnable_test_methods()), [super_instance.test_thing])
         assert_equal(list(sub_instance.runnable_test_methods()), [sub_instance.test_thing])
 
         # Conversely, if we set suites_require=['sub'], then only the subclass should have a method to run.
-        super_instance = SuperTestCase(suites_require=set(['sub']))
-        sub_instance = SubTestCase(suites_require=set(['sub']))
+        super_instance = SuperTestCase(suites_require={'sub'})
+        sub_instance = SubTestCase(suites_require={'sub'})
 
         assert_equal(list(super_instance.runnable_test_methods()), [])
         assert_equal(list(sub_instance.runnable_test_methods()), [sub_instance.test_thing])
@@ -30,8 +30,8 @@ class TestSuitesTestCase(TestCase):
         super_instance = SuperDecoratedTestCase()
         sub_instance = SubDecoratedTestCase()
 
-        assert_equal(super_instance.test_thing._suites, set(['super']))
-        assert_equal(sub_instance.test_thing._suites, set(['sub']))
+        assert_equal(super_instance.test_thing._suites, {'super'})
+        assert_equal(sub_instance.test_thing._suites, {'sub'})
 
 
 @suite('example')

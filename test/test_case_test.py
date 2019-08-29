@@ -246,6 +246,7 @@ class ClobberLetTest(TestCase):
 class TestResultDataTest(TestCase):
     """ Tests the data returned by Testify for test-results have required
     arguments/parameters or not. """
+
     def test_testresult_started(self):
         class InnerTestCase(TestCase):
             pass
@@ -381,21 +382,21 @@ class FailingTeardownMethodsTest(TestCase):
             test_result.format_exception_info().split('\n'),
             [
                 'Traceback (most recent call last):',
-                RegexMatcher('  File "(\./)?test/test_case_test\.py", line \d+, in test_method'),
+                RegexMatcher(r'  File "(\./)?test/test_case_test\.py", line \d+, in test_method'),
                 '    assert False',
                 'AssertionError',
                 '',
                 'During handling of the above exception, another exception occurred:',
                 '',
                 'Traceback (most recent call last):',
-                RegexMatcher('  File "(\./)?test/test_case_test\.py", line \d+, in first_teardown'),
+                RegexMatcher(r'  File "(\./)?test/test_case_test\.py", line \d+, in first_teardown'),
                 '    assert False',
                 'AssertionError',
                 '',
                 'During handling of the above exception, another exception occurred:',
                 '',
                 'Traceback (most recent call last):',
-                RegexMatcher('  File "(\./)?test/test_case_test\.py", line \d+, in second_teardown'),
+                RegexMatcher(r'  File "(\./)?test/test_case_test\.py", line \d+, in second_teardown'),
                 '    assert False',
                 'AssertionError',
                 '',  # Ends with newline.
