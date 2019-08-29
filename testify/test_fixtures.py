@@ -252,8 +252,8 @@ class TestFixtures(object):
         # (object), and ending with our class
         test_class = type(test_case)
         mro = inspect.getmro(test_class)
-        reverse_mro_index = dict(
-            (cls, i) for (i, cls) in enumerate(reversed(mro)))
+        reverse_mro_index = {
+            cls: i for (i, cls) in enumerate(reversed(mro))}
 
         # discover which fixures are on this class, including mixed-in ones
 

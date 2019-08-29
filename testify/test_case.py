@@ -221,7 +221,7 @@ class TestCase(six.with_metaclass(MetaTestCase, object)):
         # results.
 
         if not test_case_result.complete:
-                test_case_result.end_in_success()
+            test_case_result.end_in_success()
         self.fire_event(self.EVENT_ON_COMPLETE_TEST_CASE, test_case_result)
 
     @classmethod

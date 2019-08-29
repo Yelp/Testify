@@ -39,7 +39,7 @@ class TestTestRunnerGetTestMethodName(test_case.TestCase):
 
         assert_equal(
             ret,
-            '{0} {1}.{2}'.format(
+            '{} {}.{}'.format(
                 InheritingClass.__module__,
                 InheritingClass.__name__,
                 InheritingClass.test_foo.__name__,

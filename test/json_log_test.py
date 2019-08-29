@@ -66,7 +66,7 @@ class JSONReporterTestCase(test_case.TestCase):
         log_lines = ''.join(
             line for line in
             self.log_file.getvalue().splitlines()
-            if line != 'RUN COMPLETE',
+            if line != 'RUN COMPLETE'
         )
 
         result = json.loads(log_lines)

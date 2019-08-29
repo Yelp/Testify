@@ -480,7 +480,7 @@ class SuiteDecoratorTest(TestCase):
         def function_to_decorate():
             pass
 
-        function_to_decorate._suites = set(['fake_suite_1'])
+        function_to_decorate._suites = {'fake_suite_1'}
 
         suites_before_decoration = function_to_decorate._suites
 

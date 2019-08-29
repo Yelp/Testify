@@ -1,10 +1,22 @@
--   repo: git@github.com:pre-commit/pre-commit-hooks
-    sha: cf550fcab3f12015f8676b8278b30e1a5bc10e70
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
-    -   id: autopep8-wrapper
     -   id: check-json
     -   id: check-yaml
     -   id: debug-statements
+-   repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v1.4.4
+    hooks:
+    -   id: autopep8
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.8
+    hooks:
     -   id: flake8
+-   repo: https://github.com/asottile/pyupgrade
+    rev: v1.23.0
+    hooks:
+    -   id: pyupgrade
+        args: [--keep-percent-format]

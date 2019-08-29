@@ -26,18 +26,9 @@ The basic components of this system are:
 """
 # flake8: noqa
 from __future__ import absolute_import
-__testify = 1
-__version__ = "0.11.0"
-
-from .assertions import *
-
-from .exceptions import TestifyError
-
-from .test_case import (
-    MetaTestCase,
-    TestCase,
-)
-
+import warnings
+from .test_program import TestProgram, main, run
+from .utils import turtle
 from .test_fixtures import (
     class_setup,
     setup,
@@ -48,13 +39,16 @@ from .test_fixtures import (
     suite,
     let,
 )
-
-from .utils import turtle
-
-from .test_program import TestProgram, main, run
+from .test_case import (
+    MetaTestCase,
+    TestCase,
+)
+from .exceptions import TestifyError
+from .assertions import *
+__testify = 1
+__version__ = "0.11.0"
 
 
 # We want default warning behavior for DeprecationWarning's thrown within testify.
 # This gives consistent behavior (and makes our tests pass) under python2.7.
-import warnings
-warnings.filterwarnings('default', module='^testify(\.|$)', category=DeprecationWarning)
+warnings.filterwarnings('default', module=r'^testify(\.|$)', category=DeprecationWarning)

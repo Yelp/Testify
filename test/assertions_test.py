@@ -355,8 +355,8 @@ class AssertSetsEqualTestCase(TestCase):
 
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
-            assertions.assert_sets_equal(set([1, 2]),
-                                         set([1, 2]),
+            assertions.assert_sets_equal({1, 2},
+                                         {1, 2},
                                          msg="This is a message")
 
             assertions.assert_equal(len(w), 1)
@@ -365,8 +365,8 @@ class AssertSetsEqualTestCase(TestCase):
 
     def test_message_param_not_deprecated(self):
         with warnings.catch_warnings(record=True) as w:
-            assertions.assert_sets_equal(set([1, 2]),
-                                         set([1, 2]),
+            assertions.assert_sets_equal({1, 2},
+                                         {1, 2},
                                          message="This is a message")
 
             assertions.assert_equal(len(w), 0)
@@ -418,8 +418,8 @@ class AssertSubsetTestCase(TestCase):
 
     def test_deprecated_msg_param(self):
         with warnings.catch_warnings(record=True) as w:
-            assertions.assert_subset(set([1, 2]),
-                                     set([1, 2, 3]),
+            assertions.assert_subset({1, 2},
+                                     {1, 2, 3},
                                      msg="This is a message")
 
             assertions.assert_equal(len(w), 1)
@@ -428,8 +428,8 @@ class AssertSubsetTestCase(TestCase):
 
     def test_message_param_not_deprecated(self):
         with warnings.catch_warnings(record=True) as w:
-            assertions.assert_subset(set([1, 2]),
-                                     set([1, 2, 3]),
+            assertions.assert_subset({1, 2},
+                                     {1, 2, 3},
                                      message="This is a message")
 
             assertions.assert_equal(len(w), 0)
@@ -955,6 +955,7 @@ class AssertWarnsTestCase(TestCase):
 
 class DocTest(DocTestCase):
     module = assertions
+
 
 if __name__ == '__main__':
     run()
