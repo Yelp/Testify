@@ -43,7 +43,7 @@ class TestRerunner(TestRunner):
         tests = [
             constructor(test)
             for test in tests.splitlines()
-            if test  # Skip blank lines
+            if test and not test.startswith('#')
         ]
 
         for class_path, tests in groupby(tests, lambda test: test[:2]):

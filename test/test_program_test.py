@@ -56,9 +56,9 @@ class ParseTestRunnerCommandLineArgsTest(TestCase):
             test_program.parse_test_runner_command_line_args([], [])
 
 
-def test_call(command):
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE)
-    stdout, stderr = proc.communicate()
+def test_call(command, stdin=None):
+    proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    stdout, stderr = proc.communicate(stdin)
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.returncode, command)
     return stdout.strip().decode('UTF-8')
@@ -146,6 +146,23 @@ PASSED.  7 tests / 6 cases: 7 passed, 0 failed.  (Total test time ${TIME})''')
 
     def test_rerun_discovery_json(self):
         self.assert_rerun_discovery('json')
+
+    def test_rerun_ignores_comments_and_blank_lines(self):
+        output = test_call(
+            (sys.executable, '-m', 'testify.test_program', '-v', '--rerun-test-file', '-'),
+            stdin=(
+                b'test.test_suites_test SubDecoratedTestCase.test_thing\n'
+                b'# ignore this\n'
+                b'\n'
+                b'test.test_suites_test SubTestCase.test_thing\n'
+            ),
+        )
+        output = re.sub(r'\b[0-9.]+s\b', '${TIME}', output)
+        assert_equal(output, '''\
+test.test_suites_test SubDecoratedTestCase.test_thing ... ok in ${TIME}
+test.test_suites_test SubTestCase.test_thing ... ok in ${TIME}
+
+PASSED.  2 tests / 2 cases: 2 passed, 0 failed.  (Total test time ${TIME})''')
 
     def test_run_testify_from_bin(self):
         output = test_call(['bin/testify', 'testing_suite', '-v'])
