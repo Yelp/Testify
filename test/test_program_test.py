@@ -1,9 +1,11 @@
+import logging
 import re
 import subprocess
 import sys
+from unittest.mock import MagicMock
 
 import mock
-from testify import setup_teardown, TestCase, test_program
+from testify import setup_teardown, TestCase, test_logger, test_program
 from testify.assertions import assert_equal, assert_raises, assert_in
 from optparse import OptionParser
 
@@ -199,3 +201,17 @@ PASSED.  7 tests / 6 cases: 7 passed, 0 failed.  (Total test time ${TIME})''')
             b'test.fails_two_tests FailsTwoTests.test2\n'
         )
         assert_in(b'FAILED.  1 test / 1 case: 0 passed, 1 failed.', stdout)
+
+
+class LoggingLevelTest(TestCase):
+    def test_default_logging_level(self):
+        options_mock = MagicMock(verbosity=test_logger.VERBOSITY_NORMAL)
+        with mock.patch("testify.test_program.logging") as logging_mock:
+            test_program.TestProgram().setup_logging(options_mock)
+        logging_mock.getLogger.return_value.setLevel.assert_not_called()
+
+    def test_varbose_logging_level(self):
+        options_mock = MagicMock(verbosity=test_logger.VERBOSITY_VERBOSE)
+        with mock.patch("testify.test_program.logging") as logging_mock:
+            test_program.TestProgram().setup_logging(options_mock)
+        logging_mock.getLogger.return_value.setLevel.assert_called_with(logging.DEBUG)
