@@ -1,11 +1,9 @@
-import logging
 import re
 import subprocess
 import sys
-from unittest.mock import MagicMock
 
 import mock
-from testify import setup_teardown, TestCase, test_logger, test_program
+from testify import setup_teardown, TestCase, test_program
 from testify.assertions import assert_equal, assert_raises, assert_in
 from optparse import OptionParser
 
