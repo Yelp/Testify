@@ -205,13 +205,13 @@ PASSED.  7 tests / 6 cases: 7 passed, 0 failed.  (Total test time ${TIME})''')
 
 class LoggingLevelTest(TestCase):
     def test_default_logging_level(self):
-        options_mock = MagicMock(verbosity=test_logger.VERBOSITY_NORMAL)
+        _, _, _, options = test_program.parse_test_runner_command_line_args([], ["path"])
         with mock.patch("testify.test_program.logging") as logging_mock:
-            test_program.TestProgram().setup_logging(options_mock)
+            test_program.TestProgram().setup_logging(options)
         logging_mock.getLogger.return_value.setLevel.assert_not_called()
 
     def test_varbose_logging_level(self):
-        options_mock = MagicMock(verbosity=test_logger.VERBOSITY_VERBOSE)
+        _, _, _, options = test_program.parse_test_runner_command_line_args([], ["path", "--verbose"])
         with mock.patch("testify.test_program.logging") as logging_mock:
-            test_program.TestProgram().setup_logging(options_mock)
-        logging_mock.getLogger.return_value.setLevel.assert_called_with(logging.DEBUG)
+            test_program.TestProgram().setup_logging(options)
+        logging_mock.getLogger.return_value.setLevel.assert_called_with(logging_mock.DEBUG)
