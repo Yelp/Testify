@@ -378,30 +378,27 @@ class FailingTeardownMethodsTest(TestCase):
 
     def test_multiple_error_formatting(self):
         test_result = self.testcase.results()[0]
-        assert_equal(
-            test_result.format_exception_info().split('\n'),
-            [
-                'Traceback (most recent call last):',
-                RegexMatcher(r'  File "(\./)?test/test_case_test\.py", line \d+, in test_method'),
-                '    assert False',
-                'AssertionError',
-                '',
-                'During handling of the above exception, another exception occurred:',
-                '',
-                'Traceback (most recent call last):',
-                RegexMatcher(r'  File "(\./)?test/test_case_test\.py", line \d+, in first_teardown'),
-                '    assert False',
-                'AssertionError',
-                '',
-                'During handling of the above exception, another exception occurred:',
-                '',
-                'Traceback (most recent call last):',
-                RegexMatcher(r'  File "(\./)?test/test_case_test\.py", line \d+, in second_teardown'),
-                '    assert False',
-                'AssertionError',
-                '',  # Ends with newline.
-            ]
-        )
+        actual = test_result.format_exception_info()
+        expected_regex = r"""Traceback \(most recent call last\):
+  File \".*test\/test_case_test.py\", line \d+, in test_method
+    assert False
+AssertionError
+
+During handling of the above exception, another exception occurred:
+
+Traceback \(most recent call last\):
+  File \".*test\/test_case_test.py\", line \d+, in first_teardown
+    assert False
+AssertionError
+
+During handling of the above exception, another exception occurred:
+
+Traceback \(most recent call last\):
+  File \".*test\/test_case_test.py\", line \d+, in second_teardown
+    assert False
+AssertionError
+"""
+        assert_equal(RegexMatcher(expected_regex), actual)
 
 
 class RegexMatcher(object):

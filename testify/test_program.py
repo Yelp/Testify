@@ -86,7 +86,13 @@ def default_parser():
 
     parser.set_defaults(verbosity=test_logger.VERBOSITY_NORMAL)
     parser.add_option("-s", "--silent", action="store_const", const=test_logger.VERBOSITY_SILENT, dest="verbosity")
-    parser.add_option("-v", "--verbose", action="store_const", const=test_logger.VERBOSITY_VERBOSE, dest="verbosity")
+    parser.add_option(
+        "-v", "--verbose",
+        action="store_const",
+        const=test_logger.VERBOSITY_VERBOSE,
+        dest="verbosity",
+        help="Outputs a more verbose output and sets the root logger level to debug."
+    )
     parser.add_option(
         '-d', '--ipdb', '--pdb',
         action="store_true",
@@ -317,7 +323,8 @@ class TestProgram(object):
 
     def setup_logging(self, options):
         root_logger = logging.getLogger()
-        root_logger.setLevel(logging.DEBUG)
+        if options.verbosity == test_logger.VERBOSITY_VERBOSE:
+            root_logger.setLevel(logging.DEBUG)
 
         console = logging.StreamHandler()
         console.setFormatter(logging.Formatter("%(levelname)-8s %(message)s"))

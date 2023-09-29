@@ -199,3 +199,17 @@ PASSED.  7 tests / 6 cases: 7 passed, 0 failed.  (Total test time ${TIME})''')
             b'test.fails_two_tests FailsTwoTests.test2\n'
         )
         assert_in(b'FAILED.  1 test / 1 case: 0 passed, 1 failed.', stdout)
+
+
+class LoggingLevelTest(TestCase):
+    def test_default_logging_level(self):
+        _, _, _, options = test_program.parse_test_runner_command_line_args([], ["path"])
+        with mock.patch("testify.test_program.logging") as logging_mock:
+            test_program.TestProgram().setup_logging(options)
+        logging_mock.getLogger.return_value.setLevel.assert_not_called()
+
+    def test_varbose_logging_level(self):
+        _, _, _, options = test_program.parse_test_runner_command_line_args([], ["path", "--verbose"])
+        with mock.patch("testify.test_program.logging") as logging_mock:
+            test_program.TestProgram().setup_logging(options)
+        logging_mock.getLogger.return_value.setLevel.assert_called_with(logging_mock.DEBUG)
