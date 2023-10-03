@@ -23,6 +23,7 @@ setup(
         "Development Status :: 4 - Beta",
     ],
     install_requires=['mock', 'six>=1.7.3'],
+    python_requires='>=3.8',
     packages=["testify", "testify.contrib", "testify.utils", "testify.plugins"],
     scripts=['bin/testify'],
     long_description="""Testify - A Testing Framework
