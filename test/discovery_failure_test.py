@@ -35,8 +35,11 @@ class DiscoveryFailureTestCase(T.TestCase):
                 r'    Traceback \(most recent call last\):\n'
                 r'      File "[^"]+", line \d+, in discover\n'
                 r'        submod = __import__\(module_name, fromlist=\[str\(\'__trash\'\)\]\)\n'
+                r'(                 \^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^'
+                r'\^\^\^\^\n)?'
                 r'      File "[^"]+", line \d+, in <module>\n'
                 r'        import non_existent_module  \# noqa: F401\n'
+                r'(        \^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n)?'
                 r'    (ModuleNotFoundError|ImportError): No module named \'?non_existent_module\'?\n'
             ),
         )
@@ -48,11 +51,14 @@ class DiscoveryFailureTestCase(T.TestCase):
         T.assert_equal(
             stderr,
             RegexMatcher(
-                r'Traceback \(most recent call last\):\n'
+                r'(Traceback \(most recent call last\):\n)?'
                 r'  File .+, line \d+, in discover\n'
                 r"    submod = __import__\(module_name, fromlist=\[str\(\'__trash\'\)\]\)\n"
+                r'(             \^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^'
+                r'\^\^\n)?'
                 r'  File .+, line \d+, in <module>\n'
                 r'    import non_existent_module  \# noqa: F401\n'
+                r'(    \^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n)?'
                 r"(ModuleNotFoundError|ImportError): No module named '?non_existent_module'?\n"
             ),
         )
