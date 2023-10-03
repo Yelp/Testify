@@ -37,4 +37,4 @@ jobs:
         with:
           python-version: '3.11'
       - run: python setup.py sdist
-      - uses: pypi/gh-action-pypi-publish@v1.8.10
+      - uses: pypa/gh-action-pypi-publish@v1.8.10
