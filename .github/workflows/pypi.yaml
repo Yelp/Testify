@@ -31,7 +31,7 @@ jobs:
   pypi:
     needs: test
     runs-on: ubuntu-latest
-	environment:
+    environment:
       name: pypi
       url: https://pypi.org/p/testify
     permissions:
