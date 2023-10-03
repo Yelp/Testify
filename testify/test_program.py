@@ -19,7 +19,7 @@ import os
 import pprint
 import sys
 import logging
-import imp
+from importlib.machinery import SourceFileLoader
 
 import testify
 from testify import exit
@@ -46,11 +46,6 @@ def load_plugins():
     # The idea will be to check out the directory contents and pick up any files that seem to match what python knows how to
     # import.
 
-    # To properly load the module, we'll need to identify what type it is by the file extension
-    suffix_map = {}
-    for suffix in imp.get_suffixes():
-        suffix_map[suffix[0]] = suffix
-
     plugin_directories = [DEFAULT_PLUGIN_PATH]
     if 'TESTIFY_PLUGIN_PATH' in os.environ:
         plugin_directories += os.environ['TESTIFY_PLUGIN_PATH'].split(':')
@@ -60,16 +55,14 @@ def load_plugins():
         for file_name in os.listdir(plugin_path):
 
             # For any file that we know how to load, try to import it
-            if any(file_name.endswith('.py') and not file_name.startswith('.') for suffix in suffix_map.keys()):
+            if file_name.endswith('.py') and not file_name.startswith('.'):
                 full_file_path = os.path.join(plugin_path, file_name)
                 mod_name, suffix = os.path.splitext(file_name)
                 # Need some unlikely-to-clash unique-ish module name
                 mod_name = '_testify_plugin__' + mod_name
 
                 try:
-                    plugin_modules.append(
-                        imp.load_source(mod_name, full_file_path),
-                    )
+                    SourceFileLoader(mod_name, full_file_path).load_module()
                 except TypeError:
                     continue
                 except ImportError as e:

@@ -1,10 +1,10 @@
-import imp
 import mock
 from testify import assert_equal
 from testify import setup
 from testify import setup_teardown
 from testify import test_case
 from testify import test_runner
+from types import ModuleType
 
 from .test_runner_subdir.inheriting_class import InheritingClass
 
@@ -59,7 +59,7 @@ class PluginTestCase(test_case.TestCase):
     """
     @setup
     def build_module(self):
-        self.our_module = imp.new_module("our_module")
+        self.our_module = ModuleType("our_module")
         setattr(self.our_module, "prepare_test_case", prepare_test_case)
         setattr(self.our_module, "run_test_case", run_test_case)
         setattr(self.our_module, "add_testcase_info", add_testcase_info)
