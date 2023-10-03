@@ -31,10 +31,10 @@ jobs:
   pypi:
     needs: test
     runs-on: ubuntu-latest
+	environment:
+      name: pypi
+      url: https://pypi.org/p/testify
+    permissions:
+      id-token: write
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - run: python setup.py sdist
       - uses: pypa/gh-action-pypi-publish@v1.8.10
