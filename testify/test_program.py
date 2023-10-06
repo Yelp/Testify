@@ -61,7 +61,7 @@ def load_plugins():
                 # Need some unlikely-to-clash unique-ish module name
                 mod_name = '_testify_plugin__' + mod_name
 
-                try:                    
+                try:
                     module_type = SourceFileLoader(mod_name, full_file_path).load_module()
                     plugin_modules.append(module_type)
                 except TypeError:
