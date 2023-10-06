@@ -62,7 +62,8 @@ def load_plugins():
                 mod_name = '_testify_plugin__' + mod_name
 
                 try:
-                    SourceFileLoader(mod_name, full_file_path).load_module()
+                    module_type = SourceFileLoader(mod_name, full_file_path).load_module()
+                    plugin_modules.append(module_type)
                 except TypeError:
                     continue
                 except ImportError as e:
