@@ -45,8 +45,9 @@ from .test_case import (
 )
 from .exceptions import TestifyError
 from .assertions import *
+import importlib.metadata
 __testify = 1
-__version__ = "0.11.0"
+__version__ = importlib.metadata.version('testify')
 
 
 # We want default warning behavior for DeprecationWarning's thrown within testify.
