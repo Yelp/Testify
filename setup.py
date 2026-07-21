@@ -34,7 +34,7 @@ will run under testify with a minimum of adjustments, but it has features above 
   - class-level setup and teardown fixture methods which are run once each for an entire set of test methods.
   - a decorator-based approach for fixture methods, eliminating the need for super() calls.
   - More pythonic, less java
-  - enhanced test discovery - testify can drill down into packages to find test cases (similiar to nose).
+  - enhanced test discovery - testify can drill down into packages to find test cases (similar to nose).
   - support for collecting and running tests by collecting modules, classes or methods into test suites.
   - Pretty test runner output (color!)
   - Extensible plugin system for adding additional functionality around reporting
